@@ -182,16 +182,77 @@ canvas{max-height:260px}
 .modebtns button{border:none;background:none;padding:7px 13px;border-radius:8px;font:700 .82rem 'Albert Sans';color:var(--gris);cursor:pointer}
 .modebtns button.on{background:var(--flamme);color:#fff}
 /* ---------- Page de connexion ---------- */
-#auth{position:fixed;inset:0;z-index:180;background:linear-gradient(160deg,var(--encre-2),var(--encre) 60%,#5B21A8);display:flex;align-items:center;justify-content:center;padding:18px}
+body.auth-only{overflow:hidden}
+#app[aria-hidden="true"]{display:none}
+#auth{position:fixed;inset:0;z-index:180;background:linear-gradient(160deg,var(--encre-2),var(--encre) 60%,#5B21A8);display:flex;align-items:stretch;justify-content:center;padding:18px;overflow:auto}
 .authcard{background:var(--carte);border-radius:18px;width:100%;max-width:400px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
-.authcard .haut{text-align:center;margin-bottom:18px}
-.authcard .haut img{width:64px;height:64px;border-radius:50%}
-.authcard .haut .disp{color:var(--encre);font-size:1.15rem;margin-top:8px}
-.authtabs{display:flex;background:var(--carte2);border-radius:10px;padding:4px;margin-bottom:16px}
-.authtabs button{flex:1;border:none;background:none;padding:9px;border-radius:8px;font:700 .88rem 'Albert Sans';color:var(--gris);cursor:pointer}
-.authtabs button.on{background:var(--flamme);color:#fff}
-.souvenir{display:flex;align-items:center;gap:9px;margin:14px 0 4px;font-size:.86rem;color:var(--carbone)}
-.souvenir input{width:17px;height:17px;accent-color:var(--flamme)}
+.auth-shell{display:grid;grid-template-columns:minmax(280px,360px) minmax(0,560px);width:min(1080px,100%);margin:auto;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:28px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.28)}
+.auth-aside{padding:34px 28px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));color:#F6F1FF;display:flex;flex-direction:column;gap:20px}
+.auth-brand{display:flex;align-items:center;gap:12px}
+.auth-brand strong{display:block;font-size:1.15rem}
+.auth-brand span{display:block;color:#D9C6F5;font-size:.82rem}
+.auth-aside h1{font-size:clamp(1.8rem,3vw,2.5rem);line-height:1.08}
+.auth-aside p{color:#E7DCF9;line-height:1.6}
+.auth-points{display:grid;gap:12px}
+.auth-point{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:14px 16px}
+.auth-point b{display:block;font-size:.95rem;margin-bottom:4px}
+.auth-point span{display:block;color:#E7DCF9;font-size:.88rem;line-height:1.5}
+.auth-panel{background:var(--carte);padding:32px;display:flex;flex-direction:column;gap:18px}
+.auth-panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.auth-panel-head h2{font-size:clamp(1.4rem,2.6vw,2rem);color:var(--encre);letter-spacing:0}
+.auth-panel-head p{color:var(--gris);font-size:.95rem;line-height:1.5}
+.auth-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#F3EBFF;color:var(--flamme);font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.auth-switch{margin-left:auto;text-align:right;color:var(--gris);font-size:.9rem}
+.auth-link{color:var(--flamme-2);font-weight:700;text-decoration:none}
+.auth-link:hover{text-decoration:underline}
+.auth-progress{display:grid;gap:8px}
+.auth-progress-top{display:flex;justify-content:space-between;align-items:center;font-size:.82rem;color:var(--gris);font-weight:700}
+.auth-progress-track{height:10px;background:var(--trait);border-radius:999px;overflow:hidden}
+.auth-progress-fill{height:100%;background:linear-gradient(90deg,var(--flamme),#7D4CFF);border-radius:999px;transition:width .2s ease}
+.auth-grid{display:grid;gap:14px}
+.auth-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.auth-field{display:flex;flex-direction:column;gap:6px}
+.auth-field label,.auth-check legend{font-size:.78rem;font-weight:800;color:var(--gris);letter-spacing:.04em;text-transform:uppercase}
+.auth-field input,.auth-field select{border:1.5px solid var(--trait);border-radius:12px;padding:13px 14px;font:600 .95rem 'Albert Sans';background:var(--champ);color:var(--carbone)}
+.auth-field input::placeholder{color:#9E95B6}
+.auth-field input:focus,.auth-field select:focus{outline:none;border-color:var(--flamme);box-shadow:0 0 0 4px rgba(164,80,251,.14)}
+.auth-field-error{min-height:1.1em;color:var(--brique);font-size:.82rem}
+.auth-help{color:var(--gris);font-size:.82rem;line-height:1.5}
+.auth-check{border:none;padding:0;display:grid;gap:8px}
+.auth-check label{display:flex;align-items:flex-start;gap:10px;font-size:.92rem;color:var(--carbone);line-height:1.5}
+.auth-check input{margin-top:3px;width:18px;height:18px;accent-color:var(--flamme)}
+.auth-status{min-height:1.3em;font-size:.9rem}
+.auth-status.error{color:var(--brique)}
+.auth-status.success{color:var(--sapin)}
+.auth-status.info{color:var(--gris)}
+.auth-actions{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}
+.auth-actions .btn{justify-content:center}
+.auth-actions .btn-p{min-width:210px}
+.auth-minor{color:var(--gris);font-size:.85rem}
+.auth-summary{display:grid;gap:12px}
+.auth-summary-card{border:1px solid var(--trait);border-radius:16px;padding:16px;background:var(--carte2)}
+.auth-summary-card h3{font-size:.95rem;color:var(--encre);margin-bottom:10px}
+.auth-summary-list{display:grid;gap:8px}
+.auth-summary-item{display:flex;justify-content:space-between;gap:12px;font-size:.9rem}
+.auth-summary-item span{color:var(--gris)}
+.auth-summary-item b{text-align:right;color:var(--carbone)}
+.auth-cta-note{padding:12px 14px;border-radius:14px;background:#F3EBFF;color:var(--encre);font-size:.88rem;line-height:1.5}
+.souvenir{display:flex;align-items:flex-start;gap:10px;margin:4px 0;font-size:.92rem;color:var(--carbone);line-height:1.5}
+.souvenir input{width:17px;height:17px;margin-top:2px;accent-color:var(--flamme)}
+.btn:focus-visible,.tab:focus-visible,.chip:focus-visible,.search:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid rgba(164,80,251,.45);outline-offset:3px}
+.auth-panel .btn[disabled],.auth-panel button[disabled]{opacity:.68;cursor:not-allowed;transform:none;box-shadow:none}
+@media (max-width:920px){
+  #auth{padding:12px}
+  .auth-shell{grid-template-columns:1fr}
+  .auth-aside{padding:26px 22px}
+  .auth-panel{padding:24px 20px}
+}
+@media (max-width:640px){
+  .auth-grid.two{grid-template-columns:1fr}
+  .auth-actions{flex-direction:column-reverse;align-items:stretch}
+  .auth-actions .btn,.auth-actions .btn-p{width:100%}
+  .auth-switch{width:100%;margin-left:0;text-align:left}
+}
 /* ---------- Autocomplétion client ---------- */
 .sugwrap{position:relative}
 .sug{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--carte);border:1.5px solid var(--encre);border-radius:10px;box-shadow:0 8px 24px rgba(14,26,66,.18);z-index:60;max-height:230px;overflow:auto}
@@ -349,6 +410,54 @@ const artefact = typeof window.storage !== 'undefined' && window.storage && wind
 /* ---------- CLOUD (Supabase) ---------- */
 function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
 function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+const AUTH_URLS = {login:'https://app.piloz.fr/?mode=login', signup:'https://app.piloz.fr/?mode=signup'};
+const AUTH_SIGNUP_STEPS = 4;
+const SIGNUP_DRAFT_KEY = 'piloz_signup_draft_v1';
+function blankSignupDraft(){
+  return {
+    firstName:'', lastName:'', email:'', password:'', confirmPassword:'', terms:false,
+    companyName:'', sector:'', status:'', teamSize:'', siret:'',
+    primaryNeed:'', currentTool:'', contactsVolume:'', heardAbout:''
+  };
+}
+function normalizeSignupDraft(value){
+  return {...blankSignupDraft(), ...(value||{}), terms: !!(value&&value.terms)};
+}
+let signupDraft = normalizeSignupDraft(lsGet(SIGNUP_DRAFT_KEY));
+let loginDraft = {email: signupDraft.email || '', password:'', remember:true};
+let recoveryDraft = {password:'', confirmPassword:''};
+let authMode = (()=>{ const mode = new URLSearchParams(location.search).get('mode'); return mode==='signup' ? 'signup' : 'login'; })();
+let authStep = 1;
+let authRecovery = false;
+let authFieldErrors = {};
+let authStatusMessage = '';
+let authStatusKind = 'error';
+let authFocusTarget = '';
+let authBusy = false;
+let PENDING_RECOVERY = null;
+let PENDING_HASH_ERROR = '';
+function persistSignupDraft(){ lsSet(SIGNUP_DRAFT_KEY, signupDraft); }
+function clearSignupDraft(){ signupDraft = blankSignupDraft(); persistSignupDraft(); authStep = 1; }
+function applyAuthModeToUrl(mode){
+  const url = new URL(location.href);
+  if(mode) url.searchParams.set('mode', mode);
+  else url.searchParams.delete('mode');
+  history.replaceState(null,'', url.pathname + (url.search||''));
+}
+function setAuthMode(mode, opts={}){
+  const preserveStep = !!opts.preserveStep;
+  const updateUrl = opts.updateUrl !== false;
+  authMode = mode==='signup' ? 'signup' : 'login';
+  authStep = authMode==='signup' ? (preserveStep ? Math.min(Math.max(authStep || 1, 1), AUTH_SIGNUP_STEPS) : 1) : 1;
+  authRecovery = false;
+  authBusy = false;
+  if(updateUrl) applyAuthModeToUrl(authMode);
+}
+function setAuthVisibility(visible){
+  const app = document.getElementById('app');
+  document.body.classList.toggle('auth-only', visible);
+  if(app) app.setAttribute('aria-hidden', visible ? 'true' : 'false');
+}
 function normaliserUrlSb(u){
   u = (u||'').trim().replace(/\/+$/,'');
   // l'utilisateur a collé le lien du tableau de bord ? on extrait la référence du projet
@@ -373,17 +482,34 @@ if(CFG_INTEGREE.key && CFG_INTEGREE.key.startsWith('eyJ') && (!CFG || !CFG.key |
   CFG = {url: CFG_INTEGREE.url, key: CFG_INTEGREE.key};
   lsSet('piloz_cfg', CFG);
 }
-// lien de configuration partagé entre appareils : https://monsite/#cfg=xxxx
+// lien de configuration partagée entre appareils : https://monsite/#cfg=xxxx
 try{
-  const m = location.hash.match(/#cfg=([A-Za-z0-9+/=_-]+)/);
-  if(m){
-    const c = JSON.parse(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')));
+  const hash = location.hash || '';
+  const cfgMatch = hash.match(/#cfg=([A-Za-z0-9+/=_-]+)/);
+  if(cfgMatch){
+    const c = JSON.parse(atob(cfgMatch[1].replace(/-/g,'+').replace(/_/g,'/')));
     if(c.url && c.key){ CFG = {url:normaliserUrlSb(c.url), key:c.key}; lsSet('piloz_cfg', CFG); }
     history.replaceState(null,'',location.pathname + location.search);
+  } else if(hash.startsWith('#')){
+    const hp = new URLSearchParams(hash.slice(1));
+    if(hp.get('type')==='recovery' && hp.get('access_token')){
+      PENDING_RECOVERY = {
+        access_token: hp.get('access_token') || '',
+        refresh_token: hp.get('refresh_token') || '',
+        user_id: hp.get('user_id') || '',
+        email: hp.get('email') || ''
+      };
+      history.replaceState(null,'',location.pathname + location.search);
+    } else if(hp.get('error_description')){
+      PENDING_HASH_ERROR = hp.get('error_description') || 'Le lien de réinitialisation est invalide ou expiré.';
+      history.replaceState(null,'',location.pathname + location.search);
+    }
   }
 }catch(e){}
 if(CFG && CFG.url){ const n = normaliserUrlSb(CFG.url); if(n!==CFG.url){ CFG.url = n; lsSet('piloz_cfg', CFG); } }
 let SES = lsGet('piloz_ses') || null;         // {access_token, refresh_token, user_id, email}
+if(PENDING_RECOVERY){ SES = {...(SES||{}), ...PENDING_RECOVERY}; authRecovery = true; authMode = 'login'; lsSet('piloz_ses', SES); }
+if(PENDING_HASH_ERROR){ authStatusMessage = PENDING_HASH_ERROR; authStatusKind = 'error'; }
 let syncEtat = 'local';                      // local | ok | pending | offline
 function setSync(s){ syncEtat = s; const f=document.getElementById('syncfoot'); if(f) f.innerHTML = piedSync(); }
 function piedSync(){
@@ -423,24 +549,31 @@ async function cloudSauver(){
     body: JSON.stringify({user_id: SES.user_id, data: S, updated_at: new Date().toISOString()})});
   if(!r.ok) throw new Error('écriture');
 }
-function deconnecter(){ SES=null; lsSet('piloz_ses', null); setSync('local'); render(); pageAuth(); }
 
-async function charger(){
-  S = null;
-  if(CFG && SES){
-    try{ const d = await cloudCharger(); if(d) S = d; setSync('ok'); }
-    catch(e){ setSync('offline'); }
-  }
-  if(!S){
-    if(artefact){ try{ const r = await window.storage.get('piloz_crm_v1'); if(r) S = JSON.parse(r.value); }catch(e){} }
-    else { S = lsGet('piloz_crm_v1'); }
-  }
+function deconnecter(){
+  SES = null;
+  LIC = null;
+  authRecovery = false;
+  authBusy = false;
+  loginDraft.password = '';
+  recoveryDraft = {password:'', confirmPassword:''};
+  authFieldErrors = {};
+  authStatusMessage = '';
+  lsSet('piloz_ses', null);
+  setSync('local');
+  applyAuthModeToUrl('login');
+  render();
+  pageAuth();
+}
+
+function normaliserEtat(){
   if(!S) S = structuredClone(DEFAUT);
   if(!S.objectifs) S.objectifs = structuredClone(DEFAUT.objectifs);
   if(!S.accueil) S.accueil = structuredClone(DEFAUT.accueil);
   if(S.accueil.activite===undefined) S.accueil.activite = true;
   if(!S.accueilOrdre) S.accueilOrdre = ['raccourcis','relances','pipeline','signes','objectif','ca','derniers','activite'];
   ['raccourcis','relances','pipeline','signes','objectif','ca','derniers','activite'].forEach(id=>{ if(!S.accueilOrdre.includes(id)) S.accueilOrdre.push(id); });
+  if(!S.params) S.params = structuredClone(DEFAUT.params);
   if(S.params.plMarqueur===undefined) S.params.plMarqueur = '';
   if(!S.params.relance) S.params.relance = {premiere:7, repondeur:2, discussion:5, positif:3, standard:7};
   if(S.accent===undefined) S.accent = '';
@@ -449,6 +582,7 @@ async function charger(){
     societe: {nom:'', adresse:'', siret:'', tvaIntra:'', email:'', tel:'', iban:'', mentions:"TVA non applicable, art. 293 B du CGI (à adapter). Pénalités de retard : 3 fois le taux d'intérêt légal. Indemnité forfaitaire de recouvrement : 40 €."},
     tvaDefaut: 20, comptes: {vente:'706', client:'411', tva:'44571'}
   };
+  if(!S.onboarding) S.onboarding = null;
   appliquerAccent();
   if(!S.params.emails) S.params.emails = {
     relance:{objet:"Suite à notre devis — {produit}", corps:"Bonjour {contact},\n\nJe me permets de revenir vers vous concernant notre devis ({produit}).\nAvez-vous pu en prendre connaissance ? Je reste disponible pour en discuter ou l'ajuster.\n\nBien cordialement"},
@@ -462,13 +596,27 @@ async function charger(){
       S.clients.push({id:S.nextClientId++, nom, contact:d.contact||'', email:(d.coord||'').split('·')[0].trim(), tel:'', notes:''});
     });
   }
+}
+
+async function charger(){
+  S = null;
+  if(CFG && SES){
+    try{ const d = await cloudCharger(); if(d) S = d; setSync('ok'); }
+    catch(e){ setSync('offline'); }
+  }
+  if(!S){
+    if(artefact){ try{ const r = await window.storage.get('piloz_crm_v1'); if(r) S = JSON.parse(r.value); }catch(e){} }
+    else { S = lsGet('piloz_crm_v1'); }
+  }
+  if(!S) S = structuredClone(DEFAUT);
+  normaliserEtat();
   prendreSnapshot(false);
   if(S.pinHash) lsSet('piloz_pin', S.pinHash);
   if(S.theme) appliquerTheme(S.theme);
   render();
   demarrerVerrou();
-  if(CFG && !SES) pageAuth();
-  else if(SES){ chargerLicence().then(controlerLicence); }
+  if(authRecovery || !SES) pageAuth();
+  else { fermerAuth(); chargerLicence().then(controlerLicence); }
   notifierRelances();
 }
 let saveT = null;
@@ -2189,73 +2337,350 @@ function ecranConfig(){
       setTimeout(ecranAuth, 350);
     }, 'Enregistrer');
 }
-function ecranAuth(){ pageAuth(); }
-let authMode = 'login';
+function ecranAuth(mode='login'){
+  if(mode) setAuthMode(mode, {updateUrl:true, preserveStep:true});
+  pageAuth();
+}
 let LIC = null;
+const AUTH_STATUS_OPTIONS = [['independant','Indépendant'],['micro-entreprise','Micro-entreprise'],['tpe','TPE'],['pme','PME'],['autre','Autre']];
+const AUTH_TEAM_OPTIONS = [['solo','Je travaille seul'],['2-5','2 à 5 personnes'],['6-10','6 à 10 personnes'],['11-50','11 à 50 personnes'],['50+','Plus de 50 personnes']];
+const AUTH_NEED_OPTIONS = [['prospects','Suivre mes prospects'],['relances','Automatiser mes relances'],['documents','Créer des devis et factures'],['paiements','Suivre mes paiements'],['centraliser','Centraliser mon activité commerciale']];
+const AUTH_TOOL_OPTIONS = [['aucun','Aucun'],['excel','Excel ou Google Sheets'],['crm','Un CRM'],['facturation','Un logiciel de facturation'],['autre','Autre']];
+const AUTH_VOLUME_OPTIONS = [['0-10','0 à 10'],['11-50','11 à 50'],['51-200','51 à 200'],['201+','Plus de 200']];
+function authOptions(options, value, placeholder='Sélectionnez une option'){
+  return `<option value="">${placeholder}</option>` + options.map(([id,label])=>`<option value="${id}" ${value===id?'selected':''}>${esc(label)}</option>`).join('');
+}
+function authLabel(options, value){
+  const found = options.find(([id])=>id===value);
+  return found ? found[1] : (value || '—');
+}
+function authSummaryItem(label, value){
+  return `<div class="auth-summary-item"><span>${esc(label)}</span><b>${esc(value || '—')}</b></div>`;
+}
+function authResetFeedback(){ authFieldErrors = {}; authStatusMessage = ''; authStatusKind = 'error'; authFocusTarget = ''; }
+function authFieldError(name){ return authFieldErrors[name] || ''; }
+function authErrorMarkup(name){ const err = authFieldError(name); return `<p class="auth-field-error" id="err_${name}" ${err?'':'hidden'}>${esc(err)}</p>`; }
+function authAria(name){ const err = authFieldError(name); return `${err?' aria-invalid="true"':''} aria-describedby="auth_status${err?' err_'+name:''}"`; }
+function authClearField(name){ if(authFieldErrors[name]) delete authFieldErrors[name]; }
+function updateLoginField(name, value){ loginDraft[name] = value; authClearField(name==='email' ? 'loginEmail' : 'loginPassword'); }
+function updateSignupField(name, value){ signupDraft[name] = value; persistSignupDraft(); authClearField(name); }
+function updateSignupCheck(name, value){ signupDraft[name] = !!value; persistSignupDraft(); authClearField(name); }
+function updateRecoveryField(name, value){ recoveryDraft[name] = value; authClearField(name==='password' ? 'resetPassword' : 'resetConfirm'); }
+function switchAuthMode(event, mode){
+  if(event) event.preventDefault();
+  if(mode==='signup' && !signupDraft.email && loginDraft.email) signupDraft.email = loginDraft.email.trim();
+  persistSignupDraft();
+  authResetFeedback();
+  setAuthMode(mode, {updateUrl:true, preserveStep:true});
+  pageAuth();
+  return false;
+}
+function authServerReady(){
+  if(CFG && CFG.url && CFG.key) return true;
+  authStatusMessage = 'La connexion Supabase n’est pas configurée sur cette instance.';
+  authStatusKind = 'error';
+  pageAuth();
+  return false;
+}
+function authValidateEmail(value){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((value||'').trim()); }
+function authValidateSignupStep(step){
+  const errors = {};
+  if(step===1){
+    if(!signupDraft.firstName.trim()) errors.firstName = 'Indiquez votre prénom.';
+    if(!signupDraft.lastName.trim()) errors.lastName = 'Indiquez votre nom.';
+    if(!authValidateEmail(signupDraft.email)) errors.email = 'Saisissez une adresse email professionnelle valide.';
+    if((signupDraft.password||'').length < 6) errors.password = 'Choisissez au moins 6 caractères.';
+    if(signupDraft.confirmPassword !== signupDraft.password) errors.confirmPassword = 'Les mots de passe ne correspondent pas.';
+    if(!signupDraft.terms) errors.terms = 'Vous devez accepter les conditions pour continuer.';
+  }
+  if(step===2){
+    if(!signupDraft.companyName.trim()) errors.companyName = 'Indiquez le nom de votre entreprise.';
+    if(!signupDraft.sector.trim()) errors.sector = 'Précisez votre activité.';
+    if(!signupDraft.status) errors.status = 'Sélectionnez le statut de votre activité.';
+    if(!signupDraft.teamSize) errors.teamSize = 'Choisissez la taille de votre entreprise.';
+    const siret = (signupDraft.siret||'').replace(/\s+/g,'');
+    if(siret && !/^\d{14}$/.test(siret)) errors.siret = 'Le SIRET doit contenir 14 chiffres.';
+  }
+  if(step===3){
+    if(!signupDraft.primaryNeed) errors.primaryNeed = 'Choisissez votre besoin principal.';
+    if(!signupDraft.currentTool) errors.currentTool = 'Indiquez votre outil actuel.';
+    if(!signupDraft.contactsVolume) errors.contactsVolume = 'Précisez votre volume de prospects ou clients.';
+  }
+  return errors;
+}
+function authSetErrors(errors){ authFieldErrors = errors; authStatusMessage = ''; authStatusKind = 'error'; authFocusTarget = Object.keys(errors)[0] || ''; }
+function authIntro(){
+  if(authRecovery) return {title:'Choisissez un nouveau mot de passe', text:'Le lien de réinitialisation est bien reconnu. Définissez un nouveau mot de passe pour reprendre votre activité.'};
+  if(authMode==='signup') return {title:'Créez votre compte Piloz', text:'Configurez votre essai gratuit en 4 étapes rapides. Aucun formulaire de connexion ne s’affiche ici.'};
+  return {title:'Bon retour parmi nous', text:'Connectez-vous pour retrouver votre tableau de bord, vos relances, vos devis et vos factures.'};
+}
+function authAside(){
+  const intro = authIntro();
+  const points = authMode==='signup' && !authRecovery
+    ? [['Essai gratuit', `${ESSAI_JOURS} jours pour tester Piloz sans carte bancaire.`], ['Onboarding guidé', 'Quelques questions pour adapter votre tableau de bord dès la création du compte.'], ['Parcours séparés', 'Connexion et inscription ne s’affichent jamais en même temps.']]
+    : [['Vos données', 'Retrouvez vos dossiers, clients, devis et factures sur tous vos appareils.'], ['Connexion sécurisée', 'Supabase et les sessions actuelles restent inchangés pour les comptes existants.'], ['Accès direct', 'Après connexion, Piloz ouvre immédiatement votre tableau de bord.']];
+  return `<aside class="auth-aside"><div class="auth-brand"><div class="plogo">P</div><div><strong>Piloz</strong><span>Le copilote commercial violet</span></div></div><div><h1>${esc(intro.title)}</h1><p>${esc(intro.text)}</p></div><div class="auth-points">${points.map(([title,text])=>`<div class="auth-point"><b>${esc(title)}</b><span>${esc(text)}</span></div>`).join('')}</div></aside>`;
+}
+function authSwitchMarkup(){
+  if(authRecovery) return `Retour à la <a class="auth-link" href="${AUTH_URLS.login}" onclick="return switchAuthMode(event,'login')">connexion</a>`;
+  if(authMode==='signup') return `Déjà un compte ? <a class="auth-link" href="${AUTH_URLS.login}" onclick="return switchAuthMode(event,'login')">Se connecter</a>`;
+  return `Nouveau sur Piloz ? <a class="auth-link" href="${AUTH_URLS.signup}" onclick="return switchAuthMode(event,'signup')">Démarrer l’essai gratuit</a>`;
+}
+function authStatusMarkup(){ return `<p id="auth_status" class="auth-status ${authStatusKind}" role="status" aria-live="polite">${esc(authStatusMessage || '')}</p>`; }
+function authSignupStepMarkup(){
+  if(authStep===1) return `
+    <div class="auth-grid two">
+      <div class="auth-field"><label for="signup_firstName">Prénom *</label><input id="signup_firstName" autocomplete="given-name" value="${esc(signupDraft.firstName)}" oninput="updateSignupField('firstName', this.value)"${authAria('firstName')}>${authErrorMarkup('firstName')}</div>
+      <div class="auth-field"><label for="signup_lastName">Nom *</label><input id="signup_lastName" autocomplete="family-name" value="${esc(signupDraft.lastName)}" oninput="updateSignupField('lastName', this.value)"${authAria('lastName')}>${authErrorMarkup('lastName')}</div>
+    </div>
+    <div class="auth-field"><label for="signup_email">Adresse e-mail professionnelle *</label><input id="signup_email" type="email" autocomplete="email" placeholder="vous@entreprise.fr" value="${esc(signupDraft.email)}" oninput="updateSignupField('email', this.value)"${authAria('email')}>${authErrorMarkup('email')}</div>
+    <div class="auth-grid two">
+      <div class="auth-field"><label for="signup_password">Mot de passe *</label><input id="signup_password" type="password" autocomplete="new-password" value="${esc(signupDraft.password)}" oninput="updateSignupField('password', this.value)"${authAria('password')}>${authErrorMarkup('password')}</div>
+      <div class="auth-field"><label for="signup_confirmPassword">Confirmation du mot de passe *</label><input id="signup_confirmPassword" type="password" autocomplete="new-password" value="${esc(signupDraft.confirmPassword)}" oninput="updateSignupField('confirmPassword', this.value)"${authAria('confirmPassword')}>${authErrorMarkup('confirmPassword')}</div>
+    </div>
+    <fieldset class="auth-check"${authFieldError('terms')?' aria-describedby="err_terms"':''}><legend>Conditions *</legend><label><input type="checkbox" ${signupDraft.terms?'checked':''} onchange="updateSignupCheck('terms', this.checked)"><span>J’accepte les conditions d’utilisation et la politique de confidentialité de Piloz.</span></label>${authErrorMarkup('terms')}</fieldset>`;
+  if(authStep===2) return `
+    <div class="auth-field"><label for="signup_companyName">Nom de l’entreprise *</label><input id="signup_companyName" autocomplete="organization" value="${esc(signupDraft.companyName)}" oninput="updateSignupField('companyName', this.value)"${authAria('companyName')}>${authErrorMarkup('companyName')}</div>
+    <div class="auth-grid two">
+      <div class="auth-field"><label for="signup_sector">Type ou secteur d’activité *</label><input id="signup_sector" placeholder="Ex. services B2B, artisanat, conseil…" value="${esc(signupDraft.sector)}" oninput="updateSignupField('sector', this.value)"${authAria('sector')}>${authErrorMarkup('sector')}</div>
+      <div class="auth-field"><label for="signup_status">Statut *</label><select id="signup_status" onchange="updateSignupField('status', this.value)"${authAria('status')}>${authOptions(AUTH_STATUS_OPTIONS, signupDraft.status, 'Choisissez un statut')}</select>${authErrorMarkup('status')}</div>
+    </div>
+    <div class="auth-grid two">
+      <div class="auth-field"><label for="signup_teamSize">Nombre de personnes *</label><select id="signup_teamSize" onchange="updateSignupField('teamSize', this.value)"${authAria('teamSize')}>${authOptions(AUTH_TEAM_OPTIONS, signupDraft.teamSize, 'Choisissez une taille')}</select>${authErrorMarkup('teamSize')}</div>
+      <div class="auth-field"><label for="signup_siret">SIRET (facultatif)</label><input id="signup_siret" inputmode="numeric" placeholder="14 chiffres" value="${esc(signupDraft.siret)}" oninput="updateSignupField('siret', this.value)"${authAria('siret')}>${authErrorMarkup('siret')}</div>
+    </div>
+    <p class="auth-help">Le SIRET reste facultatif à cette étape. Vous pourrez compléter vos informations société plus tard dans Piloz.</p>`;
+  if(authStep===3) return `
+    <div class="auth-field"><label for="signup_primaryNeed">Quel est votre besoin principal ? *</label><select id="signup_primaryNeed" onchange="updateSignupField('primaryNeed', this.value)"${authAria('primaryNeed')}>${authOptions(AUTH_NEED_OPTIONS, signupDraft.primaryNeed, 'Choisissez votre priorité')}</select>${authErrorMarkup('primaryNeed')}</div>
+    <div class="auth-field"><label for="signup_currentTool">Quel outil utilisez-vous actuellement ? *</label><select id="signup_currentTool" onchange="updateSignupField('currentTool', this.value)"${authAria('currentTool')}>${authOptions(AUTH_TOOL_OPTIONS, signupDraft.currentTool, 'Choisissez un outil')}</select>${authErrorMarkup('currentTool')}</div>
+    <div class="auth-field"><label for="signup_contactsVolume">Combien de prospects ou clients gérez-vous environ ? *</label><select id="signup_contactsVolume" onchange="updateSignupField('contactsVolume', this.value)"${authAria('contactsVolume')}>${authOptions(AUTH_VOLUME_OPTIONS, signupDraft.contactsVolume, 'Choisissez un volume')}</select>${authErrorMarkup('contactsVolume')}</div>
+    <div class="auth-field"><label for="signup_heardAbout">Comment avez-vous connu Piloz ?</label><input id="signup_heardAbout" placeholder="Facultatif" value="${esc(signupDraft.heardAbout)}" oninput="updateSignupField('heardAbout', this.value)"${authAria('heardAbout')}>${authErrorMarkup('heardAbout')}</div>`;
+  return `
+    <div class="auth-summary">
+      <div class="auth-summary-card"><h3>Votre compte</h3><div class="auth-summary-list">${authSummaryItem('Nom complet', `${signupDraft.firstName} ${signupDraft.lastName}`.trim())}${authSummaryItem('Email', signupDraft.email)}</div></div>
+      <div class="auth-summary-card"><h3>Votre activité</h3><div class="auth-summary-list">${authSummaryItem('Entreprise', signupDraft.companyName)}${authSummaryItem('Secteur', signupDraft.sector)}${authSummaryItem('Statut', authLabel(AUTH_STATUS_OPTIONS, signupDraft.status))}${authSummaryItem('Équipe', authLabel(AUTH_TEAM_OPTIONS, signupDraft.teamSize))}${authSummaryItem('SIRET', signupDraft.siret || 'Non renseigné')}</div></div>
+      <div class="auth-summary-card"><h3>Vos besoins</h3><div class="auth-summary-list">${authSummaryItem('Priorité', authLabel(AUTH_NEED_OPTIONS, signupDraft.primaryNeed))}${authSummaryItem('Outil actuel', authLabel(AUTH_TOOL_OPTIONS, signupDraft.currentTool))}${authSummaryItem('Volume géré', authLabel(AUTH_VOLUME_OPTIONS, signupDraft.contactsVolume))}${authSummaryItem('Origine', signupDraft.heardAbout || 'Non renseigné')}</div></div>
+    </div>
+    <div class="auth-cta-note">Le compte Supabase n’est créé qu’à cette étape finale. Les réponses d’onboarding seront enregistrées dans le profil utilisateur et dans l’état Piloz.</div>`;
+}
+function authPanelContent(){
+  const intro = authIntro();
+  if(authRecovery) return `
+    <div class="auth-panel-head"><div><div class="auth-badge">Réinitialisation</div><h2>${esc(intro.title)}</h2><p>${esc(intro.text)}</p></div><p class="auth-switch">${authSwitchMarkup()}</p></div>
+    <form novalidate onsubmit="return authSubmit(event)" class="auth-grid">
+      <div class="auth-field"><label for="reset_password">Nouveau mot de passe</label><input id="reset_password" type="password" autocomplete="new-password" value="${esc(recoveryDraft.password)}" oninput="updateRecoveryField('password', this.value)"${authAria('resetPassword')}>${authErrorMarkup('resetPassword')}</div>
+      <div class="auth-field"><label for="reset_confirmPassword">Confirmation</label><input id="reset_confirmPassword" type="password" autocomplete="new-password" value="${esc(recoveryDraft.confirmPassword)}" oninput="updateRecoveryField('confirmPassword', this.value)"${authAria('resetConfirm')}>${authErrorMarkup('resetConfirm')}</div>
+      ${authStatusMarkup()}
+      <div class="auth-actions"><span class="auth-minor">Le nouveau mot de passe sera actif immédiatement.</span><button class="btn btn-p" ${authBusy?'disabled':''}>${authBusy?'Mise à jour…':'Mettre à jour mon mot de passe'}</button></div>
+    </form>`;
+  if(authMode==='login') return `
+    <div class="auth-panel-head"><div><h2>${esc(intro.title)}</h2><p>${esc(intro.text)}</p></div><p class="auth-switch">${authSwitchMarkup()}</p></div>
+    <form novalidate onsubmit="return authSubmit(event)" class="auth-grid">
+      <div class="auth-field"><label for="login_email">Adresse e-mail</label><input id="login_email" type="email" autocomplete="username" placeholder="vous@entreprise.fr" value="${esc(loginDraft.email)}" oninput="updateLoginField('email', this.value)"${authAria('loginEmail')}>${authErrorMarkup('loginEmail')}</div>
+      <div class="auth-field"><label for="login_password">Mot de passe</label><input id="login_password" type="password" autocomplete="current-password" value="${esc(loginDraft.password)}" oninput="updateLoginField('password', this.value)"${authAria('loginPassword')}>${authErrorMarkup('loginPassword')}</div>
+      <label class="souvenir"><input type="checkbox" ${loginDraft.remember?'checked':''} onchange="loginDraft.remember=this.checked">Se souvenir de moi${pinActif()?' (le code PIN restera demandé à chaque ouverture)':''}</label>
+      <p class="auth-minor"><a class="auth-link" href="#" onclick="return authForgotPassword(event)">Mot de passe oublié</a></p>
+      ${authStatusMarkup()}
+      <div class="auth-actions"><span class="auth-minor">La connexion ouvre directement votre tableau de bord.</span><button class="btn btn-p" ${authBusy?'disabled':''}>${authBusy?'Connexion…':'Se connecter'}</button></div>
+    </form>`;
+  const progress = Math.round((authStep / AUTH_SIGNUP_STEPS) * 100);
+  return `
+    <div class="auth-panel-head"><div><div class="auth-badge">Essai gratuit ${ESSAI_JOURS} jours</div><h2>${esc(intro.title)}</h2><p>${esc(intro.text)}</p></div><p class="auth-switch">${authSwitchMarkup()}</p></div>
+    <div class="auth-progress"><div class="auth-progress-top"><span>Étape ${authStep} sur ${AUTH_SIGNUP_STEPS}</span><span>${progress}%</span></div><div class="auth-progress-track"><div class="auth-progress-fill" style="width:${progress}%"></div></div></div>
+    <form novalidate onsubmit="return authSubmit(event)" class="auth-grid">
+      ${authSignupStepMarkup()}
+      ${authStatusMarkup()}
+      <div class="auth-actions">${authStep>1 ? '<button type="button" class="btn btn-o" onclick="authBack()">Retour</button>' : '<span class="auth-minor">Maximum 3 à 4 questions visibles à la fois.</span>'}<button class="btn btn-p" ${authBusy?'disabled':''}>${authBusy ? (authStep===AUTH_SIGNUP_STEPS?'Création…':'Chargement…') : (authStep===AUTH_SIGNUP_STEPS ? 'Créer mon compte et démarrer l’essai' : 'Continuer')}</button></div>
+    </form>`;
+}
 function pageAuth(){
+  if(SES && !authRecovery){ fermerAuth(); return; }
+  if(!authRecovery) authMode = new URLSearchParams(location.search).get('mode')==='signup' ? 'signup' : 'login';
   let el = document.getElementById('auth');
   if(!el){ el = document.createElement('div'); el.id='auth'; document.body.appendChild(el); }
+  setAuthVisibility(true);
   el.style.display = 'flex';
-  const img = document.querySelector && document.querySelector('.brand img');
-  el.innerHTML = `<div class="authcard">
-    <div class="haut">${img?`<img src="${img.src}" alt="">`:''}<div class="disp">PILOZ</div>
-      <p style="color:var(--gris);font-size:.85rem;margin-top:2px">Suivi commercial</p></div>
-    <div class="authtabs">
-      <button class="${authMode==='login'?'on':''}" onclick="authMode='login';pageAuth()">Se connecter</button>
-      <button class="${authMode==='signup'?'on':''}" onclick="authMode='signup';pageAuth()">Créer un compte</button>
-    </div>
-    ${authMode==='signup'?`<p style="font-size:.8rem;color:var(--sapin);font-weight:700;margin-bottom:10px">✓ ${ESSAI_JOURS} jours d'essai gratuit, sans carte bancaire</p>`:''}
-    <div class="f"><label>Email</label><input id="au_mail" type="email" autocomplete="username" placeholder="vous@exemple.fr" onkeydown="if(event.key==='Enter')authGo()"></div>
-    <div class="f" style="margin-top:10px"><label>Mot de passe</label>
-      <input id="au_mdp" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')authGo()"></div>
-    <label class="souvenir"><input type="checkbox" id="au_rester" checked> Rester connecté sur cet appareil${pinActif()?' (le code PIN sera demandé à chaque ouverture)':''}</label>
-    <p id="au_err" style="color:var(--brique);font-size:.85rem;min-height:1.2em;margin:6px 0"></p>
-    <button class="btn btn-p" style="width:100%;justify-content:center" onclick="authGo()">${authMode==='login'?'Se connecter':'Créer mon compte — essai gratuit'}</button>
-    <p id="au_offline" style="text-align:center;margin-top:6px"></p>
-  </div>`;
-  setTimeout(()=>{const i=document.getElementById('au_mail'); if(i)i.focus();},50);
+  el.innerHTML = `<div class="auth-shell">${authAside()}<section class="auth-panel">${authPanelContent()}</section></div>`;
+  const target = authFocusTarget || (authRecovery ? 'reset_password' : (authMode==='signup' ? (['signup_firstName','signup_companyName','signup_primaryNeed','signup_firstName'][authStep-1] || 'signup_firstName') : 'login_email'));
+  authFocusTarget = '';
+  setTimeout(()=>{ const node = document.getElementById(target); if(node) node.focus(); }, 40);
 }
-function fermerAuth(){ const el=document.getElementById('auth'); if(el) el.remove(); }
-async function authGo(){
-  const errEl=document.getElementById('au_err'); const err={set textContent(t){ if(errEl) errEl.textContent=t; }};
-  const email=document.getElementById('au_mail').value.trim(), mdp=document.getElementById('au_mdp').value;
-  const rester=document.getElementById('au_rester').checked;
-  if(!email||mdp.length<6){ err.textContent='Email et mot de passe (6 caractères min.) requis.'; return false; }
-  if(authMode==='signup'){
-    err.textContent='Création du compte…';
-    try{
-      const r = await fetch(CFG.url.replace(/\/$/,'') + '/auth/v1/signup',
-        {method:'POST', headers:{'apikey':CFG.key,'Content-Type':'application/json'}, body:JSON.stringify({email,password:mdp})});
-      const j = await r.json();
-      if(!r.ok){ err.textContent = j.msg || j.error_description || j.message || 'Création refusée.'; return false; }
-      if(!j.access_token){ err.textContent='Compte créé — confirmez votre email puis connectez-vous.'; authMode='login'; pageAuth(); return false; }
-      authMode='login';
-    }catch(e){ err.textContent='Serveur injoignable.'; return false; }
+function fermerAuth(){ const el=document.getElementById('auth'); if(el) el.remove(); setAuthVisibility(false); }
+function authBack(){ authResetFeedback(); authStep = Math.max(1, authStep-1); pageAuth(); return false; }
+function authSubmit(event){
+  if(event) event.preventDefault();
+  if(authBusy) return false;
+  if(authRecovery) return authResetPassword();
+  if(authMode==='login') return authLogin();
+  if(authStep < AUTH_SIGNUP_STEPS){
+    const errors = authValidateSignupStep(authStep);
+    if(Object.keys(errors).length){ authSetErrors(errors); pageAuth(); return false; }
+    authResetFeedback();
+    authStep += 1;
+    pageAuth();
+    return false;
   }
-  err.textContent='Connexion…';
+  return authSignupFinish();
+}
+function authBuildOnboarding(){
+  return {
+    createdAt: new Date().toISOString(),
+    fullName: `${signupDraft.firstName} ${signupDraft.lastName}`.trim(),
+    account: {firstName: signupDraft.firstName.trim(), lastName: signupDraft.lastName.trim(), email: signupDraft.email.trim()},
+    company: {name: signupDraft.companyName.trim(), sector: signupDraft.sector.trim(), status: signupDraft.status, teamSize: signupDraft.teamSize, siret: (signupDraft.siret||'').replace(/\s+/g,'')},
+    needs: {primaryNeed: signupDraft.primaryNeed, currentTool: signupDraft.currentTool, contactsVolume: signupDraft.contactsVolume, heardAbout: signupDraft.heardAbout.trim()},
+    labels: {status: authLabel(AUTH_STATUS_OPTIONS, signupDraft.status), teamSize: authLabel(AUTH_TEAM_OPTIONS, signupDraft.teamSize), primaryNeed: authLabel(AUTH_NEED_OPTIONS, signupDraft.primaryNeed), currentTool: authLabel(AUTH_TOOL_OPTIONS, signupDraft.currentTool), contactsVolume: authLabel(AUTH_VOLUME_OPTIONS, signupDraft.contactsVolume)},
+    acceptedTermsAt: new Date().toISOString()
+  };
+}
+async function authSyncSession(opts={}){
+  const remember = opts.remember !== false;
+  const onboarding = opts.onboarding || null;
+  if(remember) lsSet('piloz_ses', SES); else lsSet('piloz_ses', null);
   try{
-    const r = await fetch(CFG.url.replace(/\/$/,'') + '/auth/v1/token?grant_type=password',
-      {method:'POST', headers:{'apikey':CFG.key,'Content-Type':'application/json'}, body:JSON.stringify({email,password:mdp})});
-    const j = await r.json();
-    if(!r.ok){ err.textContent = j.msg || j.error_description || j.message || 'Identifiants refusés.'; return false; }
-    SES = {access_token:j.access_token, refresh_token:j.refresh_token, user_id:j.user.id, email:j.user.email};
-    if(rester) lsSet('piloz_ses', SES); else lsSet('piloz_ses', null);
-    try{
-      const d = await cloudCharger();
-      if(d){ S = d; if(!S.objectifs) S.objectifs=structuredClone(DEFAUT.objectifs); if(!S.accueil) S.accueil=structuredClone(DEFAUT.accueil); }
-      else { await cloudSauver(); }
-      setSync('ok');
-    }catch(e){ setSync('offline'); }
-    if(S && S.pinHash) lsSet('piloz_pin', S.pinHash);
-    if(S && S.theme) appliquerTheme(S.theme);
-    derniereActivite = Date.now();
-    await chargerLicence();
-    fermerAuth(); toast('Connecté ☁️'); render();
-    controlerLicence();
+    const d = await cloudCharger();
+    S = d || structuredClone(DEFAUT);
+    normaliserEtat();
+    if(onboarding) S.onboarding = onboarding;
+    if(!d || onboarding) await cloudSauver();
+    setSync('ok');
   }catch(e){
-    err.textContent='Serveur injoignable — vérifiez votre connexion internet.';
-    const off=document.getElementById('au_offline');
-    if(off) off.innerHTML = '<a href="#" style="color:var(--gris);font-size:.8rem" onclick="fermerAuth();toast(\'Mode hors ligne — vos saisies restent sur ce poste\');return false">Continuer hors ligne sur cet appareil</a>';
+    setSync('offline');
+    if(!S) S = structuredClone(DEFAUT);
+    normaliserEtat();
+    if(onboarding) S.onboarding = onboarding;
+  }
+  if(S && S.pinHash) lsSet('piloz_pin', S.pinHash);
+  if(S && S.theme) appliquerTheme(S.theme);
+  derniereActivite = Date.now();
+  authStatusMessage = '';
+  authFieldErrors = {};
+  authBusy = false;
+  authRecovery = false;
+  applyAuthModeToUrl('');
+  await chargerLicence();
+  fermerAuth();
+  render();
+  notifierRelances();
+  controlerLicence();
+  return true;
+}
+async function authLogin(){
+  if(!authServerReady()) return false;
+  const errors = {};
+  if(!authValidateEmail(loginDraft.email)) errors.loginEmail = 'Saisissez une adresse email valide.';
+  if((loginDraft.password||'').length < 6) errors.loginPassword = 'Le mot de passe doit contenir au moins 6 caractères.';
+  if(Object.keys(errors).length){ authSetErrors(errors); pageAuth(); return false; }
+  authBusy = true;
+  authStatusMessage = 'Connexion en cours…';
+  authStatusKind = 'info';
+  pageAuth();
+  try{
+    const r = await fetch(CFG.url.replace(/\/$/,'') + '/auth/v1/token?grant_type=password', {method:'POST', headers:{'apikey':CFG.key,'Content-Type':'application/json'}, body:JSON.stringify({email:loginDraft.email.trim(), password:loginDraft.password})});
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.msg || j.error_description || j.message || 'Identifiants refusés.');
+    SES = {access_token:j.access_token, refresh_token:j.refresh_token, user_id:j.user.id, email:j.user.email};
+    await authSyncSession({remember:loginDraft.remember});
+    loginDraft.password = '';
+    toast('Connecté ☁️');
+  }catch(e){
+    authBusy = false;
+    authStatusMessage = e.message || 'Serveur injoignable — vérifiez votre connexion internet.';
+    authStatusKind = 'error';
+    pageAuth();
+  }
+  return false;
+}
+async function authSignupFinish(){
+  if(!authServerReady()) return false;
+  const errors = authValidateSignupStep(1);
+  Object.assign(errors, authValidateSignupStep(2), authValidateSignupStep(3));
+  if(Object.keys(errors).length){ authSetErrors(errors); authStep = Object.keys(authValidateSignupStep(1)).length ? 1 : (Object.keys(authValidateSignupStep(2)).length ? 2 : 3); pageAuth(); return false; }
+  const onboarding = authBuildOnboarding();
+  authBusy = true;
+  authStatusMessage = 'Création du compte…';
+  authStatusKind = 'info';
+  pageAuth();
+  try{
+    const r = await fetch(CFG.url.replace(/\/$/,'') + '/auth/v1/signup', {method:'POST', headers:{'apikey':CFG.key,'Content-Type':'application/json'}, body:JSON.stringify({email: signupDraft.email.trim(), password: signupDraft.password, data: {first_name: signupDraft.firstName.trim(), last_name: signupDraft.lastName.trim(), full_name: onboarding.fullName, company_name: signupDraft.companyName.trim(), onboarding}})});
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.msg || j.error_description || j.message || 'Création refusée.');
+    loginDraft.email = signupDraft.email.trim();
+    loginDraft.password = '';
+    if(!j.access_token){
+      clearSignupDraft();
+      authBusy = false;
+      authStatusMessage = 'Compte créé — confirmez votre email puis connectez-vous.';
+      authStatusKind = 'success';
+      authFieldErrors = {};
+      setAuthMode('login', {updateUrl:true});
+      pageAuth();
+      return false;
+    }
+    SES = {access_token:j.access_token, refresh_token:j.refresh_token, user_id:(j.user&&j.user.id)||'', email:(j.user&&j.user.email)||signupDraft.email.trim()};
+    clearSignupDraft();
+    await authSyncSession({remember:true, onboarding});
+    toast('Bienvenue dans Piloz ✨');
+  }catch(e){
+    authBusy = false;
+    authStatusMessage = e.message || 'Serveur injoignable.';
+    authStatusKind = 'error';
+    pageAuth();
+  }
+  return false;
+}
+async function authForgotPassword(event){
+  if(event) event.preventDefault();
+  if(!authServerReady()) return false;
+  if(!authValidateEmail(loginDraft.email)){
+    authSetErrors({loginEmail:'Renseignez une adresse email valide pour recevoir le lien de réinitialisation.'});
+    pageAuth();
+    return false;
+  }
+  authBusy = true;
+  authStatusMessage = 'Envoi du lien de réinitialisation…';
+  authStatusKind = 'info';
+  pageAuth();
+  try{
+    const redirectTo = location.origin + location.pathname + '?mode=login';
+    const r = await fetch(CFG.url.replace(/\/$/,'') + '/auth/v1/recover', {method:'POST', headers:{'apikey':CFG.key,'Content-Type':'application/json'}, body:JSON.stringify({email:loginDraft.email.trim(), redirect_to: redirectTo})});
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.msg || j.error_description || j.message || 'Envoi impossible.');
+    authBusy = false;
+    authFieldErrors = {};
+    authStatusMessage = 'Un email de réinitialisation vient d’être envoyé.';
+    authStatusKind = 'success';
+    pageAuth();
+  }catch(e){
+    authBusy = false;
+    authStatusMessage = e.message || 'Serveur injoignable.';
+    authStatusKind = 'error';
+    pageAuth();
+  }
+  return false;
+}
+async function authResetPassword(){
+  if(!authServerReady()) return false;
+  const errors = {};
+  if((recoveryDraft.password||'').length < 6) errors.resetPassword = 'Choisissez au moins 6 caractères.';
+  if(recoveryDraft.confirmPassword !== recoveryDraft.password) errors.resetConfirm = 'Les mots de passe ne correspondent pas.';
+  if(Object.keys(errors).length){ authSetErrors(errors); pageAuth(); return false; }
+  authBusy = true;
+  authStatusMessage = 'Mise à jour du mot de passe…';
+  authStatusKind = 'info';
+  pageAuth();
+  try{
+    const r = await fetch(CFG.url.replace(/\/$/,'') + '/auth/v1/user', {method:'PUT', headers:{'apikey':CFG.key,'Content-Type':'application/json','Authorization':'Bearer '+SES.access_token}, body:JSON.stringify({password: recoveryDraft.password})});
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.msg || j.error_description || j.message || 'Mise à jour refusée.');
+    recoveryDraft = {password:'', confirmPassword:''};
+    await authSyncSession({remember:true});
+    toast('Mot de passe mis à jour');
+  }catch(e){
+    authBusy = false;
+    authStatusMessage = e.message || 'Serveur injoignable.';
+    authStatusKind = 'error';
+    pageAuth();
   }
   return false;
 }
