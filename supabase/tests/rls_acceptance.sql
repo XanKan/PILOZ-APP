@@ -1,6 +1,6 @@
 -- À exécuter avec Supabase CLI contre une base de test après les migrations.
 begin;
-select plan(19);
+select plan(29);
 select has_table('public','companies','companies existe');
 select has_table('public','documents','documents existe');
 select has_table('public','stock_movements','stock_movements existe');
@@ -18,6 +18,16 @@ select has_function('public','confirm_purchase_order',array['uuid'],'confirmatio
 select has_function('public','get_company_financial_fields',array['uuid'],'champs financiers protégés par permission');
 select ok((select relrowsecurity from pg_class where oid='public.stock_movements'::regclass),'RLS active sur les mouvements');
 select ok((select relrowsecurity from pg_class where oid='public.documents'::regclass),'RLS active sur les documents');
+select has_table('public','vat_rates','taux de TVA configurables disponibles');
+select has_table('public','pipeline_stages','étapes de pipeline disponibles');
+select has_table('public','activities','activités commerciales disponibles');
+select has_table('public','reminders','relances disponibles');
+select has_table('public','payment_schedules','échéances disponibles');
+select has_table('public','dashboard_widgets','widgets personnalisables disponibles');
+select has_function('public','convert_quote_to_invoice',array['uuid','text'],'conversion devis facture atomique disponible');
+select has_function('public','record_document_payment',array['uuid','numeric','text','text','timestamp with time zone'],'paiement atomique disponible');
+select has_function('public','post_stock_movement',array['uuid','uuid','text','numeric','text','uuid','uuid','uuid','uuid','text','text','numeric'],'mouvement de stock atomique disponible');
+select ok((select relrowsecurity from pg_class where oid='public.vat_rates'::regclass),'RLS active sur les taux de TVA');
 
 -- Test comportemental avec deux locataires et un JWT simulé.
 insert into public.companies(id,owner_user_id,name) values
