@@ -323,8 +323,8 @@ body.auth-checking #auth-loading{display:flex}
       <small>Votre copilote commercial</small></div>
     </div>
     <div class="tabs" id="tabs"></div>
-    <button class="plier" onclick="ouvrirPalette()" style="margin-top:auto" title="Recherche globale (Ctrl+K)"><span>🔍</span><span class="lbl">Rechercher <span class="mono" style="font-size:.68rem;opacity:.7">Ctrl+K</span></span></button>
-    <button class="plier" id="plierbtn" onclick="basculerRail()" title="Réduire / agrandir le menu"><span id="plieric">⬅️</span><span class="lbl" id="plierlbl">Réduire le menu</span></button>
+    <button class="plier" onclick="ouvrirPalette()" style="margin-top:auto" title="Recherche globale (Ctrl+K)" aria-label="Recherche globale"><span class="nav-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg></span><span class="lbl">Rechercher <span class="mono" style="font-size:.68rem;opacity:.7">Ctrl+K</span></span></button>
+    <button class="plier" id="plierbtn" onclick="basculerRail()" title="Réduire le menu" aria-label="Réduire le menu" aria-expanded="true"><span class="nav-control-icon" id="plieric" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"></path></svg></span><span class="lbl" id="plierlbl">Réduire le menu</span></button>
     <div class="rail-foot" id="syncfoot"></div>
   </nav>
   <main class="main" id="main"></main>
@@ -384,11 +384,12 @@ function basculerRail(){
   const mini = !app.classList.contains('mini');
   app.classList.toggle('mini', mini);
   lsSet('piloz_rail', mini ? 'mini' : 'plein');
-  const ic = document.getElementById('plieric'), lbl = document.getElementById('plierlbl');
-  if(ic) ic.textContent = mini ? '➡️' : '⬅️';
-  if(lbl) lbl.textContent = mini ? '' : 'Réduire le menu';
+  const button = document.getElementById('plierbtn'), lbl = document.getElementById('plierlbl');
+  const action = mini ? 'Agrandir le menu' : 'Réduire le menu';
+  if(button){ button.title = action; button.setAttribute('aria-label', action); button.setAttribute('aria-expanded', String(!mini)); }
+  if(lbl) lbl.textContent = action;
 }
-if(lsGet('piloz_rail')==='mini'){ document.addEventListener('DOMContentLoaded', ()=>{ const a=document.getElementById('app'); if(a){ a.classList.add('mini'); const ic=document.getElementById('plieric'); if(ic) ic.textContent='➡️'; } }); }
+if(lsGet('piloz_rail')==='mini'){ document.addEventListener('DOMContentLoaded', ()=>{ const a=document.getElementById('app'), button=document.getElementById('plierbtn'), lbl=document.getElementById('plierlbl'); if(a) a.classList.add('mini'); if(button){ button.title='Agrandir le menu'; button.setAttribute('aria-label','Agrandir le menu'); button.setAttribute('aria-expanded','false'); } if(lbl) lbl.textContent='Agrandir le menu'; }); }
 appliquerTheme('light');
 const artefact = typeof window.storage !== 'undefined' && window.storage && window.storage.get;
 

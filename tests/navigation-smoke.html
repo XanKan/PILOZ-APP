@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Smoke navigation PILOZ</title>
+  <link rel="stylesheet" href="../assets/css/modern-erp.css">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}html,body{min-height:100%}.app{display:flex;min-height:100vh}.rail{display:flex;flex-direction:column;position:relative;height:100vh;flex:0 0 auto}.brand{display:flex;align-items:center;gap:11px}.plogo{display:grid;place-items:center}.tabs{display:flex;flex-direction:column}.main{flex:1}.plier{display:flex;border:0;background:transparent}.rail-foot{font:12px system-ui}#result{position:fixed;right:12px;bottom:12px;z-index:500;background:#fff;border:1px solid #dce3ec;border-radius:8px;padding:8px 12px;font:13px system-ui}
+  </style>
+</head>
+<body data-theme="light">
+  <div class="app" id="app">
+    <nav class="rail">
+      <div class="brand"><div class="plogo">P</div><div><div class="disp">PILOZ</div><small>Gestion commerciale</small></div></div>
+      <div class="tabs" id="tabs"></div>
+      <button class="plier" style="margin-top:auto"><span class="nav-control-icon">⌕</span><span class="lbl">Rechercher</span></button>
+      <button class="plier" id="plierbtn"><span class="nav-control-icon" id="plieric">‹</span><span class="lbl">Réduire le menu</span></button>
+      <div class="rail-foot">Synchronisé<br><a href="#">Déconnexion</a></div>
+    </nav>
+    <main class="main" id="main"></main>
+  </div>
+  <div id="result" data-status="running">Vérification…</div>
+  <script>
+    window.esc=value=>String(value??'');
+    window.toast=()=>{};
+    window.PilozRuntime={session:{user_id:'test-user'}};
+    window.PilozERP={};
+    const state={data:{documents:[],reminders:[],opportunities:[],levels:[],catalog:[]}};
+    window.PilozApp={go(path){this.lastRoute=path;},render(){},getState(){return state;}};
+  </script>
+  <script src="../assets/js/modules/erp/erp-modern.js"></script>
+  <script>
+    const checks=[];
+    try{
+      PilozModern.renderNavigation(document.getElementById('tabs'),state,'sales/quotes');
+      const rail=document.querySelector('.rail'),items=[...document.querySelectorAll('.modern-primary-item')],secondary=document.querySelector('.modern-secondary-panel');
+      checks.push(['sept rubriques',items.length===7]);
+      checks.push(['rubriques attendues',items.map(x=>x.textContent.trim()).join('|')==='Tableau de bord|Suivi commercial|Ventes|Achats|Stock|Rapports|Paramètres']);
+      checks.push(['ventes active',document.querySelector('.modern-primary-item.active')?.textContent.trim()==='Ventes']);
+      checks.push(['sous-menu visible',!!secondary&&secondary.textContent.includes('Devis')&&secondary.textContent.includes('Factures')]);
+      checks.push(['rail clair',getComputedStyle(rail).backgroundColor==='rgb(255, 255, 255)']);
+      const compactWidth=innerWidth<=640?64:(innerWidth<=900?72:216),collapsedWidth=innerWidth<=900?compactWidth:72;
+      checks.push(['largeur adaptée',Math.round(rail.getBoundingClientRect().width)===compactWidth]);
+      checks.push(['bouton repli visible',getComputedStyle(document.getElementById('plierbtn')).display==='flex']);
+      rail.style.setProperty('transition','none','important');
+      secondary.style.setProperty('transition','none','important');
+      document.getElementById('app').classList.add('mini');
+      checks.push(['rail replié',Math.round(rail.getBoundingClientRect().width)===collapsedWidth]);
+      checks.push(['sous-menu aligné',Math.round(secondary.getBoundingClientRect().left)===collapsedWidth]);
+      checks.push(['libellés masqués',getComputedStyle(items[0].querySelector('span')).display==='none']);
+      checks.push(['infobulles disponibles',items.every(x=>x.title&&x.getAttribute('aria-label'))]);
+      PilozModern.openArea('stock');
+      checks.push(['navigation stock',PilozApp.lastRoute==='stock/overview']);
+    }catch(error){checks.push(['exécution',false,error.message]);}
+    const failed=checks.filter(([,ok])=>!ok),result=document.getElementById('result');
+    result.dataset.status=failed.length?'failed':'passed';
+    result.textContent=failed.length?`Échec : ${failed.map(x=>x[0]+(x[2]?` (${x[2]})`:'')).join(', ')}`:`${checks.length}/${checks.length} contrôles de navigation réussis`;
+  </script>
+</body>
+</html>
