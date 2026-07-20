@@ -1,0 +1,9 @@
+(function(global){
+ const round=(value,precision=2)=>{const factor=10**precision;return Math.round((Number(value)+Number.EPSILON)*factor)/factor;};
+ const percent=value=>Math.min(100,Math.max(0,Number(value)||0));
+ function line(line){const quantity=Number(line.quantity)||0,cost=Number(line.unit_cost_snapshot??line.purchase_price)||0,price=Number(line.unit_price??line.sale_price)||0,discount=percent(line.discount_rate),taxRate=percent(line.tax_rate);const ht=round(quantity*price*(1-discount/100)),tax=round(ht*taxRate/100),ttc=round(ht+tax),totalCost=round(quantity*cost),margin=round(ht-totalCost),marginRate=totalCost===0?null:round(margin/totalCost*100),markupRate=ht===0?null:round(margin/ht*100);return{ht,tax,ttc,totalCost,margin,marginRate,markupRate};}
+ function document(lines,globalDiscount=0){const rows=(lines||[]).filter(item=>!item.optional).map(line),rawHt=round(rows.reduce((sum,row)=>sum+row.ht,0)),discount=round(rawHt*percent(globalDiscount)/100),ratio=rawHt?Math.max(0,(rawHt-discount)/rawHt):1,ht=round(rawHt-discount),tax=round(rows.reduce((sum,row)=>sum+row.tax*ratio,0)),ttc=round(ht+tax),totalCost=round(rows.reduce((sum,row)=>sum+row.totalCost,0)),margin=round(ht-totalCost);return{ht,tax,ttc,totalCost,margin,marginRate:totalCost===0?null:round(margin/totalCost*100),markupRate:ht===0?null:round(margin/ht*100)};}
+ function e164(value,country='FR'){const digits=String(value||'').replace(/\D/g,'');if(country==='FR'){if(/^0[1-9]\d{8}$/.test(digits))return'+33'+digits.slice(1);if(/^33[1-9]\d{8}$/.test(digits))return'+'+digits;}if(/^\d{8,15}$/.test(digits))return'+'+digits;return null;}
+ function validSiren(value){const digits=String(value||'').replace(/\D/g,'');if(!/^\d{9}(\d{5})?$/.test(digits))return false;let sum=0,parity=digits.length%2;for(let i=0;i<digits.length;i++){let n=Number(digits[i]);if(i%2===parity){n*=2;if(n>9)n-=9;}sum+=n;}return sum%10===0;}
+ global.PilozCalculations={round,line,document,e164,validSiren};
+})(window);

@@ -509,6 +509,7 @@ try{
 }catch(e){}
 if(CFG && CFG.url){ const n = normaliserUrlSb(CFG.url); if(n!==CFG.url){ CFG.url = n; lsSet('piloz_cfg', CFG); } }
 let SES = lsGet('piloz_ses') || null;         // {access_token, refresh_token, user_id, email}
+window.PilozRuntime={get config(){return CFG;},get session(){return SES;},get state(){return S;},get setupStep(){return typeof phase1SetupStep==='number'?phase1SetupStep:0;},request:sb};
 if(PENDING_RECOVERY){ SES = {...(SES||{}), ...PENDING_RECOVERY}; authRecovery = true; authMode = 'login'; lsSet('piloz_ses', SES); }
 if(PENDING_HASH_ERROR){ authStatusMessage = PENDING_HASH_ERROR; authStatusKind = 'error'; }
 let syncEtat = 'local';                      // local | ok | pending | offline
@@ -2300,25 +2301,32 @@ function chercherPalette(q){
   const res = [];
   S.clients.forEach(c=>{
     if(!q || [c.nom,c.contact,c.email,c.tel].join(' ').toLowerCase().includes(q))
-      res.push({typ:'Client', coul:'var(--flamme)', fond:'var(--bleu-p)', titre:c.nom, sous:[c.contact,c.email].filter(Boolean).join(' · '), act:`fermerPalette();ficheClient(${c.id})`});
+      res.push({typ:'Client', coul:'var(--flamme)', fond:'var(--bleu-p)', titre:c.nom, sous:[c.contact,c.email].filter(Boolean).join(' · '), kind:'client', id:c.id});
   });
   S.deals.forEach(d=>{
     if(!q || [d.client,d.produit,d.commentaires,d.statut].join(' ').toLowerCase().includes(q))
-      res.push({typ:d.statut, coul:d.statut==='Signé'?'var(--sapin)':d.statut==='Perdu'?'var(--brique)':'var(--encre)', fond:'var(--carte2)', titre:d.client+' — '+(d.produit||'dossier'), sous:eur(d.mensuel)+'/mois'+(d.unique?' + '+eur(d.unique):''), act:`fermerPalette();ficheDossier(${d.id})`});
+      res.push({typ:d.statut, coul:d.statut==='Signé'?'var(--sapin)':d.statut==='Perdu'?'var(--brique)':'var(--encre)', fond:'var(--carte2)', titre:d.client+' — '+(d.produit||'dossier'), sous:eur(d.mensuel)+'/mois'+(d.unique?' + '+eur(d.unique):''), kind:'deal', id:d.id});
   });
   if(q) S.deals.forEach(d=>(d.journal||[]).forEach(e=>{
     if(e.t.toLowerCase().includes(q))
-      res.push({typ:'Journal', coul:'var(--gris)', fond:'var(--carte2)', titre:e.t.slice(0,60), sous:d.client+' · '+fmtD(e.d), act:`fermerPalette();ficheDossier(${d.id})`});
+      res.push({typ:'Journal', coul:'var(--gris)', fond:'var(--carte2)', titre:e.t.slice(0,60), sous:d.client+' · '+fmtD(e.d), kind:'deal', id:d.id});
   }));
   const top = res.slice(0, 12);
   box.innerHTML = top.length
-    ? top.map((r,i)=>`<button class="${i===0?'hl':''}" onclick="${r.act}"><span class="typ" style="color:${r.coul};background:${r.fond}">${esc(r.typ)}</span><span style="flex:1"><b>${esc(r.titre)}</b><small>${esc(r.sous||'')}</small></span></button>`).join('')
+    ? top.map((r,i)=>`<button class="${i===0?'hl':''}" onclick="paletteActiver(${i})"><span class="typ" style="color:${r.coul};background:${r.fond}">${esc(r.typ)}</span><span style="flex:1"><b>${esc(r.titre)}</b><small>${esc(r.sous||'')}</small></span></button>`).join('')
     : '<button disabled style="color:var(--gris)">Aucun résultat pour « '+esc(q)+' »</button>';
-  window._palPremier = top.length ? top[0].act : null;
+  window._palResultats = top;
+}
+function paletteActiver(index){
+  const item=(window._palResultats||[])[index];
+  if(!item)return;
+  fermerPalette();
+  if(item.kind==='client')ficheClient(item.id);
+  else if(item.kind==='deal')ficheDossier(item.id);
 }
 function clavierPalette(e){
   if(e.key==='Escape') fermerPalette();
-  if(e.key==='Enter' && window._palPremier){ eval(window._palPremier); }
+  if(e.key==='Enter' && window._palResultats?.length){ paletteActiver(0); }
 }
 document.addEventListener('keydown', e=>{
   if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); if(!verrou && S) ouvrirPalette(); }
@@ -2799,5 +2807,10 @@ function adminCreerCompte(){
 charger();
 </script>
 <script src="assets/js/phase1-foundation.js"></script>
+<script src="assets/js/api/erp-api.js"></script>
+<script src="assets/js/utils/erp-calculations.js"></script>
+<script src="assets/js/modules/onboarding/company-search.js"></script>
+<script src="assets/js/modules/onboarding/professional-onboarding.js"></script>
+<script src="assets/js/modules/erp/erp-app.js"></script>
 </body>
 </html>

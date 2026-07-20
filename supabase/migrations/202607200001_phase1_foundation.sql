@@ -1,3 +1,5 @@
+begin;
+
 create extension if not exists pgcrypto;
 create or replace function public.set_current_timestamp_updated_at() returns trigger language plpgsql as $$ begin new.updated_at=now(); return new; end; $$;
 create table if not exists public.companies(id uuid primary key default gen_random_uuid(), owner_user_id uuid not null unique, name text not null, created_at timestamptz not null default now(), updated_at timestamptz not null default now());
@@ -7,7 +9,7 @@ create table if not exists public.company_document_settings(company_id uuid prim
 create table if not exists public.user_preferences(user_id uuid primary key, company_id uuid references public.companies(id) on delete set null, nav_preferences jsonb not null default '{}'::jsonb, table_preferences jsonb not null default '{}'::jsonb, onboarding_completed boolean not null default false, created_at timestamptz not null default now(), updated_at timestamptz not null default now());
 create index if not exists company_members_user_idx on public.company_members(user_id);
 create index if not exists user_preferences_company_idx on public.user_preferences(company_id);
-create or replace function public.current_user_company_ids() returns table(company_id uuid) language sql stable as $$ select cm.company_id from public.company_members cm where cm.user_id=auth.uid() $$;
+create or replace function public.current_user_company_ids() returns table(company_id uuid) language sql stable security definer set search_path=public,pg_temp as $$ select cm.company_id from public.company_members cm where cm.user_id=auth.uid() $$;
 alter table public.companies enable row level security; alter table public.company_members enable row level security; alter table public.company_settings enable row level security; alter table public.company_document_settings enable row level security; alter table public.user_preferences enable row level security;
 do $$ begin
 if not exists (select 1 from pg_policies where schemaname='public' and tablename='companies' and policyname='companies_select_member') then create policy companies_select_member on public.companies for select using (owner_user_id=auth.uid() or id in (select company_id from public.current_user_company_ids())); end if;
@@ -26,6 +28,39 @@ if not exists (select 1 from pg_trigger where tgname='company_settings_set_updat
 if not exists (select 1 from pg_trigger where tgname='company_document_settings_set_updated_at') then create trigger company_document_settings_set_updated_at before update on public.company_document_settings for each row execute function public.set_current_timestamp_updated_at(); end if;
 if not exists (select 1 from pg_trigger where tgname='user_preferences_set_updated_at') then create trigger user_preferences_set_updated_at before update on public.user_preferences for each row execute function public.set_current_timestamp_updated_at(); end if;
 end $$;
-insert into public.companies(owner_user_id,name) select e.user_id,coalesce(nullif(e.data #>> '{entreprise,identity,legalName}',''),nullif(e.data #>> '{onboarding,company,name}',''),'Entreprise Piloz') from public.etat e where not exists (select 1 from public.companies c where c.owner_user_id=e.user_id);
-insert into public.company_members(company_id,user_id,role) select c.id,c.owner_user_id,'owner' from public.companies c where not exists (select 1 from public.company_members cm where cm.company_id=c.id and cm.user_id=c.owner_user_id);
-insert into public.user_preferences(user_id,company_id,onboarding_completed) select c.owner_user_id,c.id,false from public.companies c where not exists (select 1 from public.user_preferences p where p.user_id=c.owner_user_id);
+do $migration$
+begin
+  -- `etat` appartient au prototype historique et peut ne pas exister sur une
+  -- nouvelle installation. Le backfill reste volontairement idempotent.
+  if to_regclass('public.etat') is not null then
+    execute $sql$
+      insert into public.companies(owner_user_id,name)
+      select e.user_id,
+             coalesce(nullif(e.data #>> '{entreprise,identity,legalName}',''),
+                      nullif(e.data #>> '{onboarding,company,name}',''),
+                      'Entreprise Piloz')
+      from public.etat e
+      where not exists (
+        select 1 from public.companies c where c.owner_user_id=e.user_id
+      )
+    $sql$;
+  end if;
+
+  insert into public.company_members(company_id,user_id,role)
+  select c.id,c.owner_user_id,'owner'
+  from public.companies c
+  where not exists (
+    select 1 from public.company_members cm
+    where cm.company_id=c.id and cm.user_id=c.owner_user_id
+  );
+
+  insert into public.user_preferences(user_id,company_id,onboarding_completed)
+  select c.owner_user_id,c.id,false
+  from public.companies c
+  where not exists (
+    select 1 from public.user_preferences p where p.user_id=c.owner_user_id
+  );
+end
+$migration$;
+
+commit;
