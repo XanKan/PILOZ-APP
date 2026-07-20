@@ -2578,6 +2578,17 @@ async function authSyncSession(opts={}){
   controlerLicence();
   return true;
 }
+function authErrorMessage(error, fallback='Une erreur est survenue. Réessayez dans quelques instants.'){
+  const raw = String(error?.message || error || '').trim();
+  const message = raw.toLocaleLowerCase('en');
+  if(message.includes('email rate limit') || message.includes('rate limit exceeded')) return 'Trop d’e-mails ont été demandés. Patientez quelques minutes avant de réessayer.';
+  if(message.includes('invalid login credentials') || message.includes('invalid credentials')) return 'Adresse e-mail ou mot de passe incorrect.';
+  if(message.includes('email not confirmed')) return 'Confirmez votre adresse e-mail avant de vous connecter.';
+  if(message.includes('user already registered') || message.includes('already been registered')) return 'Un compte existe déjà avec cette adresse e-mail.';
+  if(message.includes('password') && (message.includes('weak') || message.includes('characters'))) return 'Le mot de passe ne respecte pas les critères de sécurité.';
+  if(message.includes('network') || message.includes('failed to fetch') || message.includes('serveur injoignable')) return 'Serveur injoignable — vérifiez votre connexion internet.';
+  return fallback;
+}
 async function authLogin(){
   if(!authServerReady()) return false;
   const errors = {};
@@ -2598,7 +2609,7 @@ async function authLogin(){
     toast('Connecté ☁️');
   }catch(e){
     authBusy = false;
-    authStatusMessage = e.message || 'Serveur injoignable — vérifiez votre connexion internet.';
+    authStatusMessage = authErrorMessage(e, 'Connexion impossible. Vérifiez vos informations puis réessayez.');
     authStatusKind = 'error';
     pageAuth();
   }
@@ -2636,7 +2647,7 @@ async function authSignupFinish(){
     toast('Bienvenue dans Piloz ✨');
   }catch(e){
     authBusy = false;
-    authStatusMessage = e.message || 'Serveur injoignable.';
+    authStatusMessage = authErrorMessage(e, 'Création du compte impossible. Réessayez dans quelques instants.');
     authStatusKind = 'error';
     pageAuth();
   }
@@ -2666,7 +2677,7 @@ async function authForgotPassword(event){
     pageAuth();
   }catch(e){
     authBusy = false;
-    authStatusMessage = e.message || 'Serveur injoignable.';
+    authStatusMessage = authErrorMessage(e, 'Envoi du lien impossible. Réessayez dans quelques instants.');
     authStatusKind = 'error';
     pageAuth();
   }
@@ -2691,7 +2702,7 @@ async function authResetPassword(){
     toast('Mot de passe mis à jour');
   }catch(e){
     authBusy = false;
-    authStatusMessage = e.message || 'Serveur injoignable.';
+    authStatusMessage = authErrorMessage(e, 'Mise à jour du mot de passe impossible. Réessayez dans quelques instants.');
     authStatusKind = 'error';
     pageAuth();
   }

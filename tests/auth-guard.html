@@ -15,6 +15,7 @@
     let doc=frame.contentDocument;
     checks.push(['connexion affichée',!!doc.getElementById('auth')&&doc.body.classList.contains('auth-only')]);
     checks.push(['formulaire de connexion',!!doc.getElementById('login_email')&&!!doc.getElementById('login_password')&&[...doc.querySelectorAll('button')].some(x=>x.textContent.trim()==='Se connecter')]);
+    checks.push(['erreurs Supabase traduites',frame.contentWindow.authErrorMessage(new Error('email rate limit exceeded')).includes('Patientez')]);
     checks.push(['application privée masquée',getComputedStyle(doc.getElementById('app')).display==='none']);
     checks.push(['navigation privée absente',doc.getElementById('tabs').children.length===0]);
     checks.push(['contenu privé absent',doc.getElementById('main').children.length===0]);

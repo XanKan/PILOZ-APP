@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><title>Tests parcours commerciaux PILOZ</title></head>
+<body>
+  <nav id="tabs"></nav><main id="main"></main><div id="result" data-status="running">Vérification…</div>
+  <script>
+    window.__errors=[];addEventListener('error',event=>__errors.push(event.message));
+    window.esc=value=>String(value??'').replace(/[&<>"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[char]));
+    window.toast=()=>{};window.render=()=>{};window.renderTabs=()=>{};
+    const companyId='00000000-0000-0000-0000-000000000010',userId='00000000-0000-0000-0000-000000000001',clientId='00000000-0000-0000-0000-000000000020',opportunityId='00000000-0000-0000-0000-000000000030',quoteId='00000000-0000-0000-0000-000000000040',invoiceId='00000000-0000-0000-0000-000000000050',balanceId='00000000-0000-0000-0000-000000000060';
+    const tables={
+      company_settings:[{company_id:companyId,onboarding_completed_at:'2026-07-20T00:00:00Z',currency:'EUR',language:'fr',legal_name:'Entreprise test'}],
+      company_document_settings:[{company_id:companyId,quote_validity_days:30,default_payment_terms:'30 jours',default_payment_method:'Virement bancaire'}],
+      company_erp_settings:[{company_id:companyId,crm_automations:{quote_created:true,quote_sent:true,quote_accepted:true,quote_rejected:true,invoice_created:true,invoice_paid:true}}],
+      company_members:[{company_id:companyId,user_id:userId,role:'owner',permissions:{}}],
+      clients:[{id:clientId,company_id:companyId,kind:'company',relationship_type:'client',legal_name:'Client démonstration',email:'client@example.fr'}],
+      client_contacts:[{id:'00000000-0000-0000-0000-000000000021',company_id:companyId,client_id:clientId,first_name:'Alice',last_name:'Martin'}],
+      catalog_items:[{id:'00000000-0000-0000-0000-000000000070',company_id:companyId,item_type:'service',reference:'SERV-01',name:'Conseil',unit:'heure',sale_price:100,cost_price:60,tax_rate:20,active:true}],
+      vat_rates:[{id:'00000000-0000-0000-0000-000000000080',company_id:companyId,label:'Taux normal',rate:20,active:true,is_default:true}],
+      pipeline_stages:[{company_id:companyId,slug:'quote_sent',name:'Devis envoyé',position:40,probability:60,active:true},{company_id:companyId,slug:'invoicing',name:'Facturation',position:60,probability:85,active:true}],
+      opportunities:[{id:opportunityId,company_id:companyId,client_id:clientId,contact_id:'00000000-0000-0000-0000-000000000021',name:'Projet commercial',stage:'quote_sent',amount:1200,probability:60,next_action_at:'2026-07-21T09:00:00Z',assigned_user_id:userId}],
+      documents:[
+        {id:quoteId,company_id:companyId,document_type:'quote',number:'DEV-2026-0001',version:1,client_id:clientId,status:'sent',issue_date:'2026-06-01',validity_date:'2026-06-30',subject:'Mission de conseil',currency:'EUR',language:'fr',payment_terms:'30 jours',payment_method:'Virement bancaire',discount_rate:0,total_cost:600,total_excl_tax:1000,total_tax:200,total_incl_tax:1200,opportunity_id:opportunityId,assigned_user_id:userId,deposit_rate:20},
+        {id:invoiceId,company_id:companyId,document_type:'invoice',number:'FAC-2026-0001',version:1,client_id:clientId,status:'validated',issue_date:'2026-07-01',due_date:'2026-08-01',subject:'Mission facturée',currency:'EUR',language:'fr',discount_rate:0,total_cost:300,total_excl_tax:500,total_tax:100,total_incl_tax:600,opportunity_id:opportunityId,assigned_user_id:userId,validated_at:'2026-07-01T08:00:00Z'},
+        {id:balanceId,company_id:companyId,document_type:'balance_invoice',number:null,version:1,client_id:clientId,status:'draft',issue_date:'2026-07-20',due_date:'2026-08-20',subject:'Solde',currency:'EUR',language:'fr',discount_rate:0,total_cost:180,total_excl_tax:300,total_tax:60,total_incl_tax:360,opportunity_id:opportunityId,assigned_user_id:userId}
+      ],
+      document_lines:[
+        {id:'00000000-0000-0000-0000-000000000041',company_id:companyId,document_id:quoteId,position:1,line_type:'item',item_id:'00000000-0000-0000-0000-000000000070',reference:'SERV-01',name:'Conseil',description:'Accompagnement',quantity:10,unit:'heure',unit_cost_snapshot:60,unit_price:100,discount_rate:0,tax_rate:20,optional:false,total_excl_tax:1000,total_tax:200,total_incl_tax:1200},
+        {id:'00000000-0000-0000-0000-000000000051',company_id:companyId,document_id:invoiceId,position:1,line_type:'item',item_id:'00000000-0000-0000-0000-000000000070',reference:'SERV-01',name:'Conseil',quantity:5,unit:'heure',unit_cost_snapshot:60,unit_price:100,discount_rate:0,tax_rate:20,optional:false,total_excl_tax:500,total_tax:100,total_incl_tax:600},
+        {id:'00000000-0000-0000-0000-000000000061',company_id:companyId,document_id:balanceId,position:1,line_type:'item',item_id:'00000000-0000-0000-0000-000000000070',reference:'SERV-01',name:'Conseil',quantity:3,unit:'heure',unit_cost_snapshot:60,unit_price:100,discount_rate:0,tax_rate:20,optional:false,total_excl_tax:300,total_tax:60,total_incl_tax:360}
+      ],
+      payments:[],reminders:[],activities:[],payment_schedules:[],dashboard_widgets:[],company_addresses:[],company_logos:[],document_sequences:[],user_preferences:[],suppliers:[],supplier_items:[],catalog_categories:[],document_templates:[],warehouses:[],warehouse_locations:[],stock_levels:[],stock_movements:[],stock_reservations:[],inventory_counts:[],inventory_count_lines:[],purchase_orders:[],purchase_order_lines:[],goods_receipts:[],deliveries:[],delivery_lines:[],stock_cost_history:[],supplier_quote_requests:[],supplier_returns:[]
+    };
+    const clone=value=>structuredClone(value),tableFrom=path=>(path.match(/\/rest\/v1\/([^?]+)/)||[])[1];
+    window.PilozRuntime={session:{user_id:userId},config:{url:'https://example.invalid',key:'anon'}};
+    window.PilozERP={
+      companyContext:async()=>companyId,
+      request:async(path,options={})=>{const name=tableFrom(path);if(!name)return[];if(options.method==='DELETE'&&name==='document_lines'){const id=decodeURIComponent((path.match(/document_id=eq\.([^&]+)/)||[])[1]||'');tables.document_lines=tables.document_lines.filter(x=>x.document_id!==id);return null;}return clone(tables[name]||[]);},
+      query:async()=>[],signedUrl:async()=>({}),upload:async()=>({}),invoke:async()=>({}),remove:async()=>null,
+      insert:async(name,data)=>{const rows=(Array.isArray(data)?data:[data]).map(row=>({...clone(row),id:row.id||crypto.randomUUID(),created_at:new Date().toISOString()}));tables[name]=[...(tables[name]||[]),...rows];return clone(rows);},
+      update:async(name,id,data)=>{const row=(tables[name]||[]).find(x=>x.id===id);if(row)Object.assign(row,clone(data));return row?[clone(row)]:[];},
+      rpc:async(name,args)=>{if(name==='get_company_financial_fields')return{catalog:tables.catalog_items.map(x=>({id:x.id,cost_price:x.cost_price,purchase_price:x.cost_price})),documents:tables.documents.map(x=>({id:x.id,total_cost:x.total_cost})),lines:tables.document_lines.map(x=>({id:x.id,unit_cost_snapshot:x.unit_cost_snapshot})),movements:[]};if(name==='convert_quote_to_invoice'){const source=tables.documents.find(x=>x.id===args.target_quote_id),id=crypto.randomUUID(),copy={...clone(source),id,number:null,document_type:args.target_invoice_type,status:'draft',source_document_id:source.id,issue_date:new Date().toISOString().slice(0,10)};tables.documents.push(copy);tables.document_lines.push(...tables.document_lines.filter(x=>x.document_id===source.id).map(x=>({...clone(x),id:crypto.randomUUID(),document_id:id})));source.status='invoiced';return id;}if(name==='record_document_payment'){const doc=tables.documents.find(x=>x.id===args.target_document_id),paid=tables.payments.filter(x=>x.document_id===doc.id).reduce((sum,x)=>sum+Number(x.amount),0)+Number(args.payment_amount);tables.payments.push({id:crypto.randomUUID(),company_id:companyId,document_id:doc.id,amount:Number(args.payment_amount),status:'confirmed',paid_at:args.payment_date});doc.status=paid>=doc.total_incl_tax?'paid':'partially_paid';return tables.payments.at(-1).id;}if(name==='validate_invoice'){const doc=tables.documents.find(x=>x.id===args.target_document_id);doc.status='validated';doc.validated_at=new Date().toISOString();doc.number=doc.number||'BAL-2026-0001';return clone(doc);}return'';}
+    };
+    location.hash='dashboard';
+  </script>
+  <script src="../assets/js/utils/erp-calculations.js"></script>
+  <script src="../assets/js/modules/erp/erp-app.js"></script>
+  <script src="../assets/js/modules/erp/erp-modern.js"></script>
+  <script>
+    (async()=>{
+      const checks=[],check=(name,value)=>checks.push([name,!!value]),wait=ms=>new Promise(resolve=>setTimeout(resolve,ms)),go=async path=>{PilozApp.go(path);await wait(60);};
+      await wait(350);
+      await go('sales/quotes');
+      check('liste de devis complète',document.querySelector('.modern-toolbar')&&document.querySelector('.modern-table'));
+      check('filtres de statuts devis',document.querySelector('.modern-view-tabs')?.textContent.includes('À envoyer')&&document.querySelector('.modern-view-tabs')?.textContent.includes('Consultés')&&document.querySelector('.modern-view-tabs')?.textContent.includes('Archivés'));
+      check('expiration calculée',document.getElementById('main').textContent.includes('Expiré'));
+      check('colonnes coût marge pipeline',document.querySelector('.modern-table')?.textContent.includes('Coût d’achat')&&document.querySelector('.modern-table')?.textContent.includes('Marge')&&document.querySelector('.modern-table')?.textContent.includes('Opportunité'));
+      check('actions devis',document.querySelector('.erp-action-menu')?.textContent.includes('Dupliquer')&&document.querySelector('.erp-action-menu')?.textContent.includes('Aperçu / PDF')&&document.querySelector('.erp-action-menu')?.textContent.includes('Convertir en facture'));
+
+      PilozApp.newDocument('quote');await wait(60);
+      check('éditeur grande page',!!document.querySelector('.erp-document-canvas')&&!!document.querySelector('.erp-side-panel'));
+      check('dates initialisées',document.querySelector('.erp-side-panel input[type="date"]')?.value===new Date().toISOString().slice(0,10));
+      check('unité et coût par ligne',!!document.querySelector('[aria-label="Unité"]')&&!!document.querySelector('[aria-label="Coût d’achat HT"]'));
+      check('lignes riches',document.querySelector('.erp-add-line')?.textContent.includes('Sous-total')&&document.querySelector('.erp-add-line')?.textContent.includes('Saut de page')&&document.querySelector('.erp-add-line')?.textContent.includes('Variante / option'));
+      check('liaisons document',document.querySelector('.erp-document-metadata')?.textContent.includes('Opportunité')&&document.querySelector('.erp-document-metadata')?.textContent.includes('Commercial responsable'));
+      PilozApp.setLine(0,'unit_cost_snapshot',60,true);PilozApp.setLine(0,'unit_price',100,true);await wait(30);
+      check('marges de ligne',document.querySelector('.erp-line-total')?.textContent.includes('taux de marge')&&document.querySelector('.erp-line-total')?.textContent.includes('taux de marque'));
+
+      PilozApp.editDocument(quoteId);await wait(40);await PilozApp.convertDocument('invoice');await wait(120);
+      const converted=PilozApp.getState().draft;
+      check('conversion devis facture',converted?.document_type==='invoice'&&converted?.source_document_id===quoteId);
+      check('conversion conserve données',converted?.client_id===clientId&&converted?.opportunity_id===opportunityId&&converted?.lines?.[0]?.unit_cost_snapshot===60);
+
+      PilozApp.editDocument(invoiceId);await wait(40);PilozApp.openPaymentForm();document.querySelector('#payment-form [name="amount"]').value='120';await PilozApp.savePayment();await wait(120);
+      check('paiement partiel',PilozApp.getState().draft?.status==='partially_paid'&&PilozApp.getState().data.payments.some(x=>x.document_id===invoiceId&&x.amount===120));
+
+      await go('sales/invoices');
+      check('filtres factures',document.querySelector('.modern-view-tabs')?.textContent.includes('Partiellement payées')&&document.querySelector('.modern-view-tabs')?.textContent.includes('Acomptes')&&document.querySelector('.modern-view-tabs')?.textContent.includes('Pro forma'));
+      await go('crm/opportunities');
+      const linkedDocuments=PilozApp.getState().data.documents.filter(x=>x.opportunity_id===opportunityId);
+      check('documents reliés au pipeline',document.querySelector('.modern-table')?.textContent.includes('Projet commercial')&&linkedDocuments.some(x=>x.document_type==='quote')&&linkedDocuments.filter(x=>x.document_type==='invoice').length===2);
+      PilozModern.openOpportunity(opportunityId);
+      check('opportunité complète',document.getElementById('modern-opportunity-form')?.textContent.includes('Contact')&&document.getElementById('modern-opportunity-form')?.textContent.includes('Prochaine action')&&document.getElementById('modern-opportunity-form')?.textContent.includes('Responsable'));
+      PilozModern.closeDrawer();
+
+      PilozApp.editDocument(balanceId);await wait(60);
+      check('validation facture de solde',[...document.querySelectorAll('.erp-editor-bar button')].some(x=>x.textContent.trim()==='Valider'));
+      await PilozApp.validateInvoice();await wait(100);
+      check('solde verrouillé après validation',PilozApp.getState().draft?.validated_at&&document.querySelector('[data-save-document]')===null);
+
+      const failed=checks.filter(([,ok])=>!ok),node=document.getElementById('result');
+      if(__errors.length)failed.push(['erreurs JavaScript : '+__errors.join(' | '),false]);
+      node.dataset.status=failed.length?'failed':'passed';
+      node.textContent=failed.length?`Échec : ${failed.map(x=>x[0]).join(', ')}`:`${checks.length}/${checks.length} contrôles commerciaux réussis`;
+    })();
+  </script>
+</body>
+</html>
