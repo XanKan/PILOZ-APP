@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><title>Tests garde d’authentification PILOZ</title></head>
+<body>
+<main id="result" data-status="running">Vérification…</main>
+<iframe id="app-frame" hidden></iframe>
+<script>
+(async()=>{
+  const frame=document.getElementById('app-frame'),wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const load=src=>new Promise(resolve=>{frame.onload=()=>setTimeout(resolve,700);frame.src=src;});
+  const checks=[];
+  try{
+    localStorage.removeItem('piloz_ses');
+    await load('../index.html?mode=login');
+    let doc=frame.contentDocument;
+    checks.push(['connexion affichée',!!doc.getElementById('auth')&&doc.body.classList.contains('auth-only')]);
+    checks.push(['formulaire de connexion',!!doc.getElementById('login_email')&&!!doc.getElementById('login_password')&&[...doc.querySelectorAll('button')].some(x=>x.textContent.trim()==='Se connecter')]);
+    checks.push(['application privée masquée',getComputedStyle(doc.getElementById('app')).display==='none']);
+    checks.push(['navigation privée absente',doc.getElementById('tabs').children.length===0]);
+    checks.push(['contenu privé absent',doc.getElementById('main').children.length===0]);
+    await load('../index.html?mode=signup');
+    doc=frame.contentDocument;
+    checks.push(['inscription affichée',!!doc.getElementById('signup_email')&&!!doc.getElementById('signup_password')]);
+    checks.push(['conditions obligatoires',!!doc.querySelector('.auth-check input[type="checkbox"]')]);
+    checks.push(['aucune fuite en inscription',getComputedStyle(doc.getElementById('app')).display==='none'&&doc.getElementById('tabs').children.length===0]);
+    localStorage.setItem('piloz_ses',JSON.stringify({access_token:'session-invalide',refresh_token:'refresh-invalide',user_id:'00000000-0000-0000-0000-000000000001',email:'test@exemple.fr'}));
+    await load('../index.html');
+    doc=frame.contentDocument;
+    checks.push(['session invalide refusée',!!doc.getElementById('auth')&&doc.getElementById('auth_status').textContent.includes('session a expiré')]);
+    checks.push(['aucune fuite avec jeton invalide',getComputedStyle(doc.getElementById('app')).display==='none'&&doc.getElementById('main').children.length===0&&doc.getElementById('tabs').children.length===0]);
+    localStorage.removeItem('piloz_ses');
+  }catch(error){checks.push(['exécution',false,error.message]);}
+  const failed=checks.filter(([,ok])=>!ok),node=document.getElementById('result');
+  node.dataset.status=failed.length?'failed':'passed';
+  node.textContent=failed.length?`Échec : ${failed.map(x=>x[0]+(x[2]?` (${x[2]})`:'')).join(', ')}`:`${checks.length}/${checks.length} contrôles d’authentification réussis`;
+})();
+</script>
+</body>
+</html>
