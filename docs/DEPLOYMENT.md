@@ -1,28 +1,23 @@
-# Mise en service PILOZ ERP
+# Déploiement de PILOZ ERP
 
-Le dépôt reste compatible GitHub Pages : toutes les vues utilisent des fragments `#...`.
-Cette procédure n'a pas été exécutée lors de la refonte : aucun déploiement, commit ou push n'a été effectué.
+Le front est un site statique compatible GitHub Pages. Les vues utilisent des fragments `#...` et le fichier `CNAME` contient exclusivement `app.piloz.fr`.
 
-## Ordre obligatoire
+## Supabase
 
-1. Sauvegarder la base Supabase et le bucket historique `fichiers`.
-2. Appliquer les cinq migrations dans leur ordre de nom :
-   - `202607200001_phase1_foundation.sql`
-   - `202607200002_erp_core.sql`
-   - `202607200003_erp_workflows.sql`
-   - `202607200004_company_verifications.sql`
-   - `202607200005_erp_completeness.sql`
-3. Déployer les Edge Functions du dossier `supabase/functions`.
-4. Configurer les secrets `RESEND_API_KEY` et `EMAIL_FROM`.
-5. Ajouter `https://app.piloz.fr` aux origines et URL de redirection Auth autorisées.
-6. Vérifier la création des buckets privés `company-assets` et `company-files`, ainsi que leurs politiques Storage.
-7. Tester avec deux entreprises et trois comptes (owner, membre, utilisateur externe).
-8. Exécuter `supabase/tests/rls_acceptance.sql`, puis la matrice `docs/ACCEPTANCE.md`.
-9. Déployer les fichiers statiques seulement après validation des tests.
+Appliquer les migrations dans l’ordre :
 
-La clé `SUPABASE_SERVICE_ROLE_KEY` est utilisée exclusivement dans les Edge Functions. Elle ne doit jamais être ajoutée à `index.html`, aux assets publics ou au stockage local.
+1. `202607200001_phase1_foundation.sql`
+2. `202607200002_erp_core.sql`
+3. `202607200003_erp_workflows.sql`
+4. `202607200004_company_verifications.sql`
+5. `202607200005_erp_completeness.sql`
+6. `202607200006_modern_commercial_suite.sql`
+7. `202607200007_harden_function_permissions.sql`
+8. `202607200008_minimize_authenticated_rpc_surface.sql`
 
-## Edge Functions
+La sixième migration ajoute les contacts clients, catégories, taux de TVA, étapes du pipeline, activités, relances, échéanciers et widgets. Elle ajoute aussi les RPC atomiques de conversion devis-facture, paiement et mouvement de stock, ainsi que leurs politiques RLS. Les septième et huitième migrations retirent l’exécution anonyme héritée puis réduisent les droits des utilisateurs authentifiés à une liste explicite de RPC métier.
+
+Fonctions Edge utilisées :
 
 - `company-search`
 - `address-search`
@@ -33,16 +28,18 @@ La clé `SUPABASE_SERVICE_ROLE_KEY` est utilisée exclusivement dans les Edge Fu
 - `request-company-phone-verification`
 - `confirm-company-phone`
 
-Sans `RESEND_API_KEY`, l’application indique que l’envoi d’e-mails n’est pas configuré ; aucune validation fictive n’est produite.
+Les secrets `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `EMAIL_FROM` et les identifiants Twilio ne doivent jamais être présents dans le dépôt ni dans le navigateur.
 
-La vérification SMS est facultative. Pour l’activer, configurer `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` et `TWILIO_FROM_NUMBER`. Sans ces secrets, le téléphone reste affiché comme non vérifié.
+## Publication GitHub Pages
 
-## Contrôles avant ouverture
+Avant un push sur `main` :
 
-- confirmer que les URL Auth autorisées contiennent exactement le domaine de production ;
-- vérifier que la clé `service_role` n'est présente dans aucun fichier public ni secret du navigateur ;
-- exécuter les scénarios multi-entreprises avec des JWT réels ;
-- vérifier les e-mails Resend et, si activé, les SMS Twilio sur un environnement de test ;
-- tester un flux complet devis → commande → réservation → livraison partielle → livraison complète ;
-- tester un flux achat → réception partielle → coût moyen → retour fournisseur ;
-- conserver `CNAME` inchangé avec la valeur `app.piloz.fr`.
+1. vérifier le dépôt et récupérer `origin/main` avec rebase ;
+2. contrôler `CNAME`, les chemins relatifs et l’absence de secrets ;
+3. exécuter les tests de calcul et de rendu ;
+4. vérifier la migration et les politiques RLS ;
+5. pousser sans `--force`, puis contrôler le workflow Pages et `https://app.piloz.fr`.
+
+## Services optionnels
+
+Sans secrets Resend, l’envoi d’e-mails répond avec une erreur de configuration claire. Sans secrets Twilio, aucun SMS fictif n’est émis et le numéro reste non vérifié. Ces intégrations s’activent uniquement depuis les secrets du projet Supabase.
