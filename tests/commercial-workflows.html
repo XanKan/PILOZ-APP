@@ -33,6 +33,7 @@
     };
     const clone=value=>structuredClone(value),tableFrom=path=>(path.match(/\/rest\/v1\/([^?]+)/)||[])[1];
     window.PilozRuntime={session:{user_id:userId},config:{url:'https://example.invalid',key:'anon'}};
+    window.PilozCurrentUser={id:userId,user_metadata:{first_name:'Alice'}};
     window.PilozERP={
       companyContext:async()=>companyId,
       request:async(path,options={})=>{const name=tableFrom(path);if(!name)return[];if(options.method==='DELETE'&&name==='document_lines'){const id=decodeURIComponent((path.match(/document_id=eq\.([^&]+)/)||[])[1]||'');tables.document_lines=tables.document_lines.filter(x=>x.document_id!==id);return null;}return clone(tables[name]||[]);},
@@ -50,6 +51,14 @@
     (async()=>{
       const checks=[],check=(name,value)=>checks.push([name,!!value]),wait=ms=>new Promise(resolve=>setTimeout(resolve,ms)),go=async path=>{PilozApp.go(path);await wait(60);};
       await wait(350);
+      await PilozApp.render();await wait(60);
+      check('bienvenue avec prénom réel',document.querySelector('.modern-page-header h1')?.textContent==='Bonjour 👋 Alice'&&!document.getElementById('main').textContent.includes('undefined'));
+      PilozModern.toggleWidgetConfig();await wait(30);
+      check('bibliothèque complète de widgets',document.getElementById('main').textContent.includes('Factures à encaisser')&&document.getElementById('main').textContent.includes('Réceptions attendues')&&document.getElementById('main').textContent.includes('Répartition des opportunités par étape'));
+      const beforeWidgets=document.querySelectorAll('.modern-widget').length;await PilozModern.toggleWidget('revenue');await wait(100);
+      check('retrait widget persisté',document.querySelectorAll('.modern-widget').length===beforeWidgets-1&&tables.dashboard_widgets.every(x=>x.widget_key!=='revenue'));
+      await PilozModern.resetWidgets();await wait(100);
+      check('réinitialisation widgets persistée',tables.dashboard_widgets.length>=20&&document.querySelectorAll('.modern-widget').length>=20);
       await go('sales/quotes');
       check('liste de devis complète',document.querySelector('.modern-toolbar')&&document.querySelector('.modern-table'));
       check('filtres de statuts devis',document.querySelector('.modern-view-tabs')?.textContent.includes('À envoyer')&&document.querySelector('.modern-view-tabs')?.textContent.includes('Consultés')&&document.querySelector('.modern-view-tabs')?.textContent.includes('Archivés'));
@@ -92,7 +101,7 @@
       if(__errors.length)failed.push(['erreurs JavaScript : '+__errors.join(' | '),false]);
       node.dataset.status=failed.length?'failed':'passed';
       node.textContent=failed.length?`Échec : ${failed.map(x=>x[0]).join(', ')}`:`${checks.length}/${checks.length} contrôles commerciaux réussis`;
-    })();
+    })().catch(error=>{const node=document.getElementById('result');node.dataset.status='failed';node.textContent='Échec JavaScript : '+(error.stack||error.message);});
   </script>
 </body>
 </html>
