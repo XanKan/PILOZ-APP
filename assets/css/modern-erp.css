@@ -160,6 +160,8 @@ button:disabled,.btn:disabled,input:disabled,select:disabled,textarea:disabled{o
 .erp-color-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .erp-color-field{display:flex!important;align-items:center;justify-content:space-between;gap:8px;font-size:.72rem!important;font-weight:700!important}
 .erp-color-field input[type=color]{width:36px;height:28px;padding:2px!important;border-radius:6px!important;cursor:pointer}
+.erp-template-layout.no-blocks{grid-template-columns:minmax(0,1fr) 300px!important}
+@media(max-width:760px){.erp-template-layout.no-blocks{grid-template-columns:1fr!important}}
 
 .erp-editor{background:var(--page-background)!important}.erp-editor-bar{background:#fff!important;border-color:var(--border)!important;padding:11px 18px!important}.erp-editor-bar h1{font:740 1.02rem 'Albert Sans'!important;letter-spacing:-.01em}
 .erp-editor-layout{grid-template-columns:minmax(0,1fr) 280px!important}.erp-paper{max-width:1120px!important;border:1px solid var(--border)!important;border-radius:12px!important;box-shadow:var(--shadow-sm)!important}
