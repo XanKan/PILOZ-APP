@@ -49,6 +49,7 @@
   <script src="../assets/js/modules/erp/erp-app.js"></script>
   <script src="../assets/js/modules/erp/erp-modern.js"></script>
   <script>
+    let currentStep='initialisation';
     (async()=>{
       const checks=[],check=(name,value)=>checks.push([name,!!value]),wait=ms=>new Promise(resolve=>setTimeout(resolve,ms)),go=async path=>{PilozApp.go(path);await wait(60);};
       await wait(350);
@@ -67,19 +68,19 @@
       check('commande fournisseur et plusieurs lignes enregistrées',purchaseOrder?.supplier_id==='00000000-0000-0000-0000-000000000092'&&purchaseLines.length===2);
       await PilozApp.confirmPurchaseOrder(purchaseOrder.id);await wait(80);
       check('commande fournisseur confirmée',PilozApp.getState().data.purchaseOrders.find(x=>x.id===purchaseOrder.id)?.status==='confirmed');
-      PilozApp.openReceiptForm();document.querySelector('#receipt-form [name="purchase_order_line_id"]').value=purchaseLines[0].id;document.querySelector('#receipt-form [name="quantity"]').value='1';document.querySelector('#receipt-form [name="unit_cost"]').value='60';await PilozApp.saveReceipt();await wait(80);await PilozApp.validateReceipt(tables.goods_receipts.at(-1).id);await wait(100);
+      currentStep='première réception fournisseur';PilozApp.openReceiptForm();document.querySelector('#receipt-form [name="purchase_order_line_id"]').value=purchaseLines[0].id;document.querySelector('#receipt-form [name="quantity"]').value='1';document.querySelector('#receipt-form [name="unit_cost"]').value='60';await PilozApp.saveReceipt();await wait(80);await PilozApp.validateReceipt(tables.goods_receipts.at(-1).id);await wait(100);
       check('réception fournisseur partielle persistée',PilozApp.getState().data.purchaseOrderLines.find(x=>x.id===purchaseLines[0].id)?.received_quantity===1);
       PilozApp.openReceiptForm();document.querySelector('#receipt-form [name="purchase_order_line_id"]').value=purchaseLines[0].id;document.querySelector('#receipt-form [name="quantity"]').value='1';document.querySelector('#receipt-form [name="unit_cost"]').value='60';await PilozApp.saveReceipt();await wait(80);await PilozApp.validateReceipt(tables.goods_receipts.at(-1).id);await wait(100);
       PilozApp.openReceiptForm();document.querySelector('#receipt-form [name="purchase_order_line_id"]').value=purchaseLines[1].id;document.querySelector('#receipt-form [name="quantity"]').value='1';document.querySelector('#receipt-form [name="unit_cost"]').value='60';await PilozApp.saveReceipt();await wait(80);await PilozApp.validateReceipt(tables.goods_receipts.at(-1).id);await wait(100);
       check('réception fournisseur complète persistée',PilozApp.getState().data.purchaseOrderLines.filter(x=>x.purchase_order_id===purchaseOrder.id).every(x=>Number(x.received_quantity)===Number(x.quantity)));
-      await go('sales/quotes');
-      check('liste de devis complète',document.querySelector('.modern-toolbar')&&document.querySelector('.modern-table'));
+      currentStep='liste des devis';await go('sales/quotes');
+      check('liste de devis complète',document.querySelector('.modern-filters')&&document.querySelector('.modern-table'));
       check('filtres de statuts devis',document.querySelector('.modern-view-tabs')?.textContent.includes('À envoyer')&&document.querySelector('.modern-view-tabs')?.textContent.includes('Consultés')&&document.querySelector('.modern-view-tabs')?.textContent.includes('Archivés'));
       check('expiration calculée',document.getElementById('main').textContent.includes('Expiré'));
       check('colonnes coût marge pipeline',document.querySelector('.modern-table')?.textContent.includes('Coût d’achat')&&document.querySelector('.modern-table')?.textContent.includes('Marge')&&document.querySelector('.modern-table')?.textContent.includes('Opportunité'));
       check('actions devis',document.querySelector('.erp-action-menu')?.textContent.includes('Dupliquer')&&document.querySelector('.erp-action-menu')?.textContent.includes('Aperçu / PDF')&&document.querySelector('.erp-action-menu')?.textContent.includes('Convertir en facture'));
 
-      PilozApp.newDocument('quote');await wait(60);
+      currentStep='éditeur de devis';PilozApp.newDocument('quote');await wait(60);
       check('éditeur grande page',!!document.querySelector('.erp-document-canvas')&&!!document.querySelector('.erp-side-panel'));
       check('dates initialisées',document.querySelector('.erp-side-panel input[type="date"]')?.value===new Date().toISOString().slice(0,10));
       check('unité et coût par ligne',!!document.querySelector('[aria-label="Unité"]')&&!!document.querySelector('[aria-label="Coût d’achat HT"]'));
@@ -113,9 +114,27 @@
       check('opportunité complète',document.getElementById('modern-opportunity-form')?.textContent.includes('Contact')&&document.getElementById('modern-opportunity-form')?.textContent.includes('Prochaine action')&&document.getElementById('modern-opportunity-form')?.textContent.includes('Responsable'));
       PilozModern.closeDrawer();
 
-      await go('settings/company');
-      check('sous-catégories entreprise complètes',!!document.querySelector('[name="company_type"]')&&!!document.querySelector('[name="secondary_phone"]')&&!!document.getElementById('settings-addresses')&&!!document.getElementById('settings-legal')&&!!document.getElementById('settings-bank'));
-      document.querySelector('[name="company_type"]').value='SAS';document.querySelector('[name="description"]').value='Description réelle';document.querySelector('[name="secondary_phone"]').value='+33102030405';document.querySelector('[name="primary_contact_name"]').value='Alice Martin';document.getElementById('addr-billing-address_line_1').value='2 rue Facturation';document.getElementById('addr-billing-postal_code').value='69001';document.getElementById('addr-billing-city').value='Lyon';document.querySelector('[name="rcs_number"]').value='RCS Paris 732 829 320';document.querySelector('[name="registry_court"]').value='Paris';document.querySelector('[name="vat_frequency"]').value='mensuelle';document.getElementById('ext-iban').value='FR1420041010050500013M02606';document.getElementById('ext-bic').value='PSSTFRPPMON';document.getElementById('ext-mandate-reference').value='MANDAT-001';await PilozApp.saveSettings();await wait(150);
+      currentStep='paramètres entreprise';
+      await go('settings/company/profile');
+      check('sous-catégorie identité',!!document.getElementById('company-profile-form'));
+      document.querySelector('#company-profile-form [name="company_type"]').value='pme';document.querySelector('#company-profile-form [name="description"]').value='Description réelle';await PilozModern.saveCompanyProfile();
+      await go('settings/company/contacts');
+      check('sous-catégorie coordonnées',!!document.getElementById('company-contacts-form'));
+      document.querySelector('#company-contacts-form [name="secondary_phone"]').value='+33102030405';document.querySelector('#company-contacts-form [name="primary_contact_name"]').value='Alice Martin';await PilozModern.saveCompanyContacts();
+      await go('settings/company/addresses');
+      check('sous-catégorie adresses',!!document.getElementById('company-address-billing-form'));
+      document.querySelector('#company-address-billing-form [name="address_line_1"]').value='2 rue Facturation';document.querySelector('#company-address-billing-form [name="postal_code"]').value='69001';document.querySelector('#company-address-billing-form [name="city"]').value='Lyon';await PilozModern.saveCompanyAddress('billing');
+      await go('settings/company/legal');
+      check('sous-catégorie informations légales',!!document.getElementById('company-legal-form'));
+      document.querySelector('#company-legal-form [name="rcs_number"]').value='RCS Paris 732 829 320';document.querySelector('#company-legal-form [name="registry_court"]').value='Paris';await PilozModern.saveCompanyLegal();
+      await go('settings/company/tax');
+      check('sous-catégorie fiscalité',!!document.getElementById('company-tax-form'));
+      document.querySelector('#company-tax-form [name="vat_frequency"]').value='Mensuelle';await PilozModern.saveCompanyTax();
+      await go('settings/company/logo');
+      check('sous-catégorie logo',!!document.querySelector('.company-logo-grid'));
+      currentStep='paramètres bancaires';await go('settings/company/bank');await PilozApp.render();await wait(30);
+      check('sous-catégorie banque',!!document.getElementById('company-bank-form'));
+      if(!document.getElementById('company-bank-form'))throw new Error('Le formulaire Banque ne s’est pas rendu. '+__errors.join(' | '));document.querySelector('#company-bank-form [name="iban"]').value='FR1420041010050500013M02606';document.querySelector('#company-bank-form [name="bic"]').value='PSSTFRPPMON';document.querySelector('#company-bank-form [name="mandate_reference"]').value='MANDAT-001';await PilozModern.saveCompanyBank();await wait(80);
       check('paramètres entreprise persistés',tables.company_settings[0].description==='Description réelle'&&tables.company_settings[0].primary_contact_name==='Alice Martin'&&tables.company_addresses.some(x=>x.kind==='billing'&&x.city==='Lyon')&&tables.company_document_settings[0].mandate_reference==='MANDAT-001');
       await PilozApp.uploadLogo(new File([new Uint8Array([137,80,78,71])],'logo.png',{type:'image/png'}),'light');await wait(100);
       check('logo stocké et rattaché',tables.company_logos.some(x=>x.variant==='light'&&x.company_id===companyId));
@@ -129,7 +148,7 @@
       if(__errors.length)failed.push(['erreurs JavaScript : '+__errors.join(' | '),false]);
       node.dataset.status=failed.length?'failed':'passed';
       node.textContent=failed.length?`Échec : ${failed.map(x=>x[0]).join(', ')}`:`${checks.length}/${checks.length} contrôles commerciaux réussis`;
-    })().catch(error=>{const node=document.getElementById('result');node.dataset.status='failed';node.textContent='Échec JavaScript : '+(error.stack||error.message);});
+    })().catch(error=>{const node=document.getElementById('result');node.dataset.status='failed';node.textContent='Échec JavaScript ('+currentStep+') : '+(error.stack||error.message);});
   </script>
 </body>
 </html>

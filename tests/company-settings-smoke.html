@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<title>Smoke paramètres entreprise PILOZ</title>
+<body>
+<nav id="tabs"></nav>
+<main id="main"></main>
+<div id="result">RUNNING</div>
+<script>
+window.__errors=[];
+window.addEventListener('error',event=>window.__errors.push(event.message));
+window.esc=value=>String(value??'').replace(/[&<>"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[char]));
+window.toast=()=>{};
+window.render=()=>{};
+window.renderTabs=()=>{};
+window.PilozRuntime={session:{user_id:'00000000-0000-0000-0000-000000000001',email:'test@piloz.fr'},config:{url:'https://example.invalid',key:'anon'}};
+const companyId='00000000-0000-0000-0000-000000000010';
+window.PilozERP={
+ companyContext:async()=>companyId,
+ request:async path=>path.includes('/company_settings?')?[{company_id:companyId,legal_name:'PILOZ Test',trade_name:'Piloz',legal_form:'SAS',email:'contact@piloz.fr',subject_to_vat:true,currency:'EUR'}]:path.includes('/company_document_settings?')?[{company_id:companyId,bank_account_holder:'PILOZ Test',bank_name:'Banque Test',iban:'FR761234567890',bic:'TESTFRPP'}]:path.includes('/company_addresses?')?[{id:'address-1',company_id:companyId,kind:'registered',address_line_1:'1 rue Piloz',postal_code:'75001',city:'Paris',country_code:'FR'}]:path.includes('/company_logos?')?[{id:'logo-1',company_id:companyId,variant:'light',storage_path:companyId+'/logos/light.svg',is_active:true}]:path.includes('/company_members?')?[{company_id:companyId,user_id:'00000000-0000-0000-0000-000000000001',role:'owner',permissions:{}}]:[],
+ query:async()=>[],insert:async()=>[],update:async()=>[],remove:async()=>null,rpc:async()=>'',invoke:async()=>({}),upload:async()=>({}),signedUrl:async()=>({signedURL:'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22/%3E'}),upsertCompanySettings:async()=>[]
+};
+location.hash='settings/company';
+</script>
+<script src="../assets/js/utils/erp-calculations.js"></script>
+<script src="../assets/js/modules/erp/erp-app.js"></script>
+<script src="../assets/js/modules/erp/erp-modern.js"></script>
+<script>
+(async()=>{
+ await new Promise(resolve=>setTimeout(resolve,250));
+ const routes=['profile','contacts','addresses','legal','tax','logo','bank'];
+ let rendered=0;
+ for(const route of routes){
+  PilozApp.go('settings/company/'+route);
+  await new Promise(resolve=>setTimeout(resolve,30));
+  const text=document.getElementById('main').textContent;
+  if(text.trim()&&!/undefined|null/.test(text))rendered++;
+ }
+ PilozApp.go('settings/company/logo');
+ await new Promise(resolve=>setTimeout(resolve,30));
+ const logoReady=!!document.querySelector('.company-logo-grid img')&&!!document.querySelector('#company-logo-light')&&!!document.querySelector('#company-logo-dark');
+ const ok=rendered===routes.length&&logoReady&&!window.__errors.length;
+ const node=document.getElementById('result');
+ node.dataset.status=ok?'passed':'failed';
+ node.textContent=ok?`${rendered}/${routes.length} sous-catégories rendues, logo chargé sans erreur`:`Échec : ${rendered}/${routes.length} — ${window.__errors.join(' | ')}`;
+})();
+</script>
+</body>
+</html>
