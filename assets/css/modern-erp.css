@@ -183,9 +183,9 @@ button:disabled,.btn:disabled,input:disabled,select:disabled,textarea:disabled{o
 .company-summary-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px}
 .company-summary-card h3{font:730 .92rem 'Albert Sans';margin:0}
 .company-summary-card dl{display:grid;gap:5px;margin:0}
-.company-summary-card dl>div{display:flex;justify-content:space-between;gap:10px;font-size:.82rem}
-.company-summary-card dl dt{color:var(--text-muted);margin:0}
-.company-summary-card dl dd{margin:0;color:var(--text-primary);font-weight:600;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%}
+.company-summary-card dl>div{display:flex;justify-content:space-between;gap:10px;font-size:.82rem;min-width:0}
+.company-summary-card dl dt{color:var(--text-muted);margin:0;flex:none}
+.company-summary-card dl dd{margin:0;color:var(--text-primary);font-weight:600;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1 1 auto}
 .company-summary-card .actions{margin-top:auto;padding-top:4px}
 
 .usage-bar{display:grid;gap:6px;margin-bottom:14px}
