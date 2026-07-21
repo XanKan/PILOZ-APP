@@ -27,7 +27,7 @@
  function button(label,handler,kind='btn-o',attrs=''){return`<button class="btn ${kind}" onclick="${handler}" ${attrs}>${e(label)}</button>`;}
  const filled=value=>value!==null&&value!==undefined&&String(value).trim()!=='';
  function legacyCompanyDetails(create=false){const company=global.PilozRuntime?.state?.entreprise;if(!company)return{};if(create&&!company.companyDetails)company.companyDetails={};return company.companyDetails||{};}
- function legacyAddress(identity){const raw=String(identity?.addressLine1||'').trim(),match=raw.match(/^(.*?)[,\s]+(\d{5})\s+([^,]+)$/);return{line:match?.[1]?.trim()||raw,postal:String(identity?.postalCode||match?.[2]||'').trim(),city:String(identity?.city||match?.[3]||'').trim()};}
+ function legacyAddress(identity){const raw=String(identity?.addressLine1||'').trim(),match=raw.match(/^(.*?)[,\s]+(\d{5})\s+([^,]+?)(?:,\s*[^,]+)?$/);return{line:match?.[1]?.trim()||raw,postal:String(identity?.postalCode||match?.[2]||'').trim(),city:String(identity?.city||match?.[3]||'').trim()};}
  async function restoreLegacyNormalizedData(){
   try{
    global.phase1EnsureState?.();
