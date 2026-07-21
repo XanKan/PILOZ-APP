@@ -26,7 +26,7 @@ const state={companyId:'c1',data:{
  paymentMethods:[{code:'bank_transfer',label:'Virement bancaire',active:true,is_default:true,position:1},{code:'card',label:'Carte',active:true,position:2}],activityLogs:[{id:'a1',entity_id:'q1',action:'document.finalized',created_at:'2026-07-15T10:00:00Z'}]
 }};
 const calls=[];
-window.PilozERP={rpc:async(name,args)=>{calls.push(['rpc',name,args]);if(name==='save_document_comment')return'dc-new';if(name.startsWith('record_document_payment'))return'p-new';if(name==='convert_quote_to_invoice'||name.startsWith('create_'))return'f1';return{};},update:async(table,id,data)=>{calls.push(['update',table,id,data]);return[{id,...data}]},signedUrl:async()=>({})};
+window.PilozERP={rpc:async(name,args)=>{calls.push(['rpc',name,args]);if(name==='save_document_comment')return'dc-new';if(name.startsWith('record_document_payment'))return'p-new';if(name==='convert_quote_to_invoice'||name.startsWith('create_'))return'f1';return{};},invoke:async(name,args)=>{calls.push(['invoke',name,args]);return{ready:false,status:'pending'};},update:async(table,id,data)=>{calls.push(['update',table,id,data]);return[{id,...data}]},signedUrl:async()=>({})};
 window.PilozApp={getState:()=>state,go(path){location.hash=path;},refresh:async()=>{calls.push(['refresh']);},newDocument(type){calls.push(['newDocument',type]);},editDocument(id){calls.push(['editDocument',id]);},convertDocument(type){calls.push(['convertDocument',type]);},newDocumentVersion(){calls.push(['newDocumentVersion']);},openSendDocument(){calls.push(['openSendDocument']);},duplicateDocument(){calls.push(['duplicateDocument']);},createReminder(){calls.push(['createReminder']);}};
 window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);return false;}};
 </script>
@@ -41,6 +41,8 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   check('liste compacte devis',document.querySelectorAll('.document-viewer-list-item').length===2&&main.textContent.includes('En attente')&&main.textContent.includes('Acceptés')&&main.textContent.includes('Refusés'));
   check('recherche et filtre statut',!!document.querySelector('[data-document-viewer-search]')&&!!document.querySelector('.document-viewer-search-row select'));
   check('aperçu figé du snapshot',main.textContent.includes('Aperçu figé')&&main.textContent.includes('DEV-2026-0042'));
+  await wait(20);check('génération PDF reprise depuis le snapshot',calls.some(call=>call[0]==='invoke'&&call[1]==='generate-document-pdf'&&call[2].documentId==='q1'));
+  await wait(3200);check('réponse PDF 202 retentée automatiquement',calls.filter(call=>call[0]==='invoke'&&call[1]==='generate-document-pdf'&&call[2].documentId==='q1').length>=2);
   check('coût interne absent du document client',!document.querySelector('.document-snapshot-paper').textContent.includes('45'));
   check('toolbar PDF complète',main.textContent.includes('85 %')&&document.querySelectorAll('.document-viewer-toolbar button').length>=7);
   check('panneau devis complet',main.textContent.includes('Reste à facturer')&&main.textContent.includes('Convertir en…')&&main.textContent.includes('Modifier via une nouvelle version'));

@@ -16,7 +16,7 @@
  };
  const typeLabels={quote:'Devis',invoice:'Facture',deposit_invoice:'Facture d’acompte',balance_invoice:'Facture de solde',credit_note:'Avoir',proforma_invoice:'Facture pro forma',recurring_invoice:'Facture récurrente'};
  const linkLabels={invoice:'Facture',deposit:'Acompte',progress:'Situation',balance:'Solde',credit_note:'Avoir',proforma:'Pro forma',version:'Version',related:'Document lié'};
- const ui={id:'',kind:'quote',query:'',tab:'all',status:'all',zoom:85,page:1,listCollapsed:false,infoOpen:true,mobileDocument:false,editingComment:'',busy:false,modal:null,pdfUrls:new Map(),pdfLoading:new Set()};
+ const ui={id:'',kind:'quote',query:'',tab:'all',status:'all',zoom:85,page:1,listCollapsed:false,infoOpen:true,mobileDocument:false,editingComment:'',busy:false,modal:null,pdfUrls:new Map(),pdfLoading:new Set(),pdfGenerating:new Set(),pdfTried:new Set(),pdfAttempts:new Map(),pdfRetryTimers:new Map()};
 
  const state=()=>app()?.getState?.();
  const esc=value=>global.PilozCommercialV2?.esc?.(value)??String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -142,9 +142,18 @@
   catch(error){console.error('[PILOZ Documents] PDF final indisponible',{code:error?.code||'',status:error?.status||0,message:error?.message||String(error)});}
   finally{ui.pdfLoading.delete(path);if(activeDocument(state()?.data||{})?.id===doc.id)renderViewer(state());}
  }
+ function schedulePdfRetry(key,doc,snapshot,retryAt){const attempts=ui.pdfAttempts.get(key)||1;if(attempts>=3){ui.pdfTried.add(key);return;}ui.pdfTried.add(key);const requested=Date.parse(retryAt||''),delay=Number.isFinite(requested)?Math.min(60000,Math.max(2000,requested-Date.now())):3000;clearTimeout(ui.pdfRetryTimers.get(key));ui.pdfRetryTimers.set(key,setTimeout(()=>{ui.pdfRetryTimers.delete(key);ui.pdfTried.delete(key);if(activeDocument(state()?.data||{})?.id===doc.id)ensurePdfGenerated(doc,snapshot);},delay));}
+ async function ensurePdfGenerated(doc,snapshot){
+  const key=snapshot?.id;if(!key||pdfPath(doc,snapshot)||ui.pdfGenerating.has(key)||ui.pdfTried.has(key)||!(doc?.finalized_at||doc?.validated_at||doc?.locked_at))return;
+  ui.pdfGenerating.add(key);ui.pdfAttempts.set(key,(ui.pdfAttempts.get(key)||0)+1);let retry=false;
+  try{const result=await api().invoke('generate-document-pdf',{documentId:doc.id});if(result?.ready){ui.pdfTried.add(key);ui.pdfAttempts.delete(key);await app().refresh();}else{retry=true;schedulePdfRetry(key,doc,snapshot,result?.retryAt);}}
+  catch(error){console.warn('[PILOZ PDF] Génération différée',{code:error?.code||'',status:error?.status||0,message:error?.message||String(error)});retry=true;schedulePdfRetry(key,doc,snapshot,error?.retryAt);}
+  finally{ui.pdfGenerating.delete(key);if(!retry)ui.pdfTried.add(key);if(activeDocument(state()?.data||{})?.id===doc.id)renderViewer(state());}
+ }
  function renderPreview(data,doc){
   const context=snapshotContext(data,doc),path=pdfPath(doc,context.snapshot),pdfUrl=path?ui.pdfUrls.get(path):'',pages=pageCount(context);ui.page=Math.min(Math.max(1,ui.page),pages);
   if(path&&!pdfUrl&&!ui.pdfLoading.has(path))setTimeout(()=>ensurePdfUrl(doc,context.snapshot),0);
+  if(!path&&context.frozen&&!ui.pdfGenerating.has(context.snapshot?.id)&&!ui.pdfTried.has(context.snapshot?.id))setTimeout(()=>ensurePdfGenerated(doc,context.snapshot),0);
   const status=pdfUrl?'PDF final':context.frozen?(path?'Chargement du PDF final…':'Aperçu figé — PDF en attente'):'Aperçu HTML du brouillon';
   return`<main class="document-viewer-preview" aria-label="Aperçu du document"><header class="document-viewer-preview-head"><div>${iconButton('Replier ou afficher la liste','☰','PilozDocumentViewerV2.toggleList()')}<button type="button" class="document-viewer-mobile-back" onclick="PilozDocumentViewerV2.backToList()">← Liste</button><b>${esc(documentNumber(doc))}</b><span>${esc(status)}</span></div><div>${actionButton('Informations','PilozDocumentViewerV2.toggleInfo()','secondary')}</div></header>
    <nav class="document-viewer-toolbar" aria-label="Outils de l’aperçu"><div>${iconButton('Page précédente','←','PilozDocumentViewerV2.changePage(-1)',ui.page<=1?'disabled':'')}<span><b>${ui.page}</b> / ${pages}</span>${iconButton('Page suivante','→','PilozDocumentViewerV2.changePage(1)',ui.page>=pages?'disabled':'')}</div><div>${iconButton('Réduire le zoom','−','PilozDocumentViewerV2.changeZoom(-10)',ui.zoom<=50?'disabled':'')}<strong>${ui.zoom} %</strong>${iconButton('Augmenter le zoom','+','PilozDocumentViewerV2.changeZoom(10)',ui.zoom>=200?'disabled':'')}</div><div>${iconButton('Télécharger','⇩','PilozDocumentViewerV2.download()')}${iconButton('Imprimer','⎙','PilozDocumentViewerV2.print()')}${iconButton('Plein écran','⛶','PilozDocumentViewerV2.fullscreen()')}</div></nav>
