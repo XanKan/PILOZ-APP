@@ -213,7 +213,7 @@
   document.getElementById('main').innerHTML=header('Abonnement et facturation','Offre actuelle, essai et limites de votre entreprise.')+
   `<div class="modern-settings-grid">
     <section class="phase1-card"><h2>Offre actuelle</h2>
-      <p><b>Piloz ${esc(plan.name)}</b> — ${statusBadge(trialExpired?'expired':sub.status==='active'?'active':sub.status==='past_due'?'pending':sub.status==='canceled'||sub.status==='suspended'?'archived':'draft')} <span style="margin-left:6px">${esc(statusLabelsSub[trialExpired?'expired':sub.status]||sub.status)}</span></p>
+      <p><b>Piloz ${esc(plan.name)}</b> — <span class="modern-status ${trialExpired?'danger':sub.status==='active'?'success':sub.status==='past_due'?'warning':sub.status==='canceled'||sub.status==='suspended'?'danger':'info'}">${esc(statusLabelsSub[trialExpired?'expired':sub.status]||sub.status)}</span></p>
       ${sub.status==='trialing'&&sub.trial_ends_at?`<p class="modern-card-desc">Essai ${trialExpired?'terminé le':'jusqu’au'} ${date(sub.trial_ends_at)}.</p>`:''}
       <p class="modern-card-desc">Facturation ${sub.billing_interval==='annual'?'annuelle':'mensuelle'} · ${money((sub.billing_interval==='annual'?plan.price_annual_cents:plan.price_monthly_cents)/100)} HT${sub.billing_interval==='annual'?' / an':' / mois'}</p>
       ${sub.subscription_ends_at?`<p class="modern-card-desc">Prochaine échéance : ${date(sub.subscription_ends_at)}</p>`:''}
