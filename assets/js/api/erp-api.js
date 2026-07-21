@@ -28,6 +28,9 @@
     if(value.includes('jwt expired')||value.includes('session')&&value.includes('expired')||status===401)return'Votre session a expiré. Veuillez vous reconnecter.';
     if(value.includes('failed to fetch')||value.includes('network')||status===0)return'Impossible de contacter le serveur. Vérifiez votre connexion.';
     if(value.includes('forbidden')||value.includes('row-level security')||status===403)return'Vous n’avez pas l’autorisation d’effectuer cette action.';
+    if(value.includes('company_onboarding_required'))return'Les informations obligatoires de l’entreprise doivent être enregistrées avant de créer ce document.';
+    if(value.includes('validated_document_is_locked'))return'Ce document validé est verrouillé. Créez une correction ou un avoir.';
+    if(value.includes('schema cache')||value.includes('does not exist')||value.includes('pgrst204'))return'La base de données doit être synchronisée avant cette opération.';
     if(value.includes('payment_exceeds_balance'))return'Le paiement dépasse le reste à payer.';
     if(value.includes('invalid_invoice_state'))return'Cette facture ne peut pas être modifiée dans son état actuel.';
     if(value.includes('invalid_quantity'))return'La quantité doit être supérieure à zéro.';
