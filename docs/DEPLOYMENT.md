@@ -14,8 +14,12 @@ Appliquer les migrations dans l’ordre :
 6. `202607200006_modern_commercial_suite.sql`
 7. `202607200007_harden_function_permissions.sql`
 8. `202607200008_minimize_authenticated_rpc_surface.sql`
+9. `202607200009_balance_invoice_validation.sql`
+10. `202607210010_functional_completeness.sql`
+11. `202607210011_backfill_legacy_company_settings.sql`
+12. `202607210012_subscriptions_and_plans.sql`
 
-La sixième migration ajoute les contacts clients, catégories, taux de TVA, étapes du pipeline, activités, relances, échéanciers et widgets. Elle ajoute aussi les RPC atomiques de conversion devis-facture, paiement et mouvement de stock, ainsi que leurs politiques RLS. Les septième et huitième migrations retirent l’exécution anonyme héritée puis réduisent les droits des utilisateurs authentifiés à une liste explicite de RPC métier.
+La sixième migration ajoute les contacts clients, catégories, taux de TVA, étapes du pipeline, activités, relances, échéanciers et widgets. Elle ajoute aussi les RPC atomiques de conversion devis-facture, paiement et mouvement de stock, ainsi que leurs politiques RLS. Les septième et huitième migrations retirent l’exécution anonyme héritée puis réduisent les droits des utilisateurs authentifiés à une liste explicite de RPC métier. La dixième migration ajoute notamment `documents.sent_at`, les champs comptables/légaux de `company_settings`, et les RPC `cancel_document_payment`/`reopen_invoice_for_correction` — **cette liste doit être tenue à jour à chaque nouvelle migration** ; un déploiement qui s'arrête avant la fin de la liste laisse l'application dans un état incohérent (colonnes ou fonctions absentes malgré un code applicatif qui les suppose présentes).
 
 Fonctions Edge utilisées :
 
