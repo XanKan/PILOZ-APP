@@ -90,7 +90,8 @@
       PilozApp.setLine(0,'unit_cost_snapshot',60,true);PilozApp.setLine(0,'unit_price',100,true);await wait(30);
       check('marges de ligne',document.querySelector('.erp-line-total')?.textContent.includes('taux de marge')&&document.querySelector('.erp-line-total')?.textContent.includes('taux de marque'));
 
-      currentStep='finalisation et PDF';PilozApp.setDraft('client_id',clientId);PilozApp.setLine(0,'name','Document PDF');await PilozApp.saveDocument();await wait(100);const finalizedId=PilozApp.getState().draft.id,finalized=await PilozApp.finalizeCurrentDocument();await wait(100);
+      currentStep='brouillon incomplet';const incompleteDraftId=await PilozApp.saveDocument();await wait(100);check('brouillon enregistrable sans client',!!incompleteDraftId&&PilozApp.getState().draft?.client_id===null);
+      currentStep='finalisation et PDF';PilozApp.newDocument('quote');PilozApp.setDraft('client_id',clientId);PilozApp.setLine(0,'name','Document PDF');PilozApp.setLine(0,'unit_price',100,true);await PilozApp.saveDocument();await wait(100);const finalizedId=PilozApp.getState().draft.id,finalized=await PilozApp.finalizeCurrentDocument();await wait(100);
       check('PDF demandé après finalisation',!!finalized?.snapshot_id&&pdfInvocations.filter(call=>call.documentId===finalizedId).length===1);
       PilozApp.newDocument('quote');PilozApp.setDraft('client_id',clientId);PilozApp.setLine(0,'name','PDF différé');await PilozApp.saveDocument();await wait(100);const deferredId=PilozApp.getState().draft.id;failPdfGeneration=true;const deferred=await PilozApp.finalizeCurrentDocument();failPdfGeneration=false;await wait(100);
       check('échec PDF sans annuler la finalisation',!!deferred?.snapshot_id&&tables.documents.find(x=>x.id===deferredId)?.finalized_at&&pdfInvocations.some(call=>call.documentId===deferredId));

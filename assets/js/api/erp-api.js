@@ -28,7 +28,14 @@
     if(value.includes('jwt expired')||value.includes('session')&&value.includes('expired')||status===401)return'Votre session a expiré. Veuillez vous reconnecter.';
     if(value.includes('failed to fetch')||value.includes('network')||status===0)return'Impossible de contacter le serveur. Vérifiez votre connexion.';
     if(value.includes('forbidden')||value.includes('row-level security')||status===403)return'Vous n’avez pas l’autorisation d’effectuer cette action.';
-    if(value.includes('company_onboarding_required'))return'Les informations obligatoires de l’entreprise doivent être enregistrées avant de créer ce document.';
+    if(value.includes('company_onboarding_required'))return'Complétez la raison sociale, le SIRET, l’e-mail et l’adresse de l’entreprise avant de finaliser ce document.';
+    if(value.includes('document_client_required'))return'Sélectionnez un client actif avant de finaliser ce document.';
+    if(value.includes('document_lines_required'))return'Ajoutez au moins une ligne avec une désignation et une quantité supérieure à zéro.';
+    if(value.includes('document_total_must_be_positive'))return'Le total du document doit être supérieur à zéro avant la finalisation.';
+    if(value.includes('quote_validity_date_required'))return'Renseignez la date de validité du devis avant de le finaliser.';
+    if(value.includes('invalid_document_state')||value.includes('document_is_locked'))return'Ce document ne peut plus être modifié dans son état actuel.';
+    if(value.includes('invalid input syntax for type uuid')||value.includes('22p02'))return'Une référence sélectionnée n’est plus valide. Rechargez la page puis sélectionnez-la à nouveau.';
+    if(value.includes('foreign key')||value.includes('23503'))return'Un client, un article ou un modèle sélectionné n’existe plus. Rechargez les données puis réessayez.';
     if(value.includes('validated_document_is_locked'))return'Ce document validé est verrouillé. Créez une correction ou un avoir.';
     if(value.includes('schema cache')||value.includes('does not exist')||value.includes('pgrst204'))return'La base de données doit être synchronisée avant cette opération.';
     if(value.includes('payment_exceeds_balance'))return'Le paiement dépasse le reste à payer.';
