@@ -17,6 +17,8 @@
  function currentMember(){return(state.data.members||[]).find(member=>member.user_id===global.PilozRuntime?.session?.user_id);}
  function allowed(permission){const member=currentMember();return!!member&&(member.role==='owner'||member.role==='admin'||member.permissions?.[permission]===true);}
  const uuid=()=>crypto.randomUUID();
+ const stockRoutes=new Set(['stock','warehouses','inventories','stock-alerts','stock-reservations']),purchaseRoutes=new Set(['suppliers','supplier-requests','purchase-orders','purchase-order-editor','receipts','supplier-returns']);
+ function featureLockedRoute(route){if(stockRoutes.has(route)||route.startsWith('stock-movements'))return'inventory';if(purchaseRoutes.has(route))return'purchases';return null;}
  function hash(){return(location.hash||'#dashboard').slice(1).split('?')[0];}
  function current(){return routes[hash()]||hash();}
  function go(path){location.hash=path;}
@@ -57,7 +59,7 @@
     lines:`document_lines?select=${lineColumns}&company_id=eq.${cid}&order=position`,documentDeliveryMeta:`documents?select=id,sent_at&company_id=eq.${cid}`,templates:`document_templates?select=*&company_id=eq.${cid}&order=updated_at.desc`,
     warehouses:`warehouses?select=*&company_id=eq.${cid}&order=name`,locations:`warehouse_locations?select=*&company_id=eq.${cid}&order=code`,
     levels:`stock_levels?select=*&company_id=eq.${cid}`,movements:`stock_movements?select=${movementColumns},item:catalog_items(name,reference)&company_id=eq.${cid}&order=occurred_at.desc&limit=300`,
-    reservations:`stock_reservations?select=*&company_id=eq.${cid}`,inventories:`inventory_counts?select=*&company_id=eq.${cid}&order=created_at.desc`,inventoryLines:`inventory_count_lines?select=*&company_id=eq.${cid}`,activityLogs:`activity_logs?select=id,action,entity_type,entity_id,created_at,actor_user_id&company_id=eq.${cid}&order=created_at.desc&limit=200`,
+    reservations:`stock_reservations?select=*&company_id=eq.${cid}`,inventories:`inventory_counts?select=*&company_id=eq.${cid}&order=created_at.desc`,inventoryLines:`inventory_count_lines?select=*&company_id=eq.${cid}`,activityLogs:`activity_logs?select=id,action,entity_type,entity_id,created_at,actor_user_id&company_id=eq.${cid}&order=created_at.desc&limit=200`,subscription:`subscriptions?select=*&company_id=eq.${cid}`,plans:`plans?select=*&order=position`,
     purchaseOrders:`purchase_orders?select=*,supplier:suppliers(legal_name)&company_id=eq.${cid}&order=created_at.desc`,purchaseOrderLines:`purchase_order_lines?select=*&company_id=eq.${cid}`,receipts:`goods_receipts?select=*&company_id=eq.${cid}&order=created_at.desc`,deliveries:`deliveries?select=*&company_id=eq.${cid}&order=created_at.desc`,deliveryLines:`delivery_lines?select=*&company_id=eq.${cid}`,
     payments:`payments?select=*&company_id=eq.${cid}`,attachments:`attachments?select=*&company_id=eq.${cid}&order=created_at.desc`,costHistory:`stock_cost_history?select=*&company_id=eq.${cid}&order=created_at.desc`,
     supplierRequests:`supplier_quote_requests?select=*,supplier:suppliers(legal_name)&company_id=eq.${cid}&order=created_at.desc`,supplierReturns:`supplier_returns?select=*,supplier:suppliers(legal_name)&company_id=eq.${cid}&order=created_at.desc`
@@ -78,6 +80,8 @@
   document.documentElement.classList.toggle('erp-no-costs',!allowed('view_purchase_prices'));
   document.documentElement.classList.toggle('erp-no-margins',!allowed('view_margins'));
  document.documentElement.classList.toggle('erp-no-stock-adjustment',!allowed('adjust_stock'));
+ const lockedFeature=featureLockedRoute(current());
+ if(lockedFeature&&global.PilozSubscription&&!global.PilozSubscription.hasFeature(lockedFeature)){main.innerHTML=top('Fonctionnalité verrouillée')+global.PilozSubscription.upgradeCard(lockedFeature);return;}
  if(current()==='purchase-order-editor'){renderPurchaseOrderEditor();return;}
   const route=current();if(global.PilozModern?.renderRoute?.(route,state))return;if(route==='dashboard')renderDashboard();else if(route.startsWith('documents:'))renderDocuments(route.split(':')[1]);else if(route==='document-editor'){renderDocumentEditor();setTimeout(enhanceDocumentActions,0);}else if(route==='clients')renderPartners('clients');else if(route==='suppliers')renderPartners('suppliers');else if(route==='catalog')renderCatalog();else if(route==='templates')renderTemplates();else if(route==='template-editor')renderTemplateEditor();else if(route==='stock')renderStock();else if(route.startsWith('stock-movements'))renderMovements(route.split(':')[1]);else if(route==='stock-reservations')renderReservations();else if(route==='warehouses')renderWarehouses();else if(route==='inventories')renderInventories();else if(route==='stock-alerts')renderAlerts();else if(route==='supplier-requests')renderSupplierRequests();else if(route==='purchase-orders')renderPurchaseOrders();else if(route==='receipts')renderReceipts();else if(route==='supplier-returns')renderSupplierReturns();else if(route==='reports')renderReports();else if(route==='settings'){renderSettings();setTimeout(enhancePhoneVerification,0);}else main.innerHTML=top('Module')+empty('Module introuvable','Cette vue n’existe pas.');
  }
