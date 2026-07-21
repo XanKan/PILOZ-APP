@@ -14,7 +14,7 @@ const state={companyId:'c1',data:{
  clients:[{id:'cl1',legal_name:'Client Alpha',address_line_1:'8 rue Client',postal_code:'69001',city:'Lyon',email:'alpha@example.fr',siret:'12345678900029'}],
  documents:[
   {id:'q1',company_id:'c1',document_type:'quote',number:'DEV-2026-0042',client_id:'cl1',subject:'Projet Alpha',status:'accepted',issue_date:'2026-07-15',validity_date:'2026-08-15',currency:'EUR',total_excl_tax:1000,total_tax:200,total_incl_tax:1200,finalized_at:'2026-07-15T10:00:00Z',snapshot_id:'s1'},
-  {id:'q2',company_id:'c1',document_type:'quote',draft_number:'BROUILLON-DEV-2026-0043',client_id:'cl1',subject:'Projet Bêta',status:'draft',issue_date:'2026-07-20',validity_date:'2026-08-20',currency:'EUR',total_excl_tax:500,total_tax:100,total_incl_tax:600},
+  {id:'q2',company_id:'c1',document_type:'quote',number:'DEV-2026-0043',client_id:'cl1',subject:'Projet Bêta',status:'draft',issue_date:'2026-07-20',validity_date:'2026-08-20',currency:'EUR',total_excl_tax:500,total_tax:100,total_incl_tax:600},
   {id:'f1',company_id:'c1',document_type:'invoice',number:'FAC-2026-0081',client_id:'cl1',source_document_id:'q1',subject:'Projet Alpha',status:'partially_paid',issue_date:'2026-07-16',due_date:'2026-08-16',payment_method:'bank_transfer',currency:'EUR',total_excl_tax:1000,total_tax:200,total_incl_tax:1200,finalized_at:'2026-07-16T10:00:00Z'},
   {id:'f2',company_id:'c1',document_type:'invoice',number:'FAC-2026-0082',client_id:'cl1',status:'paid',issue_date:'2026-07-10',due_date:'2026-07-20',currency:'EUR',total_excl_tax:100,total_tax:20,total_incl_tax:120,finalized_at:'2026-07-10T10:00:00Z'}
  ],

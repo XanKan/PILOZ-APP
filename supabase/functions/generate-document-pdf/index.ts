@@ -140,7 +140,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     : doc.document_type === "proforma_invoice" ? "Facture pro forma"
     : doc.document_type === "invoice" && metadata.conversion === "progress" ? "Facture de situation"
     : doc.document_type === "invoice" ? "Facture" : "Document";
-  const number = text(doc.number || doc.draft_number || "Brouillon");
+  const number = text(doc.number || "Brouillon");
   const pages: PDFPage[] = [];
   let page!: PDFPage;
   let y = 0;

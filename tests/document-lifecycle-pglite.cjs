@@ -61,7 +61,7 @@ async function bootstrap(db){
   `);
 }
 
-async function saveAndFinalize(db,type){
+async function saveDraft(db,type){
   const targetDocument={
     company_id:company,document_type:type,version:1,client_id:client,issue_date:'2026-07-21',
     due_date:type==='quote'?null:'2026-08-20',validity_date:type==='quote'?'2026-08-20':null,
@@ -80,23 +80,29 @@ async function saveAndFinalize(db,type){
     [JSON.stringify(targetDocument),JSON.stringify(targetLines)]
   );
   const saved=draft.rows[0].result;
-  if(!saved?.id||saved.status!=='draft'||!saved.draft_number)throw new Error(`${type}: invalid draft result ${JSON.stringify(saved)}`);
+  if(!saved?.id||saved.status!=='draft'||!saved.number)throw new Error(`${type}: invalid draft result ${JSON.stringify(saved)}`);
   const totals=await db.query('select total_excl_tax,total_tax,total_incl_tax from public.documents where id=$1',[saved.id]);
   const total=Number(totals.rows[0]?.total_incl_tax||0);
   if(total!==120)throw new Error(`${type}: expected total 120, got ${total}`);
-  const final=await db.query('select public.finalize_document($1) result',[saved.id]);
-  const finalized=final.rows[0].result;
-  if(!finalized?.number||finalized.status!=='finalized'||!finalized.snapshot_id)throw new Error(`${type}: invalid final result ${JSON.stringify(finalized)}`);
-  return {draft:saved.draft_number,number:finalized.number,total};
+  return {id:saved.id,number:saved.number,total};
 }
 
 (async()=>{
   const db=new PGlite({extensions:{pgcrypto}});
   try{
     await bootstrap(db);
-    const quote=await saveAndFinalize(db,'quote');
-    const invoice=await saveAndFinalize(db,'invoice');
-    console.log(JSON.stringify({ok:true,quote,invoice}));
+    // Le devis reçoit son numéro officiel dès la création et n'est jamais
+    // finalisé/verrouillé : il reste modifiable et finalize_document le refuse.
+    const quote=await saveDraft(db,'quote');
+    const quoteFinalizeAttempt=await db.query('select public.finalize_document($1) result',[quote.id]).then(()=>null,error=>error);
+    if(!quoteFinalizeAttempt||!/document_type_cannot_be_finalized/.test(quoteFinalizeAttempt.message))throw new Error(`quote: finalize_document should reject quotes, got ${quoteFinalizeAttempt&&quoteFinalizeAttempt.message}`);
+    // La facture reçoit aussi son numéro dès la création ; la finalisation ne
+    // le change plus, elle se contente de verrouiller le document.
+    const invoice=await saveDraft(db,'invoice');
+    const final=await db.query('select public.finalize_document($1) result',[invoice.id]);
+    const finalized=final.rows[0].result;
+    if(!finalized?.number||finalized.number!==invoice.number||finalized.status!=='finalized'||!finalized.snapshot_id)throw new Error(`invoice: invalid final result ${JSON.stringify(finalized)}`);
+    console.log(JSON.stringify({ok:true,quote,invoice:{...invoice,finalizedAt:finalized.finalized_at}}));
   }finally{
     await db.close();
   }

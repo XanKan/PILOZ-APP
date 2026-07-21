@@ -2,7 +2,6 @@
 -- La requête doit retourner uniquement des lignes avec ok = true.
 
 with checks(check_name,ok) as(values
-  ('documents.draft_number',exists(select 1 from information_schema.columns where table_schema='public' and table_name='documents' and column_name='draft_number')),
   ('documents.pipeline_stage',exists(select 1 from information_schema.columns where table_schema='public' and table_name='documents' and column_name='pipeline_stage')),
   ('documents.finalized_at',exists(select 1 from information_schema.columns where table_schema='public' and table_name='documents' and column_name='finalized_at')),
   ('document_snapshots',to_regclass('public.document_snapshots') is not null),
