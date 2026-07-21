@@ -92,6 +92,14 @@
 
       await go('sales/invoices');
       check('filtres factures',document.querySelector('.modern-view-tabs')?.textContent.includes('Partiellement payées')&&document.querySelector('.modern-view-tabs')?.textContent.includes('Acomptes')&&document.querySelector('.modern-view-tabs')?.textContent.includes('Pro forma'));
+      PilozModern.openInvoiceDetail(invoiceId);
+      check('fiche facture détaillée',document.getElementById('modern-drawer')?.textContent.includes('Historique des paiements')&&document.getElementById('modern-drawer')?.textContent.includes('Reste à payer')&&document.getElementById('modern-drawer')?.textContent.includes('Relancer le client'));
+      PilozModern.openInvoicePayment(invoiceId,true);await PilozModern.saveInvoicePayment(invoiceId);await wait(100);
+      check('paiement total et reste nul',PilozApp.getState().data.documents.find(x=>x.id===invoiceId)?.status==='paid'&&PilozApp.getState().data.payments.filter(x=>x.document_id===invoiceId).reduce((sum,x)=>sum+Number(x.amount),0)===600);
+      PilozModern.openInvoiceReminder(invoiceId);await PilozModern.saveInvoiceReminder(invoiceId,'manual');await wait(100);
+      check('relance facture historisée',PilozApp.getState().data.reminders.some(x=>x.document_id===invoiceId&&x.status==='completed'));
+      PilozModern.closeDrawer();PilozModern.setDocumentView('paid');await wait(50);
+      check('filtre factures payées',document.querySelector('.modern-table')?.textContent.includes('FAC-2026-0001'));
       await go('crm/opportunities');
       const linkedDocuments=PilozApp.getState().data.documents.filter(x=>x.opportunity_id===opportunityId);
       check('documents reliés au pipeline',document.querySelector('.modern-table')?.textContent.includes('Projet commercial')&&linkedDocuments.some(x=>x.document_type==='quote')&&linkedDocuments.filter(x=>x.document_type==='invoice').length===2);
