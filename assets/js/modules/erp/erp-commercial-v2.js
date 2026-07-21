@@ -9,7 +9,7 @@
  const datetime=value=>value?new Intl.DateTimeFormat('fr-FR',{dateStyle:'short',timeStyle:'short'}).format(new Date(value)):'—';
  const iso=value=>new Date(value).toISOString().slice(0,10);
  const state=()=>app().getState();
- const button=(label,handler,kind='btn-o',attrs='')=>`<button type="button" class="btn ${kind}" onclick="${handler}" ${attrs}>${esc(label)}</button>`;
+ const button=(label,handler,kind='btn-o',attrs='')=>`<button ${/\btype=/.test(attrs)?'':'type="button"'} class="btn ${kind}" onclick="${handler}" ${attrs}>${esc(label)}</button>`;
  const header=(title,description,actions='')=>`<header class="modern-page-header"><div><h1>${esc(title)}</h1><p>${esc(description)}</p></div><div class="actions">${actions}</div></header><div id="commercial-v2-live" class="sr-only" aria-live="polite"></div>`;
  const empty=(title,text,action='')=>`<div class="modern-empty"><h3>${esc(title)}</h3><p>${esc(text)}</p>${action}</div>`;
  const status=(label,tone='info')=>`<span class="modern-status ${tone}">${esc(label)}</span>`;
