@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<title>Tests réponses API PILOZ</title>
+<body>
+<main id="result" data-status="running">Vérification…</main>
+<script>
+  const queue=[];
+  window.PilozRuntime={config:{url:'https://example.invalid',key:'anon'},session:{access_token:'test'},request:async()=>queue.shift()};
+</script>
+<script src="../assets/js/api/erp-api.js"></script>
+<script>
+  (async()=>{
+    const checks=[],check=(name,value)=>checks.push([name,!!value]);
+    queue.push(new Response('',{status:200,headers:{'content-type':'application/json'}}));
+    check('réponse JSON vide acceptée',await PilozERP.request('/empty')===null);
+    queue.push(new Response(null,{status:204}));
+    check('réponse 204 acceptée',await PilozERP.request('/no-content')===null);
+    queue.push(new Response('{"id":"document-1"}',{status:201,headers:{'content-type':'application/json; charset=utf-8'}}));
+    check('JSON valide lu une seule fois',(await PilozERP.request('/document')).id==='document-1');
+    let invalid=false;queue.push(new Response('<html>Erreur</html>',{status:200,headers:{'content-type':'text/html'}}));
+    try{await PilozERP.request('/html');}catch(error){invalid=error.code==='unexpected_content_type';}
+    check('HTML réussi refusé explicitement',invalid);
+    let malformed=false;queue.push(new Response('{invalid',{status:200,headers:{'content-type':'application/json'}}));
+    try{await PilozERP.request('/malformed');}catch(error){malformed=error.code==='invalid_json_response';}
+    check('JSON invalide signalé clairement',malformed);
+    check('undefined sérialisé sans échec',PilozERP.serializeBody({value:undefined})==='{"value":null}');
+    const failed=checks.filter(([,ok])=>!ok),node=document.getElementById('result');node.dataset.status=failed.length?'failed':'passed';node.textContent=`${failed.length?'FAIL':'PASS'} ${checks.filter(([,ok])=>ok).length}/${checks.length}`+(failed.length?' · '+failed.map(([name])=>name).join(', '):'');
+  })().catch(error=>{const node=document.getElementById('result');node.dataset.status='failed';node.textContent='FAIL '+error.message;});
+</script>
+</body>
+</html>

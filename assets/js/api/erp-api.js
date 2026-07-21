@@ -1,4 +1,26 @@
 (function(global){
+  const JSON_TYPES=['application/json','application/problem+json','application/vnd.pgrst.object+json'];
+  function responseMeta(response,path){return{path:String(path||''),status:Number(response?.status)||0,contentType:response?.headers?.get?.('content-type')||'',requestId:response?.headers?.get?.('x-request-id')||response?.headers?.get?.('sb-request-id')||''};}
+  function technicalLog(message,response,path,error){
+    const meta=responseMeta(response,path);
+    console.error('[PILOZ API] '+message,meta,error instanceof Error?{name:error.name,message:error.message}:undefined);
+  }
+  function isJsonContentType(value){const type=String(value||'').split(';')[0].trim().toLowerCase();return JSON_TYPES.includes(type)||type.endsWith('+json');}
+  async function readBody(response,path){
+    if(!response||response.status===204||response.status===205)return null;
+    const contentLength=response.headers?.get?.('content-length');
+    if(contentLength==='0')return null;
+    let text='';
+    try{text=await response.text();}catch(error){technicalLog('Lecture de réponse impossible',response,path,error);throw new Error('La réponse du serveur n’a pas pu être lue.');}
+    if(!text.trim())return null;
+    const contentType=response.headers?.get?.('content-type')||'';
+    if(!isJsonContentType(contentType))return{text,contentType};
+    try{return JSON.parse(text);}catch(error){technicalLog('JSON de réponse invalide',response,path,error);const failure=new Error('La réponse du serveur est invalide. Réessayez dans quelques instants.');failure.status=response.status;failure.code='invalid_json_response';throw failure;}
+  }
+  function serializeBody(value){
+    try{return JSON.stringify(value,(key,item)=>item===undefined?null:item);}
+    catch(error){console.error('[PILOZ API] Sérialisation de la requête impossible',{name:error.name,message:error.message});const failure=new Error('Certaines informations du formulaire ne peuvent pas être enregistrées.');failure.code='invalid_request_body';throw failure;}
+  }
   function translateError(message,status){
     const value=String(message||'').toLowerCase();
     if(value.includes('rate limit')||status===429)return'Trop de tentatives ont été effectuées. Réessayez plus tard.';
@@ -14,8 +36,11 @@
   async function request(path,options={}){
     const runtime=global.PilozRuntime;if(!runtime?.config||!runtime?.session) throw new Error('Authentification requise.');
     const response=await runtime.request(path,options);
-    if(!response.ok){let message='Une erreur est survenue.';try{const data=await response.json();message=data.error||data.message||data.details||message;}catch{}throw new Error(translateError(message,response.status));}
-    if(response.status===204)return null;return response.json();
+    let data;
+    try{data=await readBody(response,path);}catch(error){if(!response.ok)technicalLog('Réponse d’erreur illisible',response,path,error);throw error;}
+    if(!response.ok){const message=typeof data==='object'&&data?(data.error||data.message||data.details):'Une erreur est survenue.',failure=new Error(translateError(message,response.status));failure.status=response.status;failure.code=data?.code||data?.error_code||'';technicalLog('Requête refusée',response,path,failure);throw failure;}
+    if(data&&typeof data==='object'&&Object.prototype.hasOwnProperty.call(data,'text')){technicalLog('Réponse réussie non JSON',response,path);const failure=new Error('Le serveur a renvoyé une réponse inattendue. Réessayez dans quelques instants.');failure.status=response.status;failure.code='unexpected_content_type';throw failure;}
+    return data;
   }
   async function companyContext(){
     let rows=await request('/rest/v1/user_preferences?select=company_id&user_id=eq.'+encodeURIComponent(global.PilozRuntime.session.user_id));
@@ -23,17 +48,17 @@
     if(!rows[0]?.company_id)throw new Error("Aucune entreprise n'est associée à ce compte.");return rows[0].company_id;
   }
   async function invoke(name,body,signal){
-    const runtime=global.PilozRuntime,response=await fetch(runtime.config.url.replace(/\/$/,'')+'/functions/v1/'+name,{method:'POST',signal,headers:{apikey:runtime.config.key,Authorization:'Bearer '+runtime.session.access_token,'Content-Type':'application/json'},body:JSON.stringify(body)});
-    const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(translateError(data.error||data.message||'Service indisponible.',response.status));return data;
+    const runtime=global.PilozRuntime,response=await fetch(runtime.config.url.replace(/\/$/,'')+'/functions/v1/'+name,{method:'POST',signal,headers:{apikey:runtime.config.key,Authorization:'Bearer '+runtime.session.access_token,'Content-Type':'application/json'},body:serializeBody(body)});
+    const data=await readBody(response,'/functions/v1/'+name);if(!response.ok){const failure=new Error(translateError(data?.error||data?.message||'Service indisponible.',response.status));failure.status=response.status;failure.code=data?.code||'';technicalLog('Edge Function refusée',response,name,failure);throw failure;}return data;
   }
-  async function upsertCompanySettings(companyId,data){return request('/rest/v1/company_settings?on_conflict=company_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify({company_id:companyId,...data})});}
+  async function upsertCompanySettings(companyId,data){return request('/rest/v1/company_settings?on_conflict=company_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body:serializeBody({company_id:companyId,...data})});}
   function query(table,params=''){return request(`/rest/v1/${table}?${params}`);}
   const restrictedReturns=new Set(['catalog_items','documents','document_lines','stock_movements']);
-  function insert(table,data){return request(`/rest/v1/${table}${restrictedReturns.has(table)?'?select=id':''}`,{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(data)});}
-  function update(table,id,data){return request(`/rest/v1/${table}?id=eq.${encodeURIComponent(id)}${restrictedReturns.has(table)?'&select=id':''}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(data)});}
+  function insert(table,data){return request(`/rest/v1/${table}${restrictedReturns.has(table)?'?select=id':''}`,{method:'POST',headers:{Prefer:'return=representation'},body:serializeBody(data)});}
+  function update(table,id,data){return request(`/rest/v1/${table}?id=eq.${encodeURIComponent(id)}${restrictedReturns.has(table)?'&select=id':''}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:serializeBody(data)});}
   function remove(table,id){return request(`/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,{method:'DELETE',headers:{Prefer:'return=minimal'}});}
-  function rpc(name,args={}){return request(`/rest/v1/rpc/${name}`,{method:'POST',body:JSON.stringify(args)});}
-  async function upload(bucket,path,file,upsert=true){const runtime=global.PilozRuntime,response=await fetch(`${runtime.config.url.replace(/\/$/,'')}/storage/v1/object/${bucket}/${path}`,{method:'POST',headers:{apikey:runtime.config.key,Authorization:`Bearer ${runtime.session.access_token}`,'Content-Type':file.type,'x-upsert':String(upsert)},body:file});if(!response.ok)throw new Error((await response.json().catch(()=>({}))).message||'Envoi impossible.');return response.json();}
-  async function signedUrl(bucket,path,expiresIn=3600){return request(`/storage/v1/object/sign/${bucket}/${path}`,{method:'POST',body:JSON.stringify({expiresIn})});}
-  global.PilozERP={request,companyContext,invoke,upsertCompanySettings,query,insert,update,remove,rpc,upload,signedUrl,translateError};
+  function rpc(name,args={}){return request(`/rest/v1/rpc/${name}`,{method:'POST',body:serializeBody(args)});}
+  async function upload(bucket,path,file,upsert=true){const runtime=global.PilozRuntime,response=await fetch(`${runtime.config.url.replace(/\/$/,'')}/storage/v1/object/${bucket}/${path}`,{method:'POST',headers:{apikey:runtime.config.key,Authorization:`Bearer ${runtime.session.access_token}`,'Content-Type':file.type,'x-upsert':String(upsert)},body:file}),data=await readBody(response,`/storage/v1/object/${bucket}`);if(!response.ok){const failure=new Error(data?.message||data?.error||'Envoi impossible.');failure.status=response.status;technicalLog('Envoi de fichier refusé',response,bucket,failure);throw failure;}return data;}
+  async function signedUrl(bucket,path,expiresIn=3600){return request(`/storage/v1/object/sign/${bucket}/${path}`,{method:'POST',body:serializeBody({expiresIn})});}
+  global.PilozERP={request,companyContext,invoke,upsertCompanySettings,query,insert,update,remove,rpc,upload,signedUrl,translateError,readBody,serializeBody};
 })(window);

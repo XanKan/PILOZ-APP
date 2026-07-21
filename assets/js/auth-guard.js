@@ -34,6 +34,7 @@
         global.pageAuth?.();
         return;
       }
+      global.PilozCurrentUser=user;
       await global.charger?.();
     }catch(error){
       console.error('Échec du démarrage sécurisé de Piloz',error);
