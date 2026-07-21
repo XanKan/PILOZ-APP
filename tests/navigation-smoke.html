@@ -56,7 +56,11 @@
       PilozModern.openArea('stock');
       checks.push(['navigation stock',PilozApp.lastRoute==='stock/items']);
       PilozModern.openArea('crm');
-      checks.push(['navigation suivi commercial',PilozApp.lastRoute==='crm/opportunities']);
+      checks.push(['navigation suivi commercial',PilozApp.lastRoute==='crm/pipeline']);
+      PilozModern.renderNavigation(document.getElementById('tabs'),state,'crm/pipeline');
+      const crmItems=[...document.querySelectorAll('.modern-secondary-item')].map(x=>x.textContent.trim());
+      checks.push(['sous-menu commercial simplifié',crmItems.join('|')==='Pipeline|Activités|Prospects']);
+      checks.push(['opportunités retirées de la navigation',!crmItems.includes('Opportunités')]);
     }catch(error){checks.push(['exécution',false,error.message]);}
     const failed=checks.filter(([,ok])=>!ok),result=document.getElementById('result');
     result.dataset.status=failed.length?'failed':'passed';
