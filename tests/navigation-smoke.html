@@ -30,6 +30,7 @@
     window.PilozApp={go(path){this.lastRoute=path;},render(){},getState(){return state;}};
   </script>
   <script src="../assets/js/modules/erp/erp-modern.js"></script>
+  <script src="../assets/js/modules/erp/erp-commercial-v2.js"></script>
   <script>
     const checks=[];
     try{
@@ -39,6 +40,8 @@
       checks.push(['rubriques attendues',items.map(x=>x.textContent.trim()).join('|')==='Tableau de bord|Suivi commercial|Ventes|Achats|Stock|Rapports|Paramètres']);
       checks.push(['ventes active',document.querySelector('.modern-primary-item.active')?.textContent.trim()==='Ventes']);
       checks.push(['sous-menu visible',!!secondary&&secondary.textContent.includes('Devis')&&secondary.textContent.includes('Factures')]);
+      checks.push(['aucune vue d’ensemble',!document.getElementById('tabs').textContent.includes('Vue d’ensemble')]);
+      checks.push(['échéances clients présentes',secondary.textContent.includes('Échéances clients')]);
       checks.push(['rail clair',getComputedStyle(rail).backgroundColor==='rgb(255, 255, 255)']);
       const compactWidth=innerWidth<=640?64:(innerWidth<=900?72:216),collapsedWidth=innerWidth<=900?compactWidth:72;
       checks.push(['largeur adaptée',Math.round(rail.getBoundingClientRect().width)===compactWidth]);
@@ -51,7 +54,9 @@
       checks.push(['libellés masqués',getComputedStyle(items[0].querySelector('span')).display==='none']);
       checks.push(['infobulles disponibles',items.every(x=>x.title&&x.getAttribute('aria-label'))]);
       PilozModern.openArea('stock');
-      checks.push(['navigation stock',PilozApp.lastRoute==='stock/overview']);
+      checks.push(['navigation stock',PilozApp.lastRoute==='stock/items']);
+      PilozModern.openArea('crm');
+      checks.push(['navigation suivi commercial',PilozApp.lastRoute==='crm/opportunities']);
     }catch(error){checks.push(['exécution',false,error.message]);}
     const failed=checks.filter(([,ok])=>!ok),result=document.getElementById('result');
     result.dataset.status=failed.length?'failed':'passed';
