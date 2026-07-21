@@ -156,6 +156,10 @@ button:disabled,.btn:disabled,input:disabled,select:disabled,textarea:disabled{o
 .document-v2-link-button{grid-column:1/-1;justify-self:start;border:0;background:transparent;color:#1745b5;font:inherit;font-weight:700;font-size:.78rem;cursor:pointer;padding:2px 0;text-decoration:underline}
 .document-v2-client-kind-label{margin:0 0 4px;font-size:.85rem;font-weight:700;color:var(--text-secondary)}
 .document-v2-client-kind-choice{display:flex;gap:10px}
+.erp-layout-choice{display:flex;gap:6px;flex-wrap:wrap}
+.erp-color-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.erp-color-field{display:flex!important;align-items:center;justify-content:space-between;gap:8px;font-size:.72rem!important;font-weight:700!important}
+.erp-color-field input[type=color]{width:36px;height:28px;padding:2px!important;border-radius:6px!important;cursor:pointer}
 
 .erp-editor{background:var(--page-background)!important}.erp-editor-bar{background:#fff!important;border-color:var(--border)!important;padding:11px 18px!important}.erp-editor-bar h1{font:740 1.02rem 'Albert Sans'!important;letter-spacing:-.01em}
 .erp-editor-layout{grid-template-columns:minmax(0,1fr) 280px!important}.erp-paper{max-width:1120px!important;border:1px solid var(--border)!important;border-radius:12px!important;box-shadow:var(--shadow-sm)!important}
