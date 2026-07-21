@@ -1,6 +1,6 @@
 -- À exécuter avec Supabase CLI contre une base de test après les migrations.
 begin;
-select plan(29);
+select plan(31);
 select has_table('public','companies','companies existe');
 select has_table('public','documents','documents existe');
 select has_table('public','stock_movements','stock_movements existe');
@@ -26,6 +26,8 @@ select has_table('public','payment_schedules','échéances disponibles');
 select has_table('public','dashboard_widgets','widgets personnalisables disponibles');
 select has_function('public','convert_quote_to_invoice',array['uuid','text'],'conversion devis facture atomique disponible');
 select has_function('public','record_document_payment',array['uuid','numeric','text','text','timestamp with time zone'],'paiement atomique disponible');
+select has_function('public','cancel_document_payment',array['uuid','text'],'annulation de paiement tracée disponible');
+select has_function('public','reopen_invoice_for_correction',array['uuid','text'],'réouverture contrôlée de facture disponible');
 select has_function('public','post_stock_movement',array['uuid','uuid','text','numeric','text','uuid','uuid','uuid','uuid','text','text','numeric'],'mouvement de stock atomique disponible');
 select ok((select relrowsecurity from pg_class where oid='public.vat_rates'::regclass),'RLS active sur les taux de TVA');
 

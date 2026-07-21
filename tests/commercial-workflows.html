@@ -9,8 +9,8 @@
     window.toast=()=>{};window.render=()=>{};window.renderTabs=()=>{};
     const companyId='00000000-0000-0000-0000-000000000010',userId='00000000-0000-0000-0000-000000000001',clientId='00000000-0000-0000-0000-000000000020',opportunityId='00000000-0000-0000-0000-000000000030',quoteId='00000000-0000-0000-0000-000000000040',invoiceId='00000000-0000-0000-0000-000000000050',balanceId='00000000-0000-0000-0000-000000000060';
     const tables={
-      company_settings:[{company_id:companyId,onboarding_completed_at:'2026-07-20T00:00:00Z',currency:'EUR',language:'fr',legal_name:'Entreprise test'}],
-      company_document_settings:[{company_id:companyId,quote_validity_days:30,default_payment_terms:'30 jours',default_payment_method:'Virement bancaire'}],
+      company_settings:[{company_id:companyId,onboarding_completed_at:'2026-07-20T00:00:00Z',currency:'EUR',language:'fr',legal_name:'Entreprise test',legal_form:'SAS',siret:'73282932000074',email:'contact@example.fr',address_line1:'1 rue du Test',postal_code:'75001',city:'Paris',country_code:'FR',subject_to_vat:true,default_vat_rate:20,company_type:null,description:null,secondary_phone:null,primary_contact_name:null,rcs_number:null,social_capital:null,registry_court:null,legal_mentions:null,vat_frequency:null,fiscal_year_start:null,vat_franchise:null}],
+      company_document_settings:[{company_id:companyId,quote_validity_days:30,default_payment_terms:'30 jours',default_payment_method:'Virement bancaire',mandate_reference:null}],
       company_erp_settings:[{company_id:companyId,crm_automations:{quote_created:true,quote_sent:true,quote_accepted:true,quote_rejected:true,invoice_created:true,invoice_paid:true}}],
       company_members:[{company_id:companyId,user_id:userId,role:'owner',permissions:{}}],
       clients:[{id:clientId,company_id:companyId,kind:'company',relationship_type:'client',legal_name:'Client démonstration',email:'client@example.fr'}],
@@ -36,7 +36,8 @@
     window.PilozCurrentUser={id:userId,user_metadata:{first_name:'Alice'}};
     window.PilozERP={
       companyContext:async()=>companyId,
-      request:async(path,options={})=>{const name=tableFrom(path);if(!name)return[];if(options.method==='DELETE'&&name==='document_lines'){const id=decodeURIComponent((path.match(/document_id=eq\.([^&]+)/)||[])[1]||'');tables.document_lines=tables.document_lines.filter(x=>x.document_id!==id);return null;}if(options.method==='DELETE'&&name==='purchase_order_lines'){const id=decodeURIComponent((path.match(/purchase_order_id=eq\.([^&]+)/)||[])[1]||'');tables.purchase_order_lines=tables.purchase_order_lines.filter(x=>x.purchase_order_id!==id);return null;}return clone(tables[name]||[]);},
+      upsertCompanySettings:async(id,data)=>{Object.assign(tables.company_settings[0],clone(data),{company_id:id});return[clone(tables.company_settings[0])];},
+      request:async(path,options={})=>{const name=tableFrom(path);if(!name)return[];if(options.method==='DELETE'&&name==='document_lines'){const id=decodeURIComponent((path.match(/document_id=eq\.([^&]+)/)||[])[1]||'');tables.document_lines=tables.document_lines.filter(x=>x.document_id!==id);return null;}if(options.method==='DELETE'&&name==='purchase_order_lines'){const id=decodeURIComponent((path.match(/purchase_order_id=eq\.([^&]+)/)||[])[1]||'');tables.purchase_order_lines=tables.purchase_order_lines.filter(x=>x.purchase_order_id!==id);return null;}if(options.method==='POST'&&['company_document_settings','company_erp_settings'].includes(name)){Object.assign(tables[name][0],JSON.parse(options.body));return null;}return clone(tables[name]||[]);},
       query:async()=>[],signedUrl:async()=>({}),upload:async()=>({}),invoke:async()=>({}),remove:async()=>null,
       insert:async(name,data)=>{const rows=(Array.isArray(data)?data:[data]).map(row=>({...clone(row),id:row.id||crypto.randomUUID(),created_at:new Date().toISOString()}));tables[name]=[...(tables[name]||[]),...rows];return clone(rows);},
       update:async(name,id,data)=>{const row=(tables[name]||[]).find(x=>x.id===id);if(row)Object.assign(row,clone(data));return row?[clone(row)]:[];},
@@ -66,6 +67,11 @@
       check('commande fournisseur et plusieurs lignes enregistrées',purchaseOrder?.supplier_id==='00000000-0000-0000-0000-000000000092'&&purchaseLines.length===2);
       await PilozApp.confirmPurchaseOrder(purchaseOrder.id);await wait(80);
       check('commande fournisseur confirmée',PilozApp.getState().data.purchaseOrders.find(x=>x.id===purchaseOrder.id)?.status==='confirmed');
+      PilozApp.openReceiptForm();document.querySelector('#receipt-form [name="purchase_order_line_id"]').value=purchaseLines[0].id;document.querySelector('#receipt-form [name="quantity"]').value='1';document.querySelector('#receipt-form [name="unit_cost"]').value='60';await PilozApp.saveReceipt();await wait(80);await PilozApp.validateReceipt(tables.goods_receipts.at(-1).id);await wait(100);
+      check('réception fournisseur partielle persistée',PilozApp.getState().data.purchaseOrderLines.find(x=>x.id===purchaseLines[0].id)?.received_quantity===1);
+      PilozApp.openReceiptForm();document.querySelector('#receipt-form [name="purchase_order_line_id"]').value=purchaseLines[0].id;document.querySelector('#receipt-form [name="quantity"]').value='1';document.querySelector('#receipt-form [name="unit_cost"]').value='60';await PilozApp.saveReceipt();await wait(80);await PilozApp.validateReceipt(tables.goods_receipts.at(-1).id);await wait(100);
+      PilozApp.openReceiptForm();document.querySelector('#receipt-form [name="purchase_order_line_id"]').value=purchaseLines[1].id;document.querySelector('#receipt-form [name="quantity"]').value='1';document.querySelector('#receipt-form [name="unit_cost"]').value='60';await PilozApp.saveReceipt();await wait(80);await PilozApp.validateReceipt(tables.goods_receipts.at(-1).id);await wait(100);
+      check('réception fournisseur complète persistée',PilozApp.getState().data.purchaseOrderLines.filter(x=>x.purchase_order_id===purchaseOrder.id).every(x=>Number(x.received_quantity)===Number(x.quantity)));
       await go('sales/quotes');
       check('liste de devis complète',document.querySelector('.modern-toolbar')&&document.querySelector('.modern-table'));
       check('filtres de statuts devis',document.querySelector('.modern-view-tabs')?.textContent.includes('À envoyer')&&document.querySelector('.modern-view-tabs')?.textContent.includes('Consultés')&&document.querySelector('.modern-view-tabs')?.textContent.includes('Archivés'));
@@ -106,6 +112,13 @@
       PilozModern.openOpportunity(opportunityId);
       check('opportunité complète',document.getElementById('modern-opportunity-form')?.textContent.includes('Contact')&&document.getElementById('modern-opportunity-form')?.textContent.includes('Prochaine action')&&document.getElementById('modern-opportunity-form')?.textContent.includes('Responsable'));
       PilozModern.closeDrawer();
+
+      await go('settings/company');
+      check('sous-catégories entreprise complètes',!!document.querySelector('[name="company_type"]')&&!!document.querySelector('[name="secondary_phone"]')&&!!document.getElementById('settings-addresses')&&!!document.getElementById('settings-legal')&&!!document.getElementById('settings-bank'));
+      document.querySelector('[name="company_type"]').value='SAS';document.querySelector('[name="description"]').value='Description réelle';document.querySelector('[name="secondary_phone"]').value='+33102030405';document.querySelector('[name="primary_contact_name"]').value='Alice Martin';document.getElementById('addr-billing-address_line_1').value='2 rue Facturation';document.getElementById('addr-billing-postal_code').value='69001';document.getElementById('addr-billing-city').value='Lyon';document.querySelector('[name="rcs_number"]').value='RCS Paris 732 829 320';document.querySelector('[name="registry_court"]').value='Paris';document.querySelector('[name="vat_frequency"]').value='mensuelle';document.getElementById('ext-iban').value='FR1420041010050500013M02606';document.getElementById('ext-bic').value='PSSTFRPPMON';document.getElementById('ext-mandate-reference').value='MANDAT-001';await PilozApp.saveSettings();await wait(150);
+      check('paramètres entreprise persistés',tables.company_settings[0].description==='Description réelle'&&tables.company_settings[0].primary_contact_name==='Alice Martin'&&tables.company_addresses.some(x=>x.kind==='billing'&&x.city==='Lyon')&&tables.company_document_settings[0].mandate_reference==='MANDAT-001');
+      await PilozApp.uploadLogo(new File([new Uint8Array([137,80,78,71])],'logo.png',{type:'image/png'}),'light');await wait(100);
+      check('logo stocké et rattaché',tables.company_logos.some(x=>x.variant==='light'&&x.company_id===companyId));
 
       PilozApp.editDocument(balanceId);await wait(60);
       check('validation facture de solde',[...document.querySelectorAll('.erp-editor-bar button')].some(x=>x.textContent.trim()==='Valider'));

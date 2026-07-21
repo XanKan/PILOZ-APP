@@ -13,6 +13,7 @@ Deno.serve(async req=>{
  const {count:recent}=await admin.from('activity_logs').select('id',{head:true,count:'exact'}).eq('company_id',doc.company_id).eq('actor_user_id',user.id).eq('action','document.emailed').gte('created_at',new Date(Date.now()-60_000).toISOString());if((recent||0)>=10)return json({error:'Trop d’envois. Réessayez dans une minute.'},429,{'Retry-After':'60'});
  const to=String(body.to||'').trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to))return json({error:'Destinataire invalide'},400);
  const sent=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${resend}`,'Content-Type':'application/json'},body:JSON.stringify({from:Deno.env.get('EMAIL_FROM')||'PILOZ <noreply@piloz.fr>',to:[to],subject:cleanText(body.subject||`Document ${doc.number||''}`),html:cleanHtml(body.html||'')})});if(!sent.ok)return json({error:"Le document n'a pas pu être envoyé."},502);
+ const {error:sentAtError}=await admin.from('documents').update({sent_at:new Date().toISOString()}).eq('id',doc.id);if(sentAtError)console.error('document.sent_at update failed',{code:sentAtError.code});
  await admin.from('activity_logs').insert({company_id:doc.company_id,actor_user_id:user.id,created_by:user.id,action:'document.emailed',entity_type:'document',entity_id:doc.id,new_data:{to}});
  return json({sent:true});
 });
