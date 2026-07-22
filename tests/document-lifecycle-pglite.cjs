@@ -61,7 +61,7 @@ async function bootstrap(db){
   `);
 }
 
-async function saveDraft(db,type){
+async function saveDraft(db,type,existingId=null,unitPrice=100){
   const targetDocument={
     company_id:company,document_type:type,version:1,client_id:client,issue_date:'2026-07-21',
     due_date:type==='quote'?null:'2026-08-20',validity_date:type==='quote'?'2026-08-20':null,
@@ -72,33 +72,45 @@ async function saveDraft(db,type){
   const targetLines=[{
     id:type==='quote'?'44444444-4444-4444-8444-444444444444':'55555555-5555-4555-8555-555555555555',
     position:1,line_type:'free_item',name:'Prestation de test',description:'Ligne réelle',quantity:1,
-    unit:'unité',unit_cost_snapshot:50,unit_price:100,discount_rate:0,tax_rate:20,optional:false,
+    unit:'unité',unit_cost_snapshot:50,unit_price:unitPrice,discount_rate:0,tax_rate:20,optional:false,
     cumulative_progress_percent:0,line_metadata:{}
   }];
   const draft=await db.query(
-    'select public.save_document_draft(null,$1::jsonb,$2::jsonb) result',
-    [JSON.stringify(targetDocument),JSON.stringify(targetLines)]
+    'select public.save_document_draft($1,$2::jsonb,$3::jsonb) result',
+    [existingId,JSON.stringify(targetDocument),JSON.stringify(targetLines)]
   );
   const saved=draft.rows[0].result;
-  if(!saved?.id||saved.status!=='draft'||!saved.number)throw new Error(`${type}: invalid draft result ${JSON.stringify(saved)}`);
+  const expectedStatus=existingId?null:(type==='quote'?'pending':'draft');
+  if(!saved?.id||!saved.number||(expectedStatus&&saved.status!==expectedStatus))throw new Error(`${type}: invalid draft result ${JSON.stringify(saved)}`);
   const totals=await db.query('select total_excl_tax,total_tax,total_incl_tax from public.documents where id=$1',[saved.id]);
   const total=Number(totals.rows[0]?.total_incl_tax||0);
-  if(total!==120)throw new Error(`${type}: expected total 120, got ${total}`);
-  return {id:saved.id,number:saved.number,total};
+  const expectedTotal=Math.round((unitPrice*1.2)*100)/100;
+  if(total!==expectedTotal)throw new Error(`${type}: expected total ${expectedTotal}, got ${total}`);
+  return {id:saved.id,number:saved.number,total,status:saved.status};
 }
 
 (async()=>{
   const db=new PGlite({extensions:{pgcrypto}});
   try{
     await bootstrap(db);
-    // Le devis reçoit son numéro officiel dès la création. Son enregistrement
-    // le finalise désormais immédiatement (verrouillage + snapshot), avec un
-    // statut initial "en attente" (pending).
+    // Le devis reçoit son numéro officiel et son statut "en attente" dès son
+    // premier enregistrement — plus de brouillon, plus de finalisation.
     const quote=await saveDraft(db,'quote');
-    const quoteFinal=await db.query('select public.finalize_document($1) result',[quote.id]);
-    const quoteFinalized=quoteFinal.rows[0].result;
-    if(!quoteFinalized?.number||quoteFinalized.number!==quote.number||quoteFinalized.status!=='pending'||!quoteFinalized.snapshot_id)
-      throw new Error(`quote: invalid finalize result ${JSON.stringify(quoteFinalized)}`);
+    if(quote.status!=='pending')throw new Error(`quote: expected initial status pending, got ${quote.status}`);
+    const quoteRow=await db.query('select snapshot_id,finalized_at from public.documents where id=$1',[quote.id]);
+    if(!quoteRow.rows[0].snapshot_id)throw new Error('quote: expected a snapshot to exist right after the first save (for PDF generation)');
+    if(quoteRow.rows[0].finalized_at)throw new Error('quote: finalized_at should stay null — a quote is never content-locked before invoicing');
+    // Le devis reste modifiable librement (contenu, prix...) : un second
+    // enregistrement sur le même document doit réussir sans créer de version.
+    const quoteEdited=await saveDraft(db,'quote',quote.id,250);
+    if(quoteEdited.id!==quote.id)throw new Error('quote: editing should reuse the same document id, not create a new one');
+    if(quoteEdited.total!==300)throw new Error(`quote: expected updated total 300 after edit, got ${quoteEdited.total}`);
+    const quoteRowAfterEdit=await db.query('select snapshot_id from public.documents where id=$1',[quote.id]);
+    if(quoteRowAfterEdit.rows[0].snapshot_id===quoteRow.rows[0].snapshot_id)throw new Error('quote: snapshot should be refreshed after an edit so the PDF reflects the new content');
+    // finalize_document redevient réservé aux factures : un devis doit être refusé.
+    const quoteFinalizeAttempt=await db.query('select public.finalize_document($1) result',[quote.id]).then(()=>null,error=>error);
+    if(!quoteFinalizeAttempt||!/document_type_cannot_be_finalized/.test(quoteFinalizeAttempt.message))
+      throw new Error(`quote: finalize_document should reject quotes again, got ${quoteFinalizeAttempt&&quoteFinalizeAttempt.message}`);
     // Tant qu'aucune facture n'en découle, le statut peut basculer vers
     // accepté ou refusé.
     const accepted=await db.query("select public.transition_document_status($1,'accepted') result",[quote.id]);
@@ -114,13 +126,16 @@ async function saveDraft(db,type){
     const lockedAttempt=await db.query("select public.transition_document_status($1,'rejected') result",[quote.id]).then(()=>null,error=>error);
     if(!lockedAttempt||!/quote_locked_by_invoice/.test(lockedAttempt.message))
       throw new Error(`quote: transition_document_status should be locked once invoiced, got ${lockedAttempt&&lockedAttempt.message}`);
+    const editAfterInvoiceAttempt=await saveDraft(db,'quote',quote.id,999).then(()=>null,error=>error);
+    if(!editAfterInvoiceAttempt||!/quote_locked_by_invoice/.test(editAfterInvoiceAttempt.message))
+      throw new Error(`quote: content edits should be locked once invoiced, got ${editAfterInvoiceAttempt&&editAfterInvoiceAttempt.message}`);
     // La facture reçoit aussi son numéro dès la création ; la finalisation ne
     // le change plus, elle se contente de verrouiller le document.
     const invoice=await saveDraft(db,'invoice');
     const final=await db.query('select public.finalize_document($1) result',[invoice.id]);
     const finalized=final.rows[0].result;
     if(!finalized?.number||finalized.number!==invoice.number||finalized.status!=='finalized'||!finalized.snapshot_id)throw new Error(`invoice: invalid final result ${JSON.stringify(finalized)}`);
-    console.log(JSON.stringify({ok:true,quote:{...quote,finalizedStatus:quoteFinalized.status,convertedInvoiceId:convertedInvoiceId.rows[0].result},invoice:{...invoice,finalizedAt:finalized.finalized_at}}));
+    console.log(JSON.stringify({ok:true,quote:{...quote,convertedInvoiceId:convertedInvoiceId.rows[0].result},invoice:{...invoice,finalizedAt:finalized.finalized_at}}));
   }finally{
     await db.close();
   }
