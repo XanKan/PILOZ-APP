@@ -227,7 +227,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   const activeMethods = Array.isArray(templateVersion.payment_methods) && templateVersion.payment_methods.length
     ? (templateVersion.payment_methods as unknown[]).map(value => String(value)) : ["bank_transfer"];
   const acceptsBankTransfer = activeMethods.includes("bank_transfer");
-  const showBankInFooter = acceptsBankTransfer && (hasFooterConfig ? templateFooter.show_bank_details !== false : true) && bankVisibility === "footer";
+  const showBankInFooter = acceptsBankTransfer && bankVisibility === "footer";
 
   const templateDocTitle = text(templateVersion.document_title || "");
   const kind = (doc.document_type === "quote" || doc.document_type === "invoice") && templateDocTitle ? templateDocTitle
@@ -243,19 +243,32 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   let page!: PDFPage;
   let y = 0;
   const bankRows = [
-    ["TITULAIRE", settings.bank_account_holder || issuer.legal_name || issuer.trade_name],
+    ["TITULAIRE", settings.bank_account_holder || issuer.trade_name || issuer.legal_name],
     ["IBAN :", settings.iban],
     ["BIC :", settings.bic],
   ].filter((row) => Boolean(text(row[1]))) as [string, unknown][];
   const drawBankDetails = (target: PDFPage, x: number, topY: number, width = 245, size = 6.5) => {
     if (!bankRows.length) return 0;
-    const labelWidth = 60;
-    bankRows.forEach(([label, value], index) => {
-      const rowY = topY - index * 9;
-      target.drawText(label, { x, y: rowY, size: size - 0.4, font: bold, color: colors.text });
-      target.drawText(fit(regular, value, size, width - labelWidth), { x: x + labelWidth, y: rowY, size, font: regular, color: colors.muted });
+    const labelWidth = 62;
+    const rowGap = 10;
+    const boxHeight = 31 + bankRows.length * rowGap;
+    target.drawRectangle({
+      x,
+      y: topY - boxHeight,
+      width,
+      height: boxHeight,
+      color: colors.tableBackground,
+      borderColor: colors.border,
+      borderWidth: 0.7,
     });
-    return bankRows.length * 9;
+    target.drawRectangle({ x, y: topY - boxHeight, width: 3, height: boxHeight, color: colors.primary });
+    target.drawText("Coordonnées bancaires", { x: x + 11, y: topY - 15, size: 7, font: bold, color: colors.primary });
+    bankRows.forEach(([label, value], index) => {
+      const rowY = topY - 30 - index * rowGap;
+      target.drawText(label, { x: x + 11, y: rowY, size: size - 0.4, font: bold, color: colors.text });
+      target.drawText(fit(regular, value, size, width - labelWidth - 20), { x: x + 11 + labelWidth, y: rowY, size, font: regular, color: colors.muted });
+    });
+    return boxHeight;
   };
 
   const referenceLayout = layoutKey === "classic";
@@ -265,13 +278,13 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
 
   const drawColumns = () => {
     page.drawRectangle({ x: 42, y: y - 4, width: 511, height: 20, color: colors.tableBackground });
-    page.drawText(referenceLayout ? "Produits" : "DESIGNATION", { x: 48, y: y + 3, size: 7, font: bold, color: colors.muted });
-    right(page, bold, referenceLayout ? "Qté" : "QTE", columnX.qty, y + 3, 7, colors.muted);
-    right(page, bold, referenceLayout ? "Prix u. HT" : "PRIX U. HT", columnX.price, y + 3, 7, colors.muted);
-    if (showDiscountColumn) right(page, bold, "REM.", columnX.discount, y + 3, 7, colors.muted, 30);
-    right(page, bold, referenceLayout ? "TVA (%)" : "TVA", columnX.tax, y + 3, 7, colors.muted);
-    right(page, bold, referenceLayout ? "Total HT" : "TOTAL HT", columnX.total, y + 3, 7, colors.muted);
-    if (referenceLayout) right(page, bold, "Total TTC", columnX.totalTtc, y + 3, 7, colors.muted);
+    page.drawText(referenceLayout ? "Produits" : "DESIGNATION", { x: 48, y: y + 3, size: 7, font: bold, color: colors.secondary });
+    right(page, bold, referenceLayout ? "Qté" : "QTE", columnX.qty, y + 3, 7, colors.secondary);
+    right(page, bold, referenceLayout ? "Prix u. HT" : "PRIX U. HT", columnX.price, y + 3, 7, colors.secondary);
+    if (showDiscountColumn) right(page, bold, "REM.", columnX.discount, y + 3, 7, colors.secondary, 30);
+    right(page, bold, referenceLayout ? "TVA (%)" : "TVA", columnX.tax, y + 3, 7, colors.secondary);
+    right(page, bold, referenceLayout ? "Total HT" : "TOTAL HT", columnX.total, y + 3, 7, colors.secondary);
+    if (referenceLayout) right(page, bold, "Total TTC", columnX.totalTtc, y + 3, 7, colors.secondary);
     y -= 16;
   };
 
@@ -285,7 +298,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     }
     if (referenceLayout) {
       page.drawText(fit(regular, issuerName, 13, 270), { x: 42, y: 790, size: 13, font: regular, color: colors.heading });
-      page.drawText(kind, { x: 42, y: 768, size: 13, font: regular, color: colors.muted });
+      page.drawText(kind, { x: 42, y: 768, size: 13, font: regular, color: colors.primary });
       page.drawText("Numéro", { x: 42, y: 746, size: 8, font: bold, color: colors.text });
       page.drawText(fit(regular, number, 8, 150), { x: 145, y: 746, size: 8, font: regular, color: colors.text });
       page.drawText("Date d'émission", { x: 42, y: 731, size: 8, font: bold, color: colors.text });
@@ -297,7 +310,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
         page.drawText(fit(regular, saleTypeLabel, 8, 150), { x: 145, y: 701, size: 8, font: regular, color: colors.text });
       }
       page.drawText("Émetteur ou Émettrice", { x: 345, y: 790, size: 8, font: regular, color: colors.text });
-      page.drawText(fit(bold, issuerName, 9, 208), { x: 345, y: 776, size: 9, font: bold, color: colors.muted });
+      page.drawText(fit(bold, issuerName, 9, 208), { x: 345, y: 776, size: 9, font: bold, color: colors.heading });
       limitedLines(regular, issuerAddressText, 8, 208, 2).forEach((line, index) => page.drawText(line, { x: 345, y: 763 - index * 11, size: 8, font: regular, color: colors.text }));
       if (issuerEmail) page.drawText(fit(regular, issuerEmail, 8, 208), { x: 345, y: 741, size: 8, font: regular, color: colors.text });
     } else {
@@ -350,8 +363,8 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
       page.drawText(fit(regular, saleTypeLabel, 8, 193), { x: 132, y: metaTop - 45, size: 8, font: regular, color: colors.text });
     }
   }
-  page.drawText(referenceLayout ? "Client ou Cliente" : "DESTINATAIRE", { x: 345, y: metaTop, size: referenceLayout ? 8 : 7, font: referenceLayout ? regular : bold, color: referenceLayout ? colors.text : colors.muted });
-  page.drawText(fit(bold, partyName(client), referenceLayout ? 9 : 10, 198), { x: 345, y: metaTop - 15, size: referenceLayout ? 9 : 10, font: bold, color: referenceLayout ? colors.muted : colors.heading });
+  page.drawText(referenceLayout ? "Client ou Cliente" : "DESTINATAIRE", { x: 345, y: metaTop, size: referenceLayout ? 8 : 7, font: referenceLayout ? regular : bold, color: referenceLayout ? colors.text : colors.secondary });
+  page.drawText(fit(bold, partyName(client), referenceLayout ? 9 : 10, 198), { x: 345, y: metaTop - 15, size: referenceLayout ? 9 : 10, font: bold, color: colors.heading });
   const clientAddressLines = limitedLines(regular, address(client), 8, 198, 2);
   const clientIdentityLines = referenceLayout
     ? [client.siret || client.siren, ...clientAddressLines, client.vat_number && `N° de TVA ${client.vat_number}`].filter(Boolean).map(text)
@@ -409,12 +422,12 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     const current = vat.get(rate) || { base: 0, tax: 0 };
     vat.set(rate, { base: current.base + base, tax: current.tax + tax });
   }
-  page.drawText(referenceLayout ? "Détails TVA" : "DETAIL TVA", { x: 42, y: totalsY + 3, size: referenceLayout ? 11 : 7, font: bold, color: colors.muted });
+  page.drawText(referenceLayout ? "Détails TVA" : "DETAIL TVA", { x: 42, y: totalsY + 3, size: referenceLayout ? 11 : 7, font: bold, color: colors.heading });
   if (referenceLayout) {
     page.drawText("Taux", { x: 42, y: totalsY - 13, size: 7, font: bold, color: colors.text });
     right(page, bold, "Montant TVA", 205, totalsY - 13, 7, colors.text, 100);
     right(page, bold, "Base HT", 330, totalsY - 13, 7, colors.text, 100);
-    page.drawText("Récapitulatif", { x: 354, y: totalsY + 3, size: 11, font: bold, color: colors.muted });
+    page.drawText("Récapitulatif", { x: 354, y: totalsY + 3, size: 11, font: bold, color: colors.heading });
   }
   [...vat.entries()].sort((a, b) => a[0] - b[0]).slice(0, 5).forEach(([rate, values], index) => {
     const rowY = totalsY - (referenceLayout ? 28 : 13) - index * 12;
@@ -444,7 +457,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     right(page, bold, amount(remainingAmount, currency), 538, totalsY - 88, 8, grandTotalColor);
   }
   if (acceptsBankTransfer && bankVisibility === "summary") {
-    drawBankDetails(page, 42, totalsY - 58, 245, 6);
+    drawBankDetails(page, 42, totalsY - 38, 245, 6);
   }
 
   const footerLines: string[] = [];
@@ -474,12 +487,12 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   if (showLatePenalties && settings.collection_fee_notice) footerLines.push(String(settings.collection_fee_notice));
   footerLines.push(`Moyens de paiement acceptes : ${activeMethods.map(key => paymentMethodsCatalog[key] || key).join(", ")}`);
   const footerNote = footerLines.join(" | ");
-  limitedLines(regular, footerNote, 6.5, 500, 6).forEach((line, index) => page.drawText(line, { x: 42, y: (referenceLayout ? 145 : 86) - index * 8, size: 6.5, font: regular, color: colors.muted }));
+  limitedLines(regular, footerNote, 6.5, showBankInFooter ? 245 : 500, 6).forEach((line, index) => page.drawText(line, { x: 42, y: (referenceLayout ? 145 : 86) - index * 8, size: 6.5, font: regular, color: colors.muted }));
   if (referenceLayout && doc.document_type === "quote") {
     page.drawText("Date et signature précédées de la mention « Bon pour accord »", { x: 42, y: 101, size: 8, font: regular, color: colors.text });
   }
   if (showBankInFooter) {
-    drawBankDetails(page, 303, referenceLayout ? 62 : 54, 250);
+    drawBankDetails(page, 303, referenceLayout ? 180 : 83, 250);
   }
   if (showPaymentTerms) {
     page.drawText(fit(regular, [doc.payment_terms, doc.payment_method].filter(Boolean).join(" - "), 7, 245), { x: 42, y: referenceLayout ? 43 : 27, size: 7, font: regular, color: colors.muted });
