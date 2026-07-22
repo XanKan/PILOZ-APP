@@ -56,6 +56,14 @@
     `<p><b>${esc(value.closure_number||value.archive_number||value.status||'Enregistré')}</b></p><p class="modern-card-desc">${datetime(value.created_at||value.checked_at)}</p>`:
     `<p class="modern-card-desc">${esc(emptyText)}</p>`}</section>`;
  }
+ function maintenanceCard(entry){
+  const preview=normalize(entry.maintenance),policy=normalize(entry.automationPolicy),due=Number(preview.due_count||0),enabled=!!(policy.daily_closure_enabled||policy.monthly_closure_enabled||policy.annual_closure_enabled);
+  return `<section class="phase1-card"><h2>Clôtures automatiques</h2><p>${enabled?status('Planification activée','success'):status('Désactivée par défaut','warning')}</p><strong>${due} période(s) à clôturer</strong><p class="modern-card-desc">Les archives automatiques restent bloquées jusqu’à validation du KMS et du stockage.</p><div class="actions">${!enabled&&member(state())?.role==='owner'?button('Activer les clôtures','PilozCompliance.enableMaintenance()','btn-o'):''}${enabled&&due?button('Générer maintenant','PilozCompliance.runMaintenance()','btn-p'):''}</div></section>`;
+ }
+ function privacyCard(entry){
+  const rows=Array.isArray(entry.requests)?entry.requests:[],open=rows.filter(row=>!['fulfilled','refused','cancelled'].includes(row.status));
+  return `<section class="phase1-card" style="grid-column:span 2"><h2>Droits des personnes</h2><p><strong>${open.length} demande(s) ouverte(s)</strong></p><p class="modern-card-desc">L’identité doit être contrôlée avant toute remise de données. Les décisions d’effacement, d’anonymisation ou de conservation restent motivées et traçables.</p>${button('Nouvelle demande','PilozCompliance.createPrivacyRequest()','btn-o')}${rows.length?`<div class="phase1-table-wrap"><table class="phase1-table"><thead><tr><th>Reçue</th><th>Type</th><th>Sujet</th><th>Échéance</th><th>État</th><th>Actions</th></tr></thead><tbody>${rows.slice(0,10).map(row=>`<tr><td>${datetime(row.received_at)}</td><td>${esc(row.request_type)}</td><td>${esc(row.subject_kind)}</td><td>${datetime(row.due_at)}</td><td>${status(row.status,['fulfilled'].includes(row.status)?'success':['refused','cancelled'].includes(row.status)?'danger':'warning')}</td><td>${row.request_type==='access'||row.request_type==='portability'?button('Exporter',`PilozCompliance.exportPrivacyRequest('${row.id}')`,'btn-o'):''}${row.status==='received'||row.status==='identity_check'?button('Démarrer',`PilozCompliance.startPrivacyRequest('${row.id}')`,'btn-o'):''}${['in_progress','partially_fulfilled'].includes(row.status)?button('Clôturer',`PilozCompliance.completePrivacyRequest('${row.id}')`,'btn-p'):''}</td></tr>`).join('')}</tbody></table></div>`:'<p class="modern-card-desc">Aucune demande enregistrée.</p>'}</section>`;
+ }
  function anomalyCard(summary){
   const rows=Array.isArray(summary.unresolved_anomalies)?summary.unresolved_anomalies:[];
   return `<section class="phase1-card" style="grid-column:span 2"><h2>Anomalies critiques et contrôles</h2>
@@ -86,8 +94,9 @@
     configurationGrid(summary)+`<div class="modern-settings-grid" style="margin-top:12px">${blockersCard(summary)}
       ${historyCard('Dernière clôture',summary.last_closure,'Aucune clôture enregistrée.')}
       ${historyCard('Dernière archive',summary.last_archive,'Aucune archive enregistrée.')}
+      ${maintenanceCard(entry)}
       ${anomalyCard(summary)}
-      <section class="phase1-card"><h2>Droits des personnes</h2><strong>${Number(summary.open_data_subject_requests||0)} demande(s) ouverte(s)</strong><p class="modern-card-desc">Les décisions d’effacement, anonymisation ou conservation doivent être motivées.</p></section>
+      ${privacyCard(entry)}
       <section class="phase1-card"><h2>Preuves et procédures</h2><p class="modern-card-desc">Les preuves manuelles restent « déclarées » tant qu’elles ne sont pas validées hors navigateur.</p>${button('À propos et conformité',"PilozApp.go('settings/about-compliance')",'btn-o')}</section>
     </div>`;
  }
@@ -100,7 +109,7 @@
   const summary=cache.get(s.companyId)?.summary||{};
   document.getElementById('main').innerHTML=header('À propos et conformité','Version, périmètre de preuve et validations externes restantes.')+
    `<div class="modern-settings-grid">
-    <section class="phase1-card"><h2>Version de Piloz</h2><dl class="company-summary-list"><div><dt>Application</dt><dd>0.9.0-compliance.2</dd></div><div><dt>Schéma attendu</dt><dd>202607220045</dd></div><div><dt>Moteur de calcul</dt><dd>financial-v1</dd></div><div><dt>Générateur PDF</dt><dd>pdf-v2</dd></div><div><dt>Déploiement</dt><dd>22 juillet 2026</dd></div></dl></section>
+    <section class="phase1-card"><h2>Version de Piloz</h2><dl class="company-summary-list"><div><dt>Application</dt><dd>0.9.0-compliance.3</dd></div><div><dt>Schéma attendu</dt><dd>202607220047</dd></div><div><dt>Moteur de calcul</dt><dd>financial-v1</dd></div><div><dt>Générateur PDF</dt><dd>pdf-v2</dd></div><div><dt>Déploiement</dt><dd>22 juillet 2026</dd></div></dl></section>
     <section class="phase1-card"><h2>Formats électroniques</h2><p>${Number(summary.verified_format_profiles||0)} profil officiel vérifié.</p><p class="modern-card-desc">UBL, CII et Factur-X restent bloqués tant que les artefacts officiels et validateurs ne sont pas installés.</p></section>
     <section class="phase1-card"><h2>Plateforme agréée</h2><p>${Number(summary.production_connectors||0)} connecteur de production actif.</p><p class="modern-card-desc">Connexion prévue; aucune qualité de plateforme agréée n’est revendiquée par Piloz.</p></section>
     <section class="phase1-card" style="grid-column:1/-1"><h2>Certifications obtenues</h2>${certificationBlock(summary)}</section>
@@ -112,8 +121,13 @@
   if(inflight.has(companyId))return;
   inflight.add(companyId);
   try{
-   const summary=normalize(await global.PilozERP.rpc('get_company_compliance_summary',{target_company_id:companyId}));
-   cache.set(companyId,{summary});
+   const [summary,maintenance,requests,policies]=await Promise.all([
+    global.PilozERP.rpc('get_company_compliance_summary',{target_company_id:companyId}),
+    global.PilozERP.rpc('preview_fiscal_maintenance',{target_company_id:companyId,target_at:new Date().toISOString()}).catch(()=>({})),
+    global.PilozERP.query('data_subject_requests',`select=id,request_type,subject_kind,received_at,due_at,status,closed_at&company_id=eq.${encodeURIComponent(companyId)}&order=received_at.desc&limit=20`).catch(()=>[]),
+    global.PilozERP.query('fiscal_automation_policies',`select=*&company_id=eq.${encodeURIComponent(companyId)}&limit=1`).catch(()=>[])
+   ]);
+   cache.set(companyId,{summary:normalize(summary),maintenance:normalize(maintenance),requests:Array.isArray(requests)?requests:[],automationPolicy:normalize(policies?.[0])});
   }catch(error){cache.set(companyId,{error:safeError(error)});}
   finally{
    inflight.delete(companyId);
@@ -129,6 +143,36 @@
    notify('Contrôle d’intégrité terminé et preuve enregistrée.','success');
    cache.delete(s.companyId);await load(s.companyId);
   }catch(error){notify(safeError(error),'error');}
+ }
+ async function enableMaintenance(){
+  const s=state();if(!s||member(s)?.role!=='owner')return;
+  if(!global.confirm('Activer la détection et la génération des clôtures journalières, mensuelles et annuelles ? Les archives resteront désactivées.'))return;
+  try{await global.PilozERP.rpc('configure_fiscal_automation',{target_company_id:s.companyId,target_timezone:'Europe/Paris',enable_daily:true,enable_monthly:true,enable_annual:true,enable_archives:false});notify('Planification des clôtures activée. Configurez ensuite le job Supabase décrit dans la procédure.','success');cache.delete(s.companyId);await load(s.companyId);}catch(error){notify(safeError(error),'error');}
+ }
+ async function runMaintenance(){
+  const s=state();if(!s||!isAdmin(s))return;
+  if(!global.confirm('Générer maintenant toutes les clôtures dues détectées ?'))return;
+  try{const result=await global.PilozERP.rpc('run_company_fiscal_maintenance',{target_company_id:s.companyId,target_at:new Date().toISOString(),target_dry_run:false,target_source:'manual'});notify(`${Number(result?.created_count||0)} clôture(s) créée(s), ${Number(result?.failed_count||0)} échec(s).`,result?.failed_count?'error':'success');cache.delete(s.companyId);await load(s.companyId);}catch(error){notify(safeError(error),'error');}
+ }
+ async function createPrivacyRequest(){
+  const s=state();if(!s||!isAdmin(s))return;
+  const requestType=String(global.prompt('Type : access, rectification, erasure, restriction, portability, objection ou other','access')||'').trim();
+  if(!['access','rectification','erasure','restriction','portability','objection','other'].includes(requestType))return notify('Type de demande invalide.','error');
+  const subjectKind=String(global.prompt('Sujet : user, client, prospect, supplier, contact ou other','client')||'').trim();
+  if(!['user','client','prospect','supplier','contact','other'].includes(subjectKind))return notify('Type de sujet invalide.','error');
+  const reference=String(global.prompt('Identifiant UUID ou e-mail exact de la personne concernée','')||'').trim();if(!reference)return;
+  try{await global.PilozERP.rpc('create_data_subject_request',{target_company_id:s.companyId,target_request_type:requestType,target_subject_kind:subjectKind,target_subject_reference:reference,target_received_at:new Date().toISOString(),target_metadata:{source:'compliance_ui'}});notify('Demande enregistrée avec une échéance calculée.','success');cache.delete(s.companyId);await load(s.companyId);}catch(error){notify(safeError(error),'error');}
+ }
+ async function startPrivacyRequest(id){
+  if(!global.confirm('Confirmez-vous avoir vérifié l’identité du demandeur ?'))return;
+  try{await global.PilozERP.rpc('transition_data_subject_request',{target_request_id:id,target_status:'in_progress',target_reason:'Identité vérifiée depuis l’interface de conformité',target_legal_basis:null,target_response_summary:null,target_identity_verified_at:new Date().toISOString()});notify('Demande mise en traitement.','success');const s=state();cache.delete(s.companyId);await load(s.companyId);}catch(error){notify(safeError(error),'error');}
+ }
+ async function exportPrivacyRequest(id){
+  try{const result=await global.PilozERP.rpc('generate_data_subject_export',{target_request_id:id}),blob=new Blob([JSON.stringify(result?.payload||{},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`piloz-demande-${id}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);notify('Export généré localement et empreinte enregistrée.','success');const s=state();cache.delete(s.companyId);await load(s.companyId);}catch(error){notify(safeError(error),'error');}
+ }
+ async function completePrivacyRequest(id){
+  const summary=String(global.prompt('Résumé de la réponse remise à la personne','')||'').trim();if(!summary)return;
+  try{await global.PilozERP.rpc('transition_data_subject_request',{target_request_id:id,target_status:'fulfilled',target_reason:'Réponse remise',target_legal_basis:null,target_response_summary:summary,target_identity_verified_at:null});notify('Demande clôturée avec traçabilité.','success');const s=state();cache.delete(s.companyId);await load(s.companyId);}catch(error){notify(safeError(error),'error');}
  }
  async function activateProduction(){
   const s=state(),activation=cache.get(s?.companyId)?.summary?.activation;
@@ -146,5 +190,5 @@
   return baseRender(route,s);
  }
  modern.renderRoute=renderRoute;
- global.PilozCompliance={renderCompliance,renderAbout,refresh,runIntegrity,activateProduction};
+ global.PilozCompliance={renderCompliance,renderAbout,refresh,runIntegrity,activateProduction,enableMaintenance,runMaintenance,createPrivacyRequest,startPrivacyRequest,exportPrivacyRequest,completePrivacyRequest};
 })(window);

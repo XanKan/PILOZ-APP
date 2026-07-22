@@ -183,6 +183,19 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     await db.query("select public.record_document_payment_v2($1,120,'bank_transfer','TEST-002','2026-07-21T13:00:00Z',null) result",[invoice.id]);
     const paidInvoice=await db.query('select status from public.documents where id=$1',[invoice.id]);
     if(paidInvoice.rows[0].status!=='paid')throw new Error(`payments: invoice should be paid, got ${paidInvoice.rows[0].status}`);
+    const receipt=await db.query("select public.record_document_receipt($1,20,'bank_transfer','TEST-OVERPAYMENT','2026-07-21T14:00:00Z','Trop-perÃ§u de test') result",[invoice.id]);
+    const overpaymentId=receipt.rows[0].result?.overpayment_id;
+    if(!overpaymentId||Number(receipt.rows[0].result?.overpayment_amount)!==20||Number(receipt.rows[0].result?.allocated_amount)!==0)
+      throw new Error(`payments: overpayment split is invalid ${JSON.stringify(receipt.rows[0].result)}`);
+    await db.query("select public.record_document_payment_reversal($1,'refund',5,'Remboursement partiel 1','2026-07-21T15:00:00Z') result",[overpaymentId]);
+    await db.query("select public.record_document_payment_reversal($1,'refund',15,'Remboursement partiel 2','2026-07-21T16:00:00Z') result",[overpaymentId]);
+    const overReversal=await db.query("select public.record_document_payment_reversal($1,'refund',1,'Remboursement excessif','2026-07-21T17:00:00Z') result",[overpaymentId]).then(()=>null,error=>error);
+    if(!overReversal||!/(payment_already_fully_reversed|payment_reversal_exceeds_remaining_amount)/.test(overReversal.message))
+      throw new Error(`payments: a fully reversed overpayment must reject another reversal ${overReversal&&overReversal.message}`);
+    const overpaymentLedger=await db.query('select entry_type,amount,reverses_payment_id from public.payments where id=$1 or reverses_payment_id=$1 order by paid_at,id',[overpaymentId]);
+    if(overpaymentLedger.rows.length!==3||overpaymentLedger.rows.filter(row=>row.entry_type==='refund').length!==2
+      ||overpaymentLedger.rows.reduce((sum,row)=>sum+Number(row.amount),0)!==0)
+      throw new Error(`payments: partial refund ledger is invalid ${JSON.stringify(overpaymentLedger.rows)}`);
     const closure=await db.query("select public.generate_fiscal_closure($1,'daily',date_trunc('day',now()-interval '1 day'),date_trunc('day',now())) result",[company]);
     const closureRow=await db.query('select integrity_status,signature,closure_hash from public.fiscal_closures where id=$1',[closure.rows[0].result]);
     if(closureRow.rows[0].integrity_status!=='unsigned'||closureRow.rows[0].signature!==null||!closureRow.rows[0].closure_hash)
@@ -258,6 +271,16 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     if(!productionAttempt||!/fiscal_activation_prerequisites_missing/.test(productionAttempt.message))throw new Error('activation: production was not blocked');
     const integrity=await db.query('select public.run_company_integrity_check($1) result',[company]);
     if(integrity.rows[0].result?.status!=='valid')throw new Error(`integrity: expected valid result ${JSON.stringify(integrity.rows[0].result)}`);
+    const automation=await db.query("select public.configure_fiscal_automation($1,'Europe/Paris',true,true,true,false) result",[company]);
+    if(!automation.rows[0].result?.daily_closure_enabled||automation.rows[0].result?.archive_enabled)
+      throw new Error(`maintenance: safe automation configuration is invalid ${JSON.stringify(automation.rows[0].result)}`);
+    const maintenancePreview=await db.query('select public.preview_fiscal_maintenance($1,now()) result',[company]);
+    if(maintenancePreview.rows[0].result?.automatic_archives_enabled!==false
+      ||!Array.isArray(maintenancePreview.rows[0].result?.candidates))
+      throw new Error(`maintenance: preview is incomplete ${JSON.stringify(maintenancePreview.rows[0].result)}`);
+    const maintenanceDryRun=await db.query("select public.run_company_fiscal_maintenance($1,now(),true,'manual') result",[company]);
+    if(maintenanceDryRun.rows[0].result?.dry_run!==true||maintenanceDryRun.rows[0].result?.archives_created!==0)
+      throw new Error(`maintenance: dry-run must not create records ${JSON.stringify(maintenanceDryRun.rows[0].result)}`);
     const integrityEvidence=await db.query('select status,report_sha256 from public.compliance_integrity_checks where company_id=$1',[company]);
     if(integrityEvidence.rows.length!==1||integrityEvidence.rows[0].status!=='valid'||!integrityEvidence.rows[0].report_sha256)
       throw new Error(`integrity: immutable evidence is missing ${JSON.stringify(integrityEvidence.rows)}`);
@@ -265,12 +288,31 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     if(!directCertificate||!/permission denied/.test(directCertificate.message))throw new Error('certifications: browser must not create a certification directly');
     const certificationCount=await db.query('select count(*)::int count from public.company_software_certifications where company_id=$1',[company]);
     if(Number(certificationCount.rows[0]?.count)!==0)throw new Error('certifications: registry must remain empty by default');
-    const rightsRequest=await db.query("select public.create_data_subject_request($1,'access','client','CLIENT-TEST',now(),'{}'::jsonb) result",[company]);
+    const rightsRequest=await db.query("select public.create_data_subject_request($1,'access','client',$2,now(),'{}'::jsonb) result",[company,client]);
     if(!rightsRequest.rows[0].result)throw new Error('privacy: data subject request was not recorded');
+    const rightsRequestId=rightsRequest.rows[0].result;
+    const prematureExport=await db.query('select public.generate_data_subject_export($1) result',[rightsRequestId]).then(()=>null,error=>error);
+    if(!prematureExport||!/data_subject_identity_verification_required/.test(prematureExport.message))
+      throw new Error('privacy: export must be blocked before identity verification');
+    await db.query("select public.transition_data_subject_request($1,'in_progress','Identité contrôlée',null,null,now()) result",[rightsRequestId]);
+    const subjectExport=await db.query('select public.generate_data_subject_export($1) result',[rightsRequestId]);
+    if(!subjectExport.rows[0].result?.payload_sha256||Number(subjectExport.rows[0].result?.record_count)<2
+      ||subjectExport.rows[0].result?.payload?.data?.subject?.id!==client)
+      throw new Error(`privacy: access export is incomplete ${JSON.stringify(subjectExport.rows[0].result)}`);
+    const privacyDecision=await db.query("select public.record_data_subject_request_decision($1,'customer_record','export','IdentitÃ© contrÃ´lÃ©e et donnÃ©es exportÃ©es','client',$2,false) result",[rightsRequestId,client]);
+    if(!privacyDecision.rows[0].result)throw new Error('privacy: request decision was not recorded');
+    const closedRightsRequest=await db.query("select public.transition_data_subject_request($1,'fulfilled','RÃ©ponse remise',null,'Export JSON remis aprÃ¨s contrÃ´le d''identitÃ©',null) result",[rightsRequestId]);
+    if(closedRightsRequest.rows[0].result?.status!=='fulfilled')throw new Error('privacy: request was not fulfilled');
+    await db.query("select public.set_company_retention_rule($1,'prospects',36,'last_activity','IntÃ©rÃªt lÃ©gitime Ã  valider','review',null,null) result",[company]);
+    const retentionPreview=await db.query('select public.preview_company_retention_actions($1,now()) result',[company]);
+    if(retentionPreview.rows[0].result?.destructive_action_executed!==false
+      ||retentionPreview.rows[0].result?.rules?.[0]?.automatic_action_allowed!==false)
+      throw new Error(`privacy: retention preview must remain non-destructive ${JSON.stringify(retentionPreview.rows[0].result)}`);
     const complianceSummary=await db.query('select public.get_company_compliance_summary($1) result',[company]);
-    if(Number(complianceSummary.rows[0].result?.open_data_subject_requests)!==1||complianceSummary.rows[0].result?.certifications?.length!==0)
+    if(Number(complianceSummary.rows[0].result?.open_data_subject_requests)!==0||complianceSummary.rows[0].result?.certifications?.length!==0)
       throw new Error(`compliance summary: dishonest or incomplete result ${JSON.stringify(complianceSummary.rows[0].result)}`);
     await db.exec(fs.readFileSync(path.join(repoRoot,'supabase','tests','202607220045_privacy_roles_and_compliance_checks.sql'),'utf8'));
+    await db.exec(fs.readFileSync(path.join(repoRoot,'supabase','tests','202607220047_payment_privacy_maintenance_checks.sql'),'utf8'));
     console.log(JSON.stringify({ok:true,quote:{...quote,convertedInvoiceId:convertedInvoiceId.rows[0].result},invoice:{id:invoice.id,draftNumber:invoice.number,number:finalized.number,total:invoice.total,status:finalized.status,finalizedAt:finalized.finalized_at}}));
   }finally{
     await db.close();

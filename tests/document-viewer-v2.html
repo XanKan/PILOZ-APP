@@ -123,8 +123,8 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   PilozDocumentViewerV2.toggleAdvancedFilters();check('filtre statut envoi facture',main.textContent.includes('Envoi')&&main.textContent.includes('Non envoyées'));
   PilozDocumentViewerV2.toggleStatusFilter('overdue');check('filtre facture en retard',PilozDocumentViewerV2.filteredDocuments(state.data)[0]?.id==='f4');PilozDocumentViewerV2.resetFilters();
   PilozDocumentViewerV2.openPayment('partial');const paymentForm=document.getElementById('document-viewer-payment-form');paymentForm.amount.value='200';paymentForm.paid_at.value='2026-07-21';paymentForm.payment_method.value='bank_transfer';paymentForm.reference.value='VIR-002';await PilozDocumentViewerV2.savePayment();
-  check('RPC paiement atomique',calls.some(call=>call[0]==='rpc'&&call[1]==='record_document_payment_v2'&&call[2].payment_amount===200));
-  PilozDocumentViewerV2.select('f1');PilozDocumentViewerV2.openPaymentCancellation('p1');document.querySelector('#document-viewer-payment-cancellation-form textarea').value='Doublon bancaire';await PilozDocumentViewerV2.cancelPayment();check('annulation paiement traçable',calls.some(call=>call[0]==='rpc'&&call[1]==='cancel_document_payment'));
+  check('RPC réception atomique',calls.some(call=>call[0]==='rpc'&&call[1]==='record_document_receipt'&&call[2].received_amount===200));
+  PilozDocumentViewerV2.select('f1');PilozDocumentViewerV2.openPaymentCancellation('p1');const incidentForm=document.getElementById('document-viewer-payment-cancellation-form');incidentForm.entry_type.value='refund';incidentForm.amount.value='125';incidentForm.reason.value='Remboursement partiel';await PilozDocumentViewerV2.cancelPayment();check('incident de paiement traçable',calls.some(call=>call[0]==='rpc'&&call[1]==='record_document_payment_reversal'&&call[2].target_entry_type==='refund'&&call[2].target_amount===125));
 
   PilozDocumentViewerV2.select('f1');PilozDocumentViewerV2.openCredit();
   check('popup annulation facture',main.textContent.includes('Annuler la facture FAC-2026-0081'));
