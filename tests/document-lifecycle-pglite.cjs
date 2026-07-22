@@ -169,6 +169,25 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
       throw new Error(`invoice: version manifest is incomplete ${JSON.stringify(versioned.rows[0])}`);
     const allocationMutation=await db.query('delete from public.document_number_allocations where document_id=$1',[invoice.id]).then(()=>null,error=>error);
     if(!allocationMutation||!/(immutable_fiscal_record|permission denied)/.test(allocationMutation.message))throw new Error('invoice: number allocation must be immutable');
+    const initialChain=await db.query('select public.verify_fiscal_event_chain($1) result',[company]);
+    if(!initialChain.rows[0].result?.valid||Number(initialChain.rows[0].result.checked_events)<1)throw new Error(`fiscal events: finalized invoice is not chained ${JSON.stringify(initialChain.rows[0].result)}`);
+    const payment=await db.query("select public.record_document_payment_v2($1,50,'bank_transfer','TEST-001','2026-07-21T12:00:00Z',null) result",[invoice.id]);
+    const paymentId=payment.rows[0].result;
+    const correction=await db.query("select public.cancel_document_payment($1,'Erreur de saisie') result",[paymentId]);
+    const ledger=await db.query('select id,amount,entry_type,reverses_payment_id,status from public.payments where document_id=$1 order by created_at,id',[invoice.id]);
+    if(ledger.rows.length!==2||Number(ledger.rows[0].amount)!==50||Number(ledger.rows[1].amount)!==-50||ledger.rows[1].reverses_payment_id!==paymentId)
+      throw new Error(`payments: inverse correction is invalid ${JSON.stringify(ledger.rows)}`);
+    const originalMutation=await db.query("update public.payments set reference='ALTERED' where id=$1",[paymentId]).then(()=>null,error=>error);
+    if(!originalMutation||!/(payment_ledger_is_append_only|permission denied)/.test(originalMutation.message))throw new Error('payments: original entry must be immutable');
+    await db.query("select public.record_document_payment_v2($1,120,'bank_transfer','TEST-002','2026-07-21T13:00:00Z',null) result",[invoice.id]);
+    const paidInvoice=await db.query('select status from public.documents where id=$1',[invoice.id]);
+    if(paidInvoice.rows[0].status!=='paid')throw new Error(`payments: invoice should be paid, got ${paidInvoice.rows[0].status}`);
+    const closure=await db.query("select public.generate_fiscal_closure($1,'daily',date_trunc('day',now()-interval '1 day'),date_trunc('day',now())) result",[company]);
+    const closureRow=await db.query('select integrity_status,signature,closure_hash from public.fiscal_closures where id=$1',[closure.rows[0].result]);
+    if(closureRow.rows[0].integrity_status!=='unsigned'||closureRow.rows[0].signature!==null||!closureRow.rows[0].closure_hash)
+      throw new Error(`closure: unsigned state must remain explicit ${JSON.stringify(closureRow.rows[0])}`);
+    const finalChain=await db.query('select public.verify_fiscal_event_chain($1) result',[company]);
+    if(!finalChain.rows[0].result?.valid||Number(finalChain.rows[0].result.checked_events)<5)throw new Error(`fiscal events: chain verification failed ${JSON.stringify(finalChain.rows[0].result)}`);
     console.log(JSON.stringify({ok:true,quote:{...quote,convertedInvoiceId:convertedInvoiceId.rows[0].result},invoice:{id:invoice.id,draftNumber:invoice.number,number:finalized.number,total:invoice.total,status:finalized.status,finalizedAt:finalized.finalized_at}}));
   }finally{
     await db.close();
