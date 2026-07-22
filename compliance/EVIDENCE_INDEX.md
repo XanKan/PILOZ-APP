@@ -18,6 +18,8 @@ Ce fichier indexe les preuves disponibles et celles restant à produire. Une pre
 | E-012 | Exercice de restauration | `BACKUP_AND_RESTORE_CONTROL.md` | Procédure disponible ; exercice réel non exécuté | Exploitation |
 | E-017 | Vérificateur d'archive autonome | `scripts/verify-fiscal-archive.mjs` | Altération détectée par test automatisé | Node.js |
 | E-018 | Générateur de dossier de preuves | `scripts/generate-compliance-evidence-pack.mjs` | Exécution locale réussie ; dossier non signé | Node.js |
+| E-019 | Modèle canonique de facture | `electronic_invoice_records`, `tests/electronic-invoice.html` | Génération JSON testée ; 11/11 contrôles | PostgreSQL et navigateur |
+| E-020 | Blocage des formats sans profil | `check_electronic_format_profile`, adaptateurs serveur | UBL/CII/Factur-X bloqués comme attendu | PostgreSQL et navigateur |
 | E-013 | Validation UBL/CII/Factur-X | Rapports de validateurs officiels | Non exécutée | Intégration e-invoicing |
 | E-014 | Accusés de plateforme agréée | Connecteur réel | Non configurés | Plateforme retenue |
 | E-015 | Revue juridique | Avis signé et versionné | Non fourni | Conseil juridique |

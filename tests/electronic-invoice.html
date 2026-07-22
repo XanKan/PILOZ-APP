@@ -1,0 +1,11 @@
+<!doctype html><html lang="fr"><meta charset="utf-8"><title>Facturation électronique PILOZ</title><body><main id="result">RUNNING</main>
+<script src="../assets/js/domain/electronic-invoice.js"></script><script>
+(()=>{const checks=[],check=(name,value)=>checks.push([name,!!value]),api=PilozElectronicInvoice;
+const snapshot={document:{id:'doc-1',number:'FAC-2026-0001',document_type:'invoice',issue_date:'2026-07-22',due_date:'2026-08-21',currency:'EUR',sale_type:'services',total_excl_tax:100,total_tax:20,total_incl_tax:120,payment_terms:'30 jours'},issuer:{legal_name:'Société Test',siren:'123456789',siret:'12345678900012',address_line1:'1 rue du Test',postal_code:'75001',city:'Paris',country_code:'FR'},client:{id:'client-1',legal_name:'Client Test',siren:'987654321',address_line_1:'2 rue Client',postal_code:'69001',city:'Lyon',country_code:'FR'},lines:[{id:'line-1',position:1,line_type:'item',name:'Service',quantity:'1.0000',unit:'unité',unit_price:'100.0000',discount_rate:0,tax_rate:20,total_excl_tax:100,total_tax:20,total_incl_tax:120}]};
+const invoice=api.build(snapshot,{customer:{category:'b2b'},snapshotHash:'abc'}),validation=api.validate(invoice);
+check('modèle canonique créé',invoice.format==='piloz-canonical-invoice'&&invoice.formatVersion==='1.0');
+check('fournisseur conservé',invoice.supplier.siren==='123456789');check('client conservé',invoice.customer.legalName==='Client Test');
+check('ligne conservée',invoice.lines.length===1&&invoice.lines[0].totals.inclTax==='120');check('validation métier',validation.valid);
+for(const format of ['ubl','cii','facturx']){const ready=api.formatReadiness(format,[]);check(`${format} bloqué sans profil`,!ready.ready&&ready.code==='official_profile_not_configured');let blocked=false;try{api.exportStructured(format,invoice,[])}catch(error){blocked=error.code==='official_profile_not_configured'}check(`${format} sans XML approximatif`,blocked)}
+const failed=checks.filter(([,ok])=>!ok),node=document.getElementById('result');node.dataset.status=failed.length?'failed':'passed';node.textContent=failed.length?`Échec : ${failed.map(([name])=>name).join(', ')}`:`${checks.length}/${checks.length} contrôles de facturation électronique réussis`;})();
+</script></body></html>

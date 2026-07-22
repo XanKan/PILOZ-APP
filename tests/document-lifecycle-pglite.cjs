@@ -48,8 +48,8 @@ async function bootstrap(db){
     insert into auth.users(id,email,raw_user_meta_data) values('${actor}','test@piloz.fr',jsonb_build_object('first_name','Quentin'));
     insert into public.companies(id,owner_user_id,name) values('${company}','${actor}','Société Test');
     insert into public.company_members(company_id,user_id,role) values('${company}','${actor}','owner');
-    insert into public.company_settings(company_id,legal_name,siret,address_line1,postal_code,city,country,email,subject_to_vat,default_vat_rate,onboarding_completed_at)
-      values('${company}','Société Test','12345678900012','1 rue du Test','75001','Paris','France','contact@piloz.fr',true,20,now())
+    insert into public.company_settings(company_id,legal_name,siren,siret,address_line1,postal_code,city,country,email,subject_to_vat,default_vat_rate,onboarding_completed_at)
+      values('${company}','Société Test','123456789','12345678900012','1 rue du Test','75001','Paris','France','contact@piloz.fr',true,20,now())
       on conflict(company_id) do update set legal_name=excluded.legal_name;
     insert into public.company_document_settings(company_id,quote_prefix,invoice_prefix,credit_prefix,default_payment_terms,default_payment_method,quote_validity_days)
       values('${company}','DEV','FAC','AV','days_30','bank_transfer',30)
@@ -208,6 +208,16 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     if(!archiveMutation||!/(immutable_fiscal_record|permission denied)/.test(archiveMutation.message))throw new Error('archive: frozen record must be immutable');
     const archiveExport=await db.query("select public.register_fiscal_archive_export($1,'json_bundle',null,'unsigned') result",[archiveId]);
     if(!archiveExport.rows[0].result)throw new Error('archive: export event was not recorded');
+    const canonical=await db.query('select public.create_canonical_invoice_record($1) result',[invoice.id]);
+    if(canonical.rows[0].result?.status!=='valid'||!canonical.rows[0].result?.canonical_hash)
+      throw new Error(`electronic invoice: canonical model is invalid ${JSON.stringify(canonical.rows[0].result)}`);
+    const canonicalRecord=await db.query('select canonical_payload,validation_status from public.electronic_invoice_records where id=$1',[canonical.rows[0].result.record_id]);
+    if(canonicalRecord.rows[0].validation_status!=='valid'||canonicalRecord.rows[0].canonical_payload?.format!=='piloz-canonical-invoice'
+      ||canonicalRecord.rows[0].canonical_payload?.lines?.length!==1)
+      throw new Error(`electronic invoice: canonical payload is incomplete ${JSON.stringify(canonicalRecord.rows[0])}`);
+    const blockedProfile=await db.query("select public.check_electronic_format_profile('ubl',null) result");
+    if(blockedProfile.rows[0].result?.ready!==false||blockedProfile.rows[0].result?.code!=='official_profile_not_configured')
+      throw new Error(`electronic invoice: approximate UBL generation was not blocked ${JSON.stringify(blockedProfile.rows[0].result)}`);
     console.log(JSON.stringify({ok:true,quote:{...quote,convertedInvoiceId:convertedInvoiceId.rows[0].result},invoice:{id:invoice.id,draftNumber:invoice.number,number:finalized.number,total:invoice.total,status:finalized.status,finalizedAt:finalized.finalized_at}}));
   }finally{
     await db.close();
