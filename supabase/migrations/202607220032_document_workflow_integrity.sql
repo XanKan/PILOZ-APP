@@ -157,12 +157,12 @@ $$;
 revoke all on function public._piloz_seed_document_templates(uuid,uuid) from public,anon,authenticated;
 
 do $backfill$
-declare company_row record; footer_id uuid;
+declare company_row record; company_footer_id uuid;
 begin
   for company_row in select id,owner_user_id from public.companies loop
     perform public._piloz_seed_document_templates(company_row.id,company_row.owner_user_id);
-    footer_id:=public._piloz_seed_company_footer(company_row.id,company_row.owner_user_id);
-    update public.document_template_versions version set footer_id=footer_id
+    company_footer_id:=public._piloz_seed_company_footer(company_row.id,company_row.owner_user_id);
+    update public.document_template_versions version set footer_id=company_footer_id
     from public.document_templates template
     where version.template_id=template.id and template.company_id=company_row.id
       and version.version=template.current_version and version.footer_id is null;
