@@ -107,15 +107,15 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
       where company_id=$1 and status='active' and document_type in('quote','invoice')
       order by document_type
     `,[company]);
-    if(activeTemplates.rows.length!==2)throw new Error(`templates: expected exactly 2 active models, got ${JSON.stringify(activeTemplates.rows)}`);
-    if(!activeTemplates.rows.every(row=>row.is_default))throw new Error(`templates: both active models must be defaults ${JSON.stringify(activeTemplates.rows)}`);
+    if(activeTemplates.rows.length!==5)throw new Error(`templates: expected 2 seeded models plus 3 user models, got ${JSON.stringify(activeTemplates.rows)}`);
+    if(activeTemplates.rows.filter(row=>row.is_default).length!==2)throw new Error(`templates: expected one default per document family ${JSON.stringify(activeTemplates.rows)}`);
     if(!activeTemplates.rows.some(row=>row.document_type==='quote'&&row.name==='Modèle de devis'))throw new Error('templates: unique quote model is missing');
     if(!activeTemplates.rows.some(row=>row.document_type==='invoice'&&row.name==='Modèle de facture'))throw new Error('templates: unique invoice model is missing');
     const archivedTemplates=await db.query(`
       select count(*)::int count from public.document_templates
       where company_id=$1 and status='archived' and document_type in('quote','invoice')
     `,[company]);
-    if(Number(archivedTemplates.rows[0]?.count)!==3)throw new Error('templates: previous models must be archived, not deleted');
+    if(Number(archivedTemplates.rows[0]?.count)!==0)throw new Error('templates: the bootstrap must not archive user-created models');
     await db.exec(`set request.jwt.claim.sub='${actor}'; set role authenticated;`);
     // Le devis reçoit son numéro officiel et son statut "en attente" dès son
     // premier enregistrement — plus de brouillon, plus de finalisation.

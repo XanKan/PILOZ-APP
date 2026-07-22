@@ -61,6 +61,13 @@
     const runtime=global.PilozRuntime,response=await fetch(runtime.config.url.replace(/\/$/,'')+'/functions/v1/'+name,{method:'POST',signal,headers:{apikey:runtime.config.key,Authorization:'Bearer '+runtime.session.access_token,'Content-Type':'application/json'},body:serializeBody(body)});
     const data=await readBody(response,'/functions/v1/'+name);if(!response.ok){const failure=new Error(translateError(data?.error||data?.message||'Service indisponible.',response.status));failure.status=response.status;failure.code=data?.code||'';technicalLog('Edge Function refusée',response,name,failure);throw failure;}return data;
   }
+  async function invokeBlob(name,body,signal){
+    const runtime=global.PilozRuntime,response=await fetch(runtime.config.url.replace(/\/$/,'')+'/functions/v1/'+name,{method:'POST',signal,headers:{apikey:runtime.config.key,Authorization:'Bearer '+runtime.session.access_token,'Content-Type':'application/json'},body:serializeBody(body)});
+    if(!response.ok){const data=await readBody(response,'/functions/v1/'+name),failure=new Error(translateError(data?.error||data?.message||'Service indisponible.',response.status));failure.status=response.status;failure.code=data?.code||'';technicalLog('Edge Function refusée',response,name,failure);throw failure;}
+    const contentType=String(response.headers?.get?.('content-type')||'').split(';')[0].trim().toLowerCase();
+    if(!contentType||(!contentType.startsWith('application/pdf')&&!contentType.startsWith('application/octet-stream'))){technicalLog('Réponse binaire inattendue',response,name);const failure=new Error('Le service n’a pas renvoyé un PDF valide. Réessayez dans quelques instants.');failure.status=response.status;failure.code='unexpected_binary_content_type';throw failure;}
+    const blob=await response.blob();if(!blob.size){const failure=new Error('Le PDF généré est vide. Réessayez dans quelques instants.');failure.status=response.status;failure.code='empty_pdf_response';throw failure;}return blob;
+  }
   async function upsertCompanySettings(companyId,data){return request('/rest/v1/company_settings?on_conflict=company_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body:serializeBody({company_id:companyId,...data})});}
   function query(table,params=''){return request(`/rest/v1/${table}?${params}`);}
   const restrictedReturns=new Set(['catalog_items','documents','document_lines','stock_movements']);
@@ -76,5 +83,5 @@
     const base=(global.PilozRuntime?.config?.url||'').replace(/\/$/,''),full=base+(raw.startsWith('/storage/v1')?raw:raw.startsWith('/')?'/storage/v1'+raw:'/storage/v1/'+raw);
     return{...data,signedURL:full,signedUrl:full,url:full};
   }
-  global.PilozERP={request,companyContext,invoke,upsertCompanySettings,query,insert,update,remove,rpc,upload,signedUrl,translateError,readBody,serializeBody};
+  global.PilozERP={request,companyContext,invoke,invokeBlob,upsertCompanySettings,query,insert,update,remove,rpc,upload,signedUrl,translateError,readBody,serializeBody};
 })(window);

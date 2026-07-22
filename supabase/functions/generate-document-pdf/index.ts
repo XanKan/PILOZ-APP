@@ -491,6 +491,165 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const PREVIEW_DOCUMENT_TYPES = new Set(["quote", "invoice", "deposit_invoice", "balance_invoice", "credit_note", "proforma_invoice", "recurring_invoice"]);
+
+type PreviewInput = {
+  companyId?: unknown;
+  clientId?: unknown;
+  templateId?: unknown;
+  document?: unknown;
+  lines?: unknown;
+};
+
+function previewFailure(message: string, status: number) {
+  return Object.assign(new Error(message), { status });
+}
+
+function previewText(value: unknown, maxLength: number) {
+  return value == null ? null : String(value).trim().slice(0, maxLength) || null;
+}
+
+function previewNumber(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+async function buildPreviewPayload(
+  userClient: SupabaseClient<any, "public", "public", any, any>,
+  userId: string,
+  preview: PreviewInput,
+): Promise<{ payload: SnapshotPayload; companyId: string }> {
+  const companyId = String(preview.companyId || "");
+  if (!UUID.test(companyId)) throw previewFailure("Entreprise invalide", 400);
+
+  const { data: membership, error: membershipError } = await userClient.from("company_members")
+    .select("company_id").eq("company_id", companyId).eq("user_id", userId).maybeSingle();
+  if (membershipError || !membership) throw previewFailure("Acces refuse a cette entreprise", 403);
+
+  const sourceDocument = record(preview.document);
+  const documentType = String(sourceDocument.document_type || "");
+  if (!PREVIEW_DOCUMENT_TYPES.has(documentType)) throw previewFailure("Type de document invalide", 400);
+  const templateType = documentType === "quote" ? "quote" : "invoice";
+  const sourceLines = Array.isArray(preview.lines) ? preview.lines : [];
+  if (sourceLines.length > 500) throw previewFailure("Le document contient trop de lignes", 413);
+
+  const [{ data: issuer, error: issuerError }, { data: documentSettings, error: settingsError }] = await Promise.all([
+    userClient.from("company_settings").select("*").eq("company_id", companyId).maybeSingle(),
+    userClient.from("company_document_settings").select("*").eq("company_id", companyId).maybeSingle(),
+  ]);
+  if (issuerError || settingsError) throw previewFailure("Parametres du document indisponibles", 503);
+
+  let client: Record<string, unknown> = {};
+  const clientId = preview.clientId == null ? "" : String(preview.clientId);
+  if (clientId) {
+    if (!UUID.test(clientId)) throw previewFailure("Client invalide", 400);
+    const { data, error } = await userClient.from("clients").select("*").eq("id", clientId).eq("company_id", companyId).maybeSingle();
+    if (error || !data) throw previewFailure("Client introuvable", 404);
+    client = record(data);
+  }
+
+  const configuredTemplateId = templateType === "quote"
+    ? record(documentSettings).default_quote_template_id
+    : record(documentSettings).default_invoice_template_id;
+  const requestedTemplateId = String(preview.templateId || configuredTemplateId || "");
+  let template: Record<string, unknown> | null = null;
+  if (requestedTemplateId) {
+    if (!UUID.test(requestedTemplateId)) throw previewFailure("Modele de document invalide", 400);
+    const { data, error } = await userClient.from("document_templates").select("*")
+      .eq("id", requestedTemplateId).eq("company_id", companyId).eq("document_type", templateType).eq("status", "active").maybeSingle();
+    if (error || !data) throw previewFailure("Le modele selectionne est introuvable ou inactif", 404);
+    template = record(data);
+  } else {
+    const { data, error } = await userClient.from("document_templates").select("*")
+      .eq("company_id", companyId).eq("document_type", templateType).eq("status", "active")
+      .order("is_default", { ascending: false }).order("created_at", { ascending: true }).limit(1).maybeSingle();
+    if (error || !data) throw previewFailure("Aucun modele actif pour ce document", 409);
+    template = record(data);
+  }
+
+  const templateId = String(template.id || "");
+  const templateVersion = Number(template.current_version) || 1;
+  const { data: versionData, error: versionError } = await userClient.from("document_template_versions").select("*")
+    .eq("template_id", templateId).eq("company_id", companyId).eq("version", templateVersion).maybeSingle();
+  if (versionError || !versionData) throw previewFailure("La version du modele est introuvable", 409);
+  const version = record(versionData);
+
+  let footer: Record<string, unknown> = {};
+  const footerId = String(version.footer_id || "");
+  if (footerId && UUID.test(footerId)) {
+    const { data } = await userClient.from("document_footers").select("*")
+      .eq("id", footerId).eq("company_id", companyId).eq("is_active", true).maybeSingle();
+    footer = record(data);
+  }
+
+  const logoSettings = record(version.logo_settings);
+  let logo: Record<string, unknown> = {};
+  if (logoSettings.show !== false) {
+    const requestedVariant = logoSettings.use_alternate === true ? "dark" : "light";
+    const { data: requestedLogo } = await userClient.from("company_logos").select("storage_path,mime_type,size_bytes,width,height,variant")
+      .eq("company_id", companyId).eq("variant", requestedVariant).eq("is_active", true).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    let logoData = requestedLogo;
+    if (!logoData && requestedVariant === "dark") {
+      const { data: fallbackLogo } = await userClient.from("company_logos").select("storage_path,mime_type,size_bytes,width,height,variant")
+        .eq("company_id", companyId).eq("variant", "light").eq("is_active", true).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      logoData = fallbackLogo;
+    }
+    logo = record(logoData);
+  }
+
+  const document: Record<string, unknown> = {
+    document_type: documentType,
+    number: previewText(sourceDocument.number, 80),
+    issue_date: previewText(sourceDocument.issue_date, 32),
+    due_date: previewText(sourceDocument.due_date, 32),
+    validity_date: previewText(sourceDocument.validity_date, 32),
+    subject: previewText(sourceDocument.subject, 500),
+    currency: previewText(sourceDocument.currency, 3) || "EUR",
+    language: previewText(sourceDocument.language, 8) || "fr",
+    payment_terms: previewText(sourceDocument.payment_terms, 500),
+    payment_method: previewText(sourceDocument.payment_method, 160),
+    public_notes: previewText(sourceDocument.public_notes, 4000),
+    discount_rate: previewNumber(sourceDocument.discount_rate),
+    total_excl_tax: previewNumber(sourceDocument.total_excl_tax),
+    total_tax: previewNumber(sourceDocument.total_tax),
+    total_incl_tax: previewNumber(sourceDocument.total_incl_tax),
+    metadata: record(sourceDocument.metadata),
+  };
+  const lines = sourceLines.map((value, index) => {
+    const line = record(value);
+    return {
+      position: index + 1,
+      line_type: previewText(line.line_type, 32) || "item",
+      reference: previewText(line.reference, 160),
+      name: previewText(line.name, 500),
+      description: previewText(line.description, 4000),
+      quantity: previewNumber(line.quantity),
+      unit: previewText(line.unit, 80),
+      unit_price: previewNumber(line.unit_price),
+      discount_rate: previewNumber(line.discount_rate),
+      tax_rate: previewNumber(line.tax_rate),
+      optional: line.optional === true,
+      total_excl_tax: previewNumber(line.total_excl_tax),
+      total_tax: previewNumber(line.total_tax),
+      total_incl_tax: previewNumber(line.total_incl_tax),
+    };
+  });
+
+  return {
+    companyId,
+    payload: {
+      schema_version: 2,
+      captured_at: new Date().toISOString(),
+      document,
+      lines,
+      issuer: record(issuer),
+      document_settings: record(documentSettings),
+      client,
+      logo,
+      template: { template, version, footer },
+    },
+  };
+}
 
 function failureCode(error: unknown) {
   const value = record(error);
@@ -566,8 +725,30 @@ Deno.serve(async (req) => {
   const userClient = createClient(url, anonKey, { global: { headers: { Authorization: authorization } } });
   const { data: { user } } = await userClient.auth.getUser();
   if (!user) return json({ error: "Session invalide" }, 401);
-  const body = await req.json().catch(() => null) as { documentId?: string } | null;
-  if (!body?.documentId || !UUID.test(body.documentId)) return json({ error: "Document invalide" }, 400);
+  const body = await req.json().catch(() => null) as { documentId?: string; preview?: PreviewInput } | null;
+  if (!body) return json({ error: "Requete invalide" }, 400);
+  if (body.preview) {
+    try {
+      if (JSON.stringify(body.preview).length > 1_000_000) return json({ error: "Apercu trop volumineux" }, 413);
+      const { payload, companyId } = await buildPreviewPayload(userClient, user.id, body.preview);
+      const logo = await loadFrozenLogo(userClient, payload, companyId);
+      const bytes = await buildPdf(payload, logo);
+      return new Response(bytes, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/pdf",
+          "Content-Disposition": 'inline; filename="apercu-document.pdf"',
+          "Cache-Control": "no-store, max-age=0",
+        },
+      });
+    } catch (error) {
+      const status = Number(record(error).status) || 500;
+      console.error("[PILOZ PDF] preview failed", { code: failureCode(error), status });
+      return json({ error: status >= 500 ? "L'apercu PDF est temporairement indisponible" : error instanceof Error ? error.message : "Apercu invalide" }, status);
+    }
+  }
+  if (!body.documentId || !UUID.test(body.documentId)) return json({ error: "Document invalide" }, 400);
 
   const { data: claimData, error: claimError } = await userClient.rpc("claim_document_pdf_job", {
     target_document_id: body.documentId,
