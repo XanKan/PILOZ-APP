@@ -296,40 +296,41 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     if (layoutKey === "modern") {
       page.drawRectangle({ x: 0, y: 826, width: A4[0], height: 10, color: colors.secondary });
     }
-    if (referenceLayout) {
-      page.drawText(fit(regular, issuerName, 13, 270), { x: 42, y: 790, size: 13, font: regular, color: colors.heading });
-      page.drawText(kind, { x: 42, y: 768, size: 13, font: regular, color: colors.primary });
-      page.drawText("Numéro", { x: 42, y: 746, size: 8, font: bold, color: colors.text });
-      page.drawText(fit(regular, number, 8, 150), { x: 145, y: 746, size: 8, font: regular, color: colors.text });
-      page.drawText("Date d'émission", { x: 42, y: 731, size: 8, font: bold, color: colors.text });
-      page.drawText(longDate(doc.issue_date), { x: 145, y: 731, size: 8, font: regular, color: colors.text });
-      page.drawText(doc.document_type === "quote" ? "Date d'expiration" : "Date d'échéance", { x: 42, y: 716, size: 8, font: bold, color: colors.text });
-      page.drawText(longDate(doc.document_type === "quote" ? doc.validity_date : doc.due_date), { x: 145, y: 716, size: 8, font: regular, color: colors.text });
-      if (saleTypeLabel) {
-        page.drawText("Type de vente", { x: 42, y: 701, size: 8, font: bold, color: colors.text });
-        page.drawText(fit(regular, saleTypeLabel, 8, 150), { x: 145, y: 701, size: 8, font: regular, color: colors.text });
-      }
-      page.drawText("Émetteur ou Émettrice", { x: 345, y: 790, size: 8, font: regular, color: colors.text });
-      page.drawText(fit(bold, issuerName, 9, 208), { x: 345, y: 776, size: 9, font: bold, color: colors.heading });
-      limitedLines(regular, issuerAddressText, 8, 208, 2).forEach((line, index) => page.drawText(line, { x: 345, y: 763 - index * 11, size: 8, font: regular, color: colors.text }));
-      if (issuerEmail) page.drawText(fit(regular, issuerEmail, 8, 208), { x: 345, y: 741, size: 8, font: regular, color: colors.text });
-    } else {
-      page.drawText(fit(bold, issuerName, 9, 270), { x: 42, y: 804, size: 9, font: bold, color: colors.heading });
-      page.drawText(fit(bold, kind.toUpperCase(), metrics.titleSize, 270), { x: 42, y: 785, size: metrics.titleSize, font: bold, color: colors.primary });
-      page.drawText(fit(bold, number, metrics.numberSize, 270), { x: 42, y: 763, size: metrics.numberSize, font: bold, color: colors.heading });
+    if (continuation) {
+      page.drawText(fit(bold, `${kind} ${number}`, 10, 270), { x: 42, y: 800, size: 10, font: bold, color: colors.heading });
+      right(page, bold, issuerName, 553, 800, 9, colors.heading, 245);
+      y = 770;
+      drawColumns();
+      return;
     }
-    if (firstPage && embeddedLogo && showLogo && !referenceLayout) {
-      const maxWidth = Number(logoSettings.max_width) || 140;
-      const scale = Math.min(maxWidth / embeddedLogo.width, 44 / embeddedLogo.height, 1);
-      page.drawImage(embeddedLogo, { x: 42, y: 704, width: embeddedLogo.width * scale, height: embeddedLogo.height * scale });
-    }
-    if (firstPage && embeddedLogo && showLogo && referenceLayout) {
-      const maxWidth = Math.min(Number(logoSettings.max_width) || 140, 70);
-      const scale = Math.min(maxWidth / embeddedLogo.width, 28 / embeddedLogo.height, 1);
+    if (firstPage && embeddedLogo && showLogo) {
+      const maxWidth = Math.min(220, Math.max(60, Number(logoSettings.max_width) || 140));
+      const scale = Math.min(maxWidth / embeddedLogo.width, 80 / embeddedLogo.height, 1);
       const width = embeddedLogo.width * scale;
-      page.drawImage(embeddedLogo, { x: 553 - width, y: 806, width, height: embeddedLogo.height * scale });
+      const height = embeddedLogo.height * scale;
+      page.drawImage(embeddedLogo, { x: 42, y: 805 - height, width, height });
     }
-    if (!referenceLayout) {
+    if (referenceLayout) {
+      page.drawText(kind, { x: 42, y: 700, size: 13, font: bold, color: colors.primary });
+      page.drawText("Numéro", { x: 42, y: 678, size: 8, font: bold, color: colors.text });
+      page.drawText(fit(regular, number, 8, 150), { x: 145, y: 678, size: 8, font: regular, color: colors.text });
+      page.drawText("Date d'émission", { x: 42, y: 663, size: 8, font: bold, color: colors.text });
+      page.drawText(longDate(doc.issue_date), { x: 145, y: 663, size: 8, font: regular, color: colors.text });
+      page.drawText(doc.document_type === "quote" ? "Date d'expiration" : "Date d'échéance", { x: 42, y: 648, size: 8, font: bold, color: colors.text });
+      page.drawText(longDate(doc.document_type === "quote" ? doc.validity_date : doc.due_date), { x: 145, y: 648, size: 8, font: regular, color: colors.text });
+      if (saleTypeLabel) {
+        page.drawText("Type de service", { x: 42, y: 633, size: 8, font: bold, color: colors.text });
+        page.drawText(fit(regular, saleTypeLabel, 8, 150), { x: 145, y: 633, size: 8, font: regular, color: colors.text });
+      }
+      right(page, bold, issuerName, 553, 800, 9, colors.heading, 208);
+      limitedLines(regular, issuerAddressText, 8, 208, 2).forEach((line, index) => right(page, regular, line, 553, 786 - index * 11, 8, colors.text, 208));
+      if (issuerEmail) right(page, regular, issuerEmail, 553, 764, 8, colors.text, 208);
+      if (issuerPhone) right(page, regular, issuerPhone, 553, 752, 8, colors.text, 208);
+      if (issuer.siret) right(page, regular, `SIRET ${issuer.siret}`, 553, 740, 8, colors.text, 208);
+      if (issuer.vat_number) right(page, regular, `TVA ${issuer.vat_number}`, 553, 728, 8, colors.text, 208);
+    } else {
+      page.drawText(fit(bold, kind.toUpperCase(), metrics.titleSize, 270), { x: 42, y: 700, size: metrics.titleSize, font: bold, color: colors.primary });
+      page.drawText(fit(bold, number, metrics.numberSize, 270), { x: 42, y: 680, size: metrics.numberSize, font: bold, color: colors.heading });
       right(page, bold, issuerName, 553, 787, 10, colors.heading, 245);
       right(page, regular, issuerAddressText, 553, 772, 8, colors.muted, 245);
       if (issuerEmail) right(page, regular, issuerEmail, 553, 760, 8, colors.muted, 245);
@@ -337,8 +338,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
       if (issuer.siret) right(page, regular, `SIRET ${issuer.siret}`, 553, 736, 8, colors.muted, 245);
       if (issuer.vat_number) right(page, regular, `TVA ${issuer.vat_number}`, 553, 724, 8, colors.muted, 245);
     }
-    y = continuation ? 696 : (referenceLayout ? 625 : 692);
-    if (continuation) drawColumns();
+    y = referenceLayout ? 606 : 692;
   };
 
   const clientContactLines: string[] = [];
@@ -347,8 +347,8 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   const metaBoxHeight = metrics.metaBoxHeight + clientContactLines.length * 10;
 
   addPage();
-  if (!referenceLayout) page.drawRectangle({ x: 42, y: 682 - metaBoxHeight, width: 511, height: metaBoxHeight, color: colors.tableBackground });
-  const metaTop = referenceLayout ? 718 : 682 - 19;
+  if (!referenceLayout) page.drawRectangle({ x: 42, y: 662 - metaBoxHeight, width: 511, height: metaBoxHeight, color: colors.tableBackground });
+  const metaTop = referenceLayout ? 700 : 643;
   if (!referenceLayout) {
     page.drawText("Date d'emission", { x: 52, y: metaTop, size: 8, font: bold, color: colors.muted });
     page.drawText(date(doc.issue_date), { x: 132, y: metaTop, size: 8, font: regular, color: colors.text });
@@ -359,11 +359,11 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
       page.drawText(fit(regular, doc.subject, 8, 193), { x: 132, y: metaTop - 30, size: 8, font: regular, color: colors.text });
     }
     if (saleTypeLabel) {
-      page.drawText("Type de vente", { x: 52, y: metaTop - 45, size: 8, font: bold, color: colors.muted });
+      page.drawText("Type de service", { x: 52, y: metaTop - 45, size: 8, font: bold, color: colors.muted });
       page.drawText(fit(regular, saleTypeLabel, 8, 193), { x: 132, y: metaTop - 45, size: 8, font: regular, color: colors.text });
     }
   }
-  page.drawText(referenceLayout ? "Client ou Cliente" : "DESTINATAIRE", { x: 345, y: metaTop, size: referenceLayout ? 8 : 7, font: referenceLayout ? regular : bold, color: referenceLayout ? colors.text : colors.secondary });
+  page.drawText(referenceLayout ? "Client facturé" : "CLIENT FACTURÉ", { x: 345, y: metaTop, size: referenceLayout ? 8 : 7, font: referenceLayout ? regular : bold, color: referenceLayout ? colors.text : colors.secondary });
   page.drawText(fit(bold, partyName(client), referenceLayout ? 9 : 10, 198), { x: 345, y: metaTop - 15, size: referenceLayout ? 9 : 10, font: bold, color: colors.heading });
   const clientAddressLines = limitedLines(regular, address(client), 8, 198, 2);
   const clientIdentityLines = referenceLayout
@@ -371,7 +371,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     : clientAddressLines;
   clientIdentityLines.forEach((line, index) => page.drawText(line, { x: 345, y: metaTop - 29 - index * 11, size: 8, font: regular, color: referenceLayout ? colors.text : colors.muted }));
   clientContactLines.forEach((line, index) => page.drawText(line, { x: 345, y: metaTop - 29 - clientIdentityLines.length * 11 - index * 10, size: 8, font: regular, color: colors.muted }));
-  y = referenceLayout ? 625 : 682 - metaBoxHeight - 10;
+  y = referenceLayout ? 606 : 662 - metaBoxHeight - 10;
   if (acceptsBankTransfer && bankVisibility === "body") {
     const bankHeight = drawBankDetails(page, 303, y - 2, 250);
     if (bankHeight) y -= bankHeight + 8;
