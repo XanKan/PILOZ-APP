@@ -191,12 +191,31 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   const metrics = LAYOUT_METRICS[layoutKey];
   const hasFooterConfig = Object.keys(templateFooter).length > 0;
   const showLegalMentions = hasFooterConfig ? templateFooter.show_legal_mentions !== false : true;
-  const showBankInFooter = (hasFooterConfig ? templateFooter.show_bank_details !== false : true) && bankVisibility === "footer";
   const showPaymentTerms = hasFooterConfig ? templateFooter.show_payment_terms !== false : true;
   const showLatePenalties = hasFooterConfig ? templateFooter.show_late_penalties !== false : true;
   const showPageNumber = hasFooterConfig ? templateFooter.show_page_number !== false : true;
 
-  const kind = doc.document_type === "quote" ? "Devis"
+  const issuerProfile = record(templateVersion.issuer_profile);
+  const issuerName = text(issuerProfile.trade_name || "") || partyName(issuer);
+  const issuerAddressText = issuerProfile.address ? text(issuerProfile.address) : address(issuer);
+  const issuerEmail = text(issuerProfile.email || issuer.email || "");
+  const issuerPhone = text(issuerProfile.phone || issuer.phone_e164 || issuer.phone || "");
+  const saleTypeLabels: Record<string, string> = { goods: "Livraison de biens", services: "Prestation de services", goods_and_services: "Livraison de biens et prestation de services" };
+  const saleTypeLabel = saleTypeLabels[String(issuerProfile.sale_type || "")] || "";
+
+  const clientProfile = record(templateVersion.client_profile);
+  const showClientEmail = clientProfile.show_email !== false;
+  const showClientPhone = clientProfile.show_phone !== false;
+
+  const paymentMethodsCatalog: Record<string, string> = { bank_transfer: "Virement bancaire", card: "Carte bancaire", check: "Cheque", cash: "Especes", direct_debit: "Prelevement SEPA" };
+  const activeMethods = Array.isArray(templateVersion.payment_methods) && templateVersion.payment_methods.length
+    ? (templateVersion.payment_methods as unknown[]).map(value => String(value)) : ["bank_transfer"];
+  const acceptsBankTransfer = activeMethods.includes("bank_transfer");
+  const showBankInFooter = acceptsBankTransfer && (hasFooterConfig ? templateFooter.show_bank_details !== false : true) && bankVisibility === "footer";
+
+  const templateDocTitle = text(templateVersion.document_title || "");
+  const kind = (doc.document_type === "quote" || doc.document_type === "invoice") && templateDocTitle ? templateDocTitle
+    : doc.document_type === "quote" ? "Devis"
     : doc.document_type === "deposit_invoice" ? "Facture d'acompte"
     : doc.document_type === "balance_invoice" ? "Facture de solde"
     : doc.document_type === "credit_note" ? "Avoir"
@@ -236,19 +255,23 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
       const scale = Math.min(maxWidth / embeddedLogo.width, 44 / embeddedLogo.height, 1);
       page.drawImage(embeddedLogo, { x: 42, y: 704, width: embeddedLogo.width * scale, height: embeddedLogo.height * scale });
     }
-    const issuerName = partyName(issuer);
     right(page, bold, issuerName, 553, 787, 10, colors.heading, 245);
-    right(page, regular, address(issuer), 553, 772, 8, colors.muted, 245);
-    if (issuer.email) right(page, regular, issuer.email, 553, 760, 8, colors.muted, 245);
-    if (issuer.phone_e164 || issuer.phone) right(page, regular, issuer.phone_e164 || issuer.phone, 553, 748, 8, colors.muted, 245);
+    right(page, regular, issuerAddressText, 553, 772, 8, colors.muted, 245);
+    if (issuerEmail) right(page, regular, issuerEmail, 553, 760, 8, colors.muted, 245);
+    if (issuerPhone) right(page, regular, issuerPhone, 553, 748, 8, colors.muted, 245);
     if (issuer.siret) right(page, regular, `SIRET ${issuer.siret}`, 553, 736, 8, colors.muted, 245);
     if (issuer.vat_number) right(page, regular, `TVA ${issuer.vat_number}`, 553, 724, 8, colors.muted, 245);
     y = continuation ? 696 : 692;
     if (continuation) drawColumns();
   };
 
+  const clientContactLines: string[] = [];
+  if (showClientEmail && client.email) clientContactLines.push(text(client.email));
+  if (showClientPhone && (client.phone_e164 || client.phone)) clientContactLines.push(text(client.phone_e164 || client.phone));
+  const metaBoxHeight = metrics.metaBoxHeight + clientContactLines.length * 10;
+
   addPage();
-  page.drawRectangle({ x: 42, y: 682 - metrics.metaBoxHeight, width: 511, height: metrics.metaBoxHeight, color: colors.tableBackground });
+  page.drawRectangle({ x: 42, y: 682 - metaBoxHeight, width: 511, height: metaBoxHeight, color: colors.tableBackground });
   const metaTop = 682 - 19;
   page.drawText("Date d'emission", { x: 52, y: metaTop, size: 8, font: bold, color: colors.muted });
   page.drawText(date(doc.issue_date), { x: 132, y: metaTop, size: 8, font: regular, color: colors.text });
@@ -258,10 +281,24 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     page.drawText("Objet", { x: 52, y: metaTop - 30, size: 8, font: bold, color: colors.muted });
     page.drawText(fit(regular, doc.subject, 8, 193), { x: 132, y: metaTop - 30, size: 8, font: regular, color: colors.text });
   }
+  if (saleTypeLabel) {
+    page.drawText("Type de vente", { x: 52, y: metaTop - 45, size: 8, font: bold, color: colors.muted });
+    page.drawText(fit(regular, saleTypeLabel, 8, 193), { x: 132, y: metaTop - 45, size: 8, font: regular, color: colors.text });
+  }
   page.drawText("DESTINATAIRE", { x: 345, y: metaTop, size: 7, font: bold, color: colors.muted });
   page.drawText(fit(bold, partyName(client), 10, 198), { x: 345, y: metaTop - 15, size: 10, font: bold, color: colors.heading });
-  limitedLines(regular, address(client), 8, 198, 2).forEach((line, index) => page.drawText(line, { x: 345, y: metaTop - 29 - index * 11, size: 8, font: regular, color: colors.muted }));
-  y = 682 - metrics.metaBoxHeight - 10;
+  const clientAddressLines = limitedLines(regular, address(client), 8, 198, 2);
+  clientAddressLines.forEach((line, index) => page.drawText(line, { x: 345, y: metaTop - 29 - index * 11, size: 8, font: regular, color: colors.muted }));
+  clientContactLines.forEach((line, index) => page.drawText(line, { x: 345, y: metaTop - 29 - clientAddressLines.length * 11 - index * 10, size: 8, font: regular, color: colors.muted }));
+  y = 682 - metaBoxHeight - 10;
+  if (acceptsBankTransfer && bankVisibility === "body") {
+    const bankLine = [settings.bank_account_holder && `Titulaire ${settings.bank_account_holder}`, settings.iban && `IBAN ${settings.iban}`, settings.bic && `BIC ${settings.bic}`].filter(Boolean).join(" - ");
+    if (bankLine) {
+      page.drawRectangle({ x: 42, y: y - 18, width: 511, height: 18, color: colors.tableBackground });
+      page.drawText(fit(regular, bankLine, 7, 500), { x: 48, y: y - 12, size: 7, font: regular, color: colors.text });
+      y -= 24;
+    }
+  }
   drawColumns();
 
   for (const line of payload.lines || []) {
@@ -320,15 +357,17 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   page.drawLine({ start: { x: 370, y: totalsY - 37 }, end: { x: 538, y: totalsY - 37 }, thickness: 1, color: totalsTextColor });
   page.drawText("Total TTC", { x: 374, y: totalsY - 54, size: 10, font: bold, color: totalsTextColor });
   right(page, bold, amount(doc.total_incl_tax, currency), 538, totalsY - 54, 10, totalsTextColor);
-  if (bankVisibility === "summary") {
-    const bankLine = [settings.bank_account_holder, settings.iban && `IBAN ${settings.iban}`].filter(Boolean).join(" - ");
+  if (acceptsBankTransfer && bankVisibility === "summary") {
+    const bankLine = [settings.bank_account_holder, settings.iban && `IBAN ${settings.iban}`, settings.bic && `BIC ${settings.bic}`].filter(Boolean).join(" - ");
     if (bankLine) limitedLines(regular, bankLine, 6, 190, 2).forEach((line, index) => page.drawText(line, { x: 358, y: totalsY - totalsBoxHeight - 2 - index * 8, size: 6, font: regular, color: colors.muted }));
   }
 
   const footerLines: string[] = [];
+  if (templateVersion.free_field) footerLines.push(String(templateVersion.free_field));
   if (templateFooter.body) footerLines.push(String(templateFooter.body));
   if (showLegalMentions) [doc.public_notes, settings.visible_mention, settings.legal_notice].filter(Boolean).forEach(value => footerLines.push(String(value)));
   if (showLatePenalties && settings.collection_fee_notice) footerLines.push(String(settings.collection_fee_notice));
+  footerLines.push(`Moyens de paiement acceptes : ${activeMethods.map(key => paymentMethodsCatalog[key] || key).join(", ")}`);
   const footerNote = footerLines.join(" | ");
   limitedLines(regular, footerNote, 7, 500, 4).forEach((line, index) => page.drawText(line, { x: 42, y: 76 - index * 9, size: 7, font: regular, color: colors.muted }));
   if (showBankInFooter) {
@@ -346,7 +385,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     });
   }
   pdf.setTitle(`${kind} ${number}`);
-  pdf.setAuthor(partyName(issuer));
+  pdf.setAuthor(issuerName);
   pdf.setCreator("PILOZ");
   pdf.setProducer("PILOZ document lifecycle");
   const capturedAt = new Date(payload.captured_at || String(doc.finalized_at || doc.validated_at || doc.updated_at || doc.issue_date || ""));
