@@ -100,7 +100,7 @@
 
       PilozApp.editDocument(quoteId);await wait(40);await PilozApp.convertDocument('invoice');await wait(120);
       const converted=PilozApp.getState().draft;
-      check('conversion devis facture',converted?.document_type==='invoice'&&converted?.source_document_id===quoteId);
+      check('conversion devis facture ouverte en édition',converted?.document_type==='invoice'&&converted?.source_document_id===quoteId&&location.hash.includes('document-editor'));
       check('conversion conserve données',converted?.client_id===clientId&&converted?.opportunity_id===opportunityId&&converted?.lines?.[0]?.unit_cost_snapshot===60);
       validationErrors=[{code:'client_address_required',field:'client.address'}];let validationMessage='';try{await PilozApp.finalizeCurrentDocument({throwOnError:true});}catch(error){validationMessage=error.message;}await wait(50);
       check('finalisation explique la fiche client incomplète',validationMessage.includes('adresse du client')&&document.getElementById('partner-form')?.elements.address_line_1);

@@ -296,7 +296,7 @@
   if(ui.modal?.type==='balance')await runConversion('create_balance_invoice',{target_quote_id:doc.id});
  }
   async function runConversion(rpcName,params){
-   ui.busy=true;try{const result=await api().rpc(rpcName,params),id=documentIdFromRpc(result);if(!id)throw Object.assign(new Error('La facture a été créée mais son identifiant n’a pas été retourné.'),{code:'missing_document_id'});ui.modal=null;await app().refresh();if(!(state().data.documents||[]).some(row=>row.id===id))throw Object.assign(new Error('La facture a été créée mais elle n’est pas encore disponible. Rechargez la page.'),{code:'converted_document_not_loaded'});open(id);notify('Brouillon de facturation créé et ouvert.','success');return id;}
+   ui.busy=true;try{const result=await api().rpc(rpcName,params),id=documentIdFromRpc(result);if(!id)throw Object.assign(new Error('La facture a été créée mais son identifiant n’a pas été retourné.'),{code:'missing_document_id'});ui.modal=null;await app().refresh();if(!(state().data.documents||[]).some(row=>row.id===id))throw Object.assign(new Error('La facture a été créée mais elle n’est pas encore disponible. Rechargez la page.'),{code:'converted_document_not_loaded'});app().editDocument(id);notify('Brouillon de facturation créé et ouvert en édition.','success');return id;}
   catch(error){console.error('[PILOZ Documents] Conversion impossible',{rpc:rpcName,code:error?.code||'',status:error?.status||0,message:error?.message||String(error)});notify(error.message||'La conversion n’a pas pu être réalisée.','error');return null;}
   finally{ui.busy=false;}
  }

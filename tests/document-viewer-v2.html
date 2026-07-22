@@ -110,7 +110,7 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   PilozDocumentViewerV2.select('q1');document.querySelector('#document-viewer-comment-form textarea').value='Nouveau commentaire';await PilozDocumentViewerV2.saveComment();
   check('création commentaire par RPC',calls.some(call=>call[0]==='rpc'&&call[1]==='save_document_comment'));
   await PilozDocumentViewerV2.convert('invoice');check('conversion standard atomique',calls.some(call=>call[0]==='rpc'&&call[1]==='convert_quote_to_invoice'));
-  check('facture convertie ouverte directement',location.hash.includes('id=f1')&&main.textContent.includes('Factures clients'));
+  check('facture convertie ouverte directement en édition',calls.some(call=>call[0]==='editDocument'&&call[1]==='f1'));
   PilozDocumentViewerV2.select('q1');await PilozDocumentViewerV2.convert('deposit_invoice');check('formulaire acompte',main.textContent.includes('Pourcentage du devis'));await PilozDocumentViewerV2.saveConversion();check('RPC acompte spécialisée',calls.some(call=>call[0]==='rpc'&&call[1]==='create_deposit_invoice'));
   PilozDocumentViewerV2.select('q1');await PilozDocumentViewerV2.convert('progress_invoice');const progress=document.querySelector('[name^="progress_"]');if(progress)progress.value='40';await PilozDocumentViewerV2.saveConversion();check('RPC situation spécialisée',calls.some(call=>call[0]==='rpc'&&call[1]==='create_progress_invoice'));
   PilozDocumentViewerV2.select('q1');await PilozDocumentViewerV2.convert('balance_invoice');await PilozDocumentViewerV2.saveConversion();check('RPC solde spécialisée',calls.some(call=>call[0]==='rpc'&&call[1]==='create_balance_invoice'));
