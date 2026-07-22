@@ -48,6 +48,7 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   check('facture partielle calculée par paiements',PilozDocumentStatus.effective(state.data,state.data.documents.find(row=>row.id==='f1'))==='partially_paid');
   check('facture payée calculée par paiements',PilozDocumentStatus.effective(state.data,state.data.documents.find(row=>row.id==='f2'))==='paid');
   check('facture en retard calculée par échéance',PilozDocumentStatus.effective(state.data,state.data.documents.find(row=>row.id==='f4'))==='overdue');
+  check('facture annulée sans reste à payer',PilozDocumentStatus.remainingFor(state.data,{id:'cancelled',status:'cancelled',total_incl_tax:500})===0);
 
   location.hash='document-viewer?id=q1&type=quote';PilozModern.renderRoute('document-viewer',state);await wait(30);
   check('structure en trois colonnes',!!document.querySelector('.document-viewer-list')&&!!document.querySelector('.document-viewer-preview')&&!!document.querySelector('.document-viewer-side'));
@@ -60,6 +61,7 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   check('anciennes actions retirées',['Historique','Relancer le client','Archiver'].every(label=>!main.textContent.includes(label)));
   check('actions texte présentes',['Télécharger','Imprimer','Dupliquer','Supprimer','Envoyer'].every(label=>main.textContent.includes(label)));
   check('suppression devis facturé désactivée',document.querySelector('.document-viewer-utility-actions button:last-child')?.disabled===true);
+  check('statut manuel verrouillé après facturation',document.querySelector('[aria-label="Statut du devis"]')?.disabled===true);
   check('panneau devis complet',main.textContent.includes('Reste à facturer')&&main.textContent.includes('Convertir en…')&&main.textContent.includes('Modifier via une nouvelle version'));
   check('statut automatique facturé visible',main.textContent.includes('Facturé'));
   check('documents liés visibles',main.textContent.includes('FAC-2026-0081'));
@@ -69,6 +71,8 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   PilozDocumentViewerV2.toggleAdvancedFilters();
   check('panneau Plus de filtres',!!document.querySelector('.document-viewer-filter-panel:not([hidden])'));
   check('filtres dates manuels',document.querySelectorAll('.document-viewer-filter-panel input[type="date"]').length===4);
+  check('préréglages de date complets',['7 derniers jours','Mois dernier','Année dernière','7 prochains jours','Mois prochain','Date personnalisée'].every(label=>main.textContent.includes(label)));
+  check('libellé date de validité explicite',main.textContent.includes('Date de validité'));
   check('filtre client prédictif',!!document.querySelector('input[list="document-viewer-clients"]')&&!!document.querySelector('#document-viewer-clients'));
   check('filtre montant TTC',main.textContent.includes('Montant TTC min.')&&main.textContent.includes('Montant TTC max.'));
   check('boutons appliquer et réinitialiser',main.textContent.includes('Appliquer')&&main.textContent.includes('Réinitialiser'));
@@ -76,6 +80,8 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   check('période manuelle appliquée',PilozDocumentViewerV2.filteredDocuments(state.data).length===2);
   PilozDocumentViewerV2.resetFilters();PilozDocumentViewerV2.setFilter('issuePreset','month');
   check('période prédéfinie appliquée',PilozDocumentViewerV2.filteredDocuments(state.data).length===2);
+  PilozDocumentViewerV2.resetFilters();PilozDocumentViewerV2.setFilter('issuePreset','last_7_days');
+  check('7 derniers jours appliqués',PilozDocumentViewerV2.filteredDocuments(state.data).length===1&&PilozDocumentViewerV2.filteredDocuments(state.data)[0]?.id==='q2');
   PilozDocumentViewerV2.resetFilters();PilozDocumentViewerV2.setFilter('client','alpha@example.fr');
   check('recherche client par email',PilozDocumentViewerV2.filteredDocuments(state.data).length===3);
   PilozDocumentViewerV2.setFilter('amountMin','1000');
@@ -90,7 +96,7 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   check('statut devis manuel persisté par RPC',calls.some(call=>call[0]==='rpc'&&call[1]==='transition_document_status'&&call[2].target_status==='accepted'));
   check('statut devis manuel actualisé',state.data.documents.find(row=>row.id==='q2').status==='accepted');
 
-  PilozDocumentViewerV2.openDelete();check('confirmation suppression explicite',main.textContent.includes('Supprimer DEV-2026-0043 ?')&&main.textContent.includes('irréversible'));await PilozDocumentViewerV2.deleteDocument();
+  PilozDocumentViewerV2.openDelete();check('confirmation suppression explicite',main.textContent.includes('Supprimer ce devis ?')&&main.textContent.includes('DEV-2026-0043')&&main.textContent.includes('Supprimer le devis'));await PilozDocumentViewerV2.deleteDocument();
   check('suppression devis réelle par RPC',calls.some(call=>call[0]==='rpc'&&call[1]==='delete_commercial_document'&&call[2].target_document_id==='q2')&&!state.data.documents.some(row=>row.id==='q2'));
 
   PilozDocumentViewerV2.select('q1');document.querySelector('#document-viewer-comment-form textarea').value='Nouveau commentaire';await PilozDocumentViewerV2.saveComment();
@@ -114,7 +120,7 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   PilozDocumentViewerV2.select('f1');PilozDocumentViewerV2.openCredit();
   check('popup annulation facture',main.textContent.includes('Annuler la facture FAC-2026-0081'));
   check('motif et date obligatoires',!!document.querySelector('[name="reason_code"][required]')&&!!document.querySelector('[name="credit_date"][required]'));
-  check('deux parcours avoir',main.textContent.includes('Créer uniquement l’avoir')&&main.textContent.includes('Créer l’avoir et une nouvelle facture'));
+  check('deux parcours avoir',main.textContent.includes('Annuler ma facture')&&main.textContent.includes('Annuler et créer une copie'));
   document.querySelector('[name="reason_code"]').value='billing_error';await PilozDocumentViewerV2.saveCredit(false);
   check('RPC avoir total atomique',calls.some(call=>call[0]==='rpc'&&call[1]==='create_full_credit_note_v2'&&call[2].create_replacement===false&&call[2].credit_reason==='Erreur de facturation'));
   PilozDocumentViewerV2.select('f1');PilozDocumentViewerV2.openCredit();document.querySelector('[name="reason_code"]').value='other';PilozDocumentViewerV2.toggleCreditOther('other');document.querySelector('[name="reason_other"]').value='Correction client';await PilozDocumentViewerV2.saveCredit(true);
@@ -126,7 +132,7 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   check('aperçu brouillon demandé côté serveur',calls.some(call=>call[0]==='invokeBlob'&&call[2].draftDocumentId==='f3'));
   check('toutes les lignes du brouillon disponibles',PilozDocumentViewerV2.snapshotContext(state.data,state.data.documents.find(row=>row.id==='f3')).lines.length===4);
   PilozDocumentViewerV2.openFinalization();check('confirmation finalisation légale',main.textContent.includes('Finaliser cette facture ?')&&main.textContent.includes('émettre un avoir'));PilozDocumentViewerV2.closeModal();
-  PilozDocumentViewerV2.openDelete();check('suppression brouillon confirmée',main.textContent.includes('brouillon de facture'));await PilozDocumentViewerV2.deleteDocument();check('brouillon supprimé en base',!state.data.documents.some(row=>row.id==='f3'));
+  PilozDocumentViewerV2.openDelete();check('suppression brouillon confirmée',main.textContent.includes('Supprimer cette facture brouillon ?')&&main.textContent.includes('Supprimer le brouillon'));await PilozDocumentViewerV2.deleteDocument();check('brouillon supprimé en base',!state.data.documents.some(row=>row.id==='f3'));
   check('retour liste sans perdre le module',document.querySelector('.document-viewer-v2.list-only')&&!document.querySelector('.document-viewer-preview'));
   history.replaceState(null,'','#autre-route');check('route historique toujours chaînée',PilozModern.renderRoute('autre-route',state)===false&&calls.some(call=>call[0]==='legacyRoute'));
   check('aucune erreur JavaScript',!__errors.length);

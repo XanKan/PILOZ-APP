@@ -2,6 +2,7 @@
  'use strict';
 
  const invoiceTypes=new Set(['invoice','deposit_invoice','balance_invoice','credit_note','proforma_invoice','recurring_invoice']);
+ const accountingInvoiceTypes=new Set(['invoice','deposit_invoice','balance_invoice']);
  const meta={
   draft:{label:'Brouillon',tone:'neutral'},pending:{label:'En attente',tone:'warning'},accepted:{label:'Accepté',tone:'positive'},
   rejected:{label:'Refusé',tone:'danger'},invoiced:{label:'Facturé',tone:'positive'},expired:{label:'Expiré',tone:'danger'},
@@ -13,7 +14,7 @@
  const confirmed=row=>!row?.status||['confirmed','completed','paid'].includes(row.status);
  const paymentsFor=(data,id)=>(data?.payments||[]).filter(row=>row.document_id===id&&confirmed(row));
  const paidFor=(data,id)=>paymentsFor(data,id).reduce((sum,row)=>sum+Number(row.amount||0),0);
- const remainingFor=(data,doc)=>Math.max(0,Number(doc?.total_incl_tax||0)-paidFor(data,doc?.id));
+ const remainingFor=(data,doc)=>doc?.status==='cancelled'?0:Math.max(0,Number(doc?.total_incl_tax||0)-paidFor(data,doc?.id));
  const linkedDocuments=(data,doc)=>{
   const ids=new Set();
   (data?.documentLinks||[]).forEach(link=>{
@@ -23,7 +24,7 @@
   (data?.documents||[]).forEach(row=>{if(row.source_document_id===doc?.id||doc?.source_document_id===row.id)ids.add(row.id);});
   return(data?.documents||[]).filter(row=>ids.has(row.id));
  };
- const quoteHasInvoice=(data,doc)=>linkedDocuments(data,doc).some(row=>invoiceTypes.has(row.document_type)&&row.document_type!=='credit_note');
+ const quoteHasInvoice=(data,doc)=>linkedDocuments(data,doc).some(row=>accountingInvoiceTypes.has(row.document_type));
  const quoteStatus=(data,doc,today=isoToday())=>{
   if(doc?.status==='archived')return'archived';
   if(quoteHasInvoice(data,doc))return'invoiced';
@@ -44,5 +45,5 @@
  const effective=(data,doc,today)=>doc?.document_type==='quote'?quoteStatus(data,doc,today):invoiceTypes.has(doc?.document_type)?invoiceStatus(data,doc,today):(doc?.status||'draft');
  const statusMeta=status=>meta[status]||{label:String(status||'Brouillon').replaceAll('_',' '),tone:'neutral'};
 
- global.PilozDocumentStatus={invoiceTypes,meta,statusMeta,confirmed,paymentsFor,paidFor,remainingFor,linkedDocuments,quoteHasInvoice,quoteStatus,invoiceStatus,effective};
+ global.PilozDocumentStatus={invoiceTypes,accountingInvoiceTypes,meta,statusMeta,confirmed,paymentsFor,paidFor,remainingFor,linkedDocuments,quoteHasInvoice,quoteStatus,invoiceStatus,effective};
 })(window);
