@@ -45,11 +45,11 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   await wait(20);check('génération PDF reprise depuis le snapshot',calls.some(call=>call[0]==='invoke'&&call[1]==='generate-document-pdf'&&call[2].documentId==='q1'));
   await wait(3200);check('réponse PDF 202 retentée automatiquement',calls.filter(call=>call[0]==='invoke'&&call[1]==='generate-document-pdf'&&call[2].documentId==='q1').length>=2);
   check('coût interne absent du document client',!document.querySelector('.document-snapshot-paper').textContent.includes('45'));
-  check('contrôles PDF compacts et complets',main.textContent.includes('85 %')&&document.querySelectorAll('.document-viewer-pdf-controls button').length>=7);
+  check('contrôles PDF compacts et complets',main.textContent.includes('95 %')&&document.querySelectorAll('.document-viewer-pdf-controls button').length>=7);
   check('panneau devis complet',main.textContent.includes('Reste à facturer')&&main.textContent.includes('Convertir en…')&&main.textContent.includes('Modifier via une nouvelle version'));
   check('documents liés visibles',main.textContent.includes('FAC-2026-0081'));
   check('commentaire interne visible',main.textContent.includes('Note commerciale interne')&&main.textContent.includes('Jamais inclus dans le PDF'));
-  PilozDocumentViewerV2.changeZoom(10);check('zoom pilotable',main.textContent.includes('95 %'));
+  PilozDocumentViewerV2.changeZoom(10);check('zoom pilotable',main.textContent.includes('105 %'));
   PilozDocumentViewerV2.search('Bêta');check('filtrage compact fonctionnel',document.querySelectorAll('.document-viewer-list-item').length===1&&document.querySelector('.document-viewer-list-item').textContent.includes('600,00'));
   PilozDocumentViewerV2.search('');PilozDocumentViewerV2.select('f1');
   check('navigation sans fermer la vue',location.hash.includes('id=f1')&&!!document.querySelector('.document-viewer-v2'));

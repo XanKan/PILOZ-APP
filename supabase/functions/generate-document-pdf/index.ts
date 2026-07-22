@@ -60,15 +60,15 @@ function resolveColors(layoutKey: LayoutKey, overrides: Record<string, unknown>)
 function text(value: unknown) {
   return String(value ?? "")
     .normalize("NFC")
-    .replace(/[‘’]/g, "'")
-    .replace(/[“”]/g, '"')
-    .replace(/[–—]/g, "-")
-    .replace(/…/g, "...")
-    .replace(/[  ]/g, " ")
-    .replace(/€/g, "EUR")
-    .replace(/œ/g, "oe")
-    .replace(/Œ/g, "OE")
-    .replace(/[^\x20-\x7E -ÿ]/g, "?");
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/\u2026/g, "...")
+    .replace(/[\u00A0\u202F]/g, " ")
+    .replace(/\u0153/g, "oe")
+    .replace(/\u0152/g, "OE")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/[^\x20-\x7E\u00A0-\u00FF\u20AC\u00AB\u00BB]/g, "?");
 }
 
 function amount(value: unknown, currency = "EUR") {
@@ -83,6 +83,14 @@ function date(value: unknown) {
   if (!value) return "-";
   const parsed = new Date(String(value).length === 10 ? `${value}T12:00:00Z` : String(value));
   return Number.isNaN(parsed.valueOf()) ? "-" : new Intl.DateTimeFormat("fr-FR").format(parsed);
+}
+
+function longDate(value: unknown) {
+  if (!value) return "-";
+  const parsed = new Date(String(value).length === 10 ? `${value}T12:00:00Z` : String(value));
+  return Number.isNaN(parsed.valueOf()) ? "-" : text(new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
+  }).format(parsed));
 }
 
 function partyName(value: Record<string, unknown>) {
@@ -234,16 +242,20 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   let page!: PDFPage;
   let y = 0;
 
-  const columnX = { qty: 340, price: 418, discount: 456, tax: 482, total: 547 };
+  const referenceLayout = layoutKey === "classic";
+  const columnX = referenceLayout
+    ? { qty: 356, price: 415, discount: 425, tax: 450, total: 500, totalTtc: 552 }
+    : { qty: 340, price: 418, discount: 456, tax: 482, total: 547, totalTtc: 552 };
 
   const drawColumns = () => {
     page.drawRectangle({ x: 42, y: y - 4, width: 511, height: 20, color: colors.tableBackground });
-    page.drawText("DESIGNATION", { x: 48, y: y + 3, size: 7, font: bold, color: colors.muted });
-    right(page, bold, "QTE", columnX.qty, y + 3, 7, colors.muted);
-    right(page, bold, "PRIX U. HT", columnX.price, y + 3, 7, colors.muted);
+    page.drawText(referenceLayout ? "Produits" : "DESIGNATION", { x: 48, y: y + 3, size: 7, font: bold, color: colors.muted });
+    right(page, bold, referenceLayout ? "Qté" : "QTE", columnX.qty, y + 3, 7, colors.muted);
+    right(page, bold, referenceLayout ? "Prix u. HT" : "PRIX U. HT", columnX.price, y + 3, 7, colors.muted);
     if (showDiscountColumn) right(page, bold, "REM.", columnX.discount, y + 3, 7, colors.muted, 30);
-    right(page, bold, "TVA", columnX.tax, y + 3, 7, colors.muted);
-    right(page, bold, "TOTAL HT", columnX.total, y + 3, 7, colors.muted);
+    right(page, bold, referenceLayout ? "TVA (%)" : "TVA", columnX.tax, y + 3, 7, colors.muted);
+    right(page, bold, referenceLayout ? "Total HT" : "TOTAL HT", columnX.total, y + 3, 7, colors.muted);
+    if (referenceLayout) right(page, bold, "Total TTC", columnX.totalTtc, y + 3, 7, colors.muted);
     y -= 16;
   };
 
@@ -251,24 +263,45 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     const firstPage = pages.length === 0;
     page = pdf.addPage(A4);
     pages.push(page);
-    page.drawRectangle({ x: 0, y: A4[1] - metrics.bandHeight, width: A4[0], height: metrics.bandHeight, color: colors.primary });
+    if (!referenceLayout) page.drawRectangle({ x: 0, y: A4[1] - metrics.bandHeight, width: A4[0], height: metrics.bandHeight, color: colors.primary });
     if (layoutKey === "modern") {
       page.drawRectangle({ x: 0, y: 826, width: A4[0], height: 10, color: colors.secondary });
     }
-    page.drawText(fit(bold, kind.toUpperCase(), metrics.titleSize, 270), { x: 42, y: 787, size: metrics.titleSize, font: bold, color: colors.primary });
-    page.drawText(fit(bold, number, metrics.numberSize, 270), { x: 42, y: 765, size: metrics.numberSize, font: bold, color: colors.heading });
-    if (firstPage && embeddedLogo && showLogo) {
+    if (referenceLayout) {
+      page.drawText(fit(regular, issuerName, 13, 270), { x: 42, y: 790, size: 13, font: regular, color: colors.heading });
+      page.drawText(kind, { x: 42, y: 768, size: 13, font: regular, color: colors.muted });
+      page.drawText("Numéro", { x: 42, y: 746, size: 8, font: bold, color: colors.text });
+      page.drawText(fit(regular, number, 8, 150), { x: 145, y: 746, size: 8, font: regular, color: colors.text });
+      page.drawText("Date d'émission", { x: 42, y: 731, size: 8, font: bold, color: colors.text });
+      page.drawText(longDate(doc.issue_date), { x: 145, y: 731, size: 8, font: regular, color: colors.text });
+      page.drawText(doc.document_type === "quote" ? "Date d'expiration" : "Date d'échéance", { x: 42, y: 716, size: 8, font: bold, color: colors.text });
+      page.drawText(longDate(doc.document_type === "quote" ? doc.validity_date : doc.due_date), { x: 145, y: 716, size: 8, font: regular, color: colors.text });
+      if (saleTypeLabel) {
+        page.drawText("Type de vente", { x: 42, y: 701, size: 8, font: bold, color: colors.text });
+        page.drawText(fit(regular, saleTypeLabel, 8, 150), { x: 145, y: 701, size: 8, font: regular, color: colors.text });
+      }
+      page.drawText("Émetteur ou Émettrice", { x: 345, y: 790, size: 8, font: regular, color: colors.text });
+      page.drawText(fit(bold, issuerName, 9, 208), { x: 345, y: 776, size: 9, font: bold, color: colors.muted });
+      limitedLines(regular, issuerAddressText, 8, 208, 2).forEach((line, index) => page.drawText(line, { x: 345, y: 763 - index * 11, size: 8, font: regular, color: colors.text }));
+      if (issuerEmail) page.drawText(fit(regular, issuerEmail, 8, 208), { x: 345, y: 741, size: 8, font: regular, color: colors.text });
+    } else {
+      page.drawText(fit(bold, kind.toUpperCase(), metrics.titleSize, 270), { x: 42, y: 787, size: metrics.titleSize, font: bold, color: colors.primary });
+      page.drawText(fit(bold, number, metrics.numberSize, 270), { x: 42, y: 765, size: metrics.numberSize, font: bold, color: colors.heading });
+    }
+    if (firstPage && embeddedLogo && showLogo && !referenceLayout) {
       const maxWidth = Number(logoSettings.max_width) || 140;
       const scale = Math.min(maxWidth / embeddedLogo.width, 44 / embeddedLogo.height, 1);
       page.drawImage(embeddedLogo, { x: 42, y: 704, width: embeddedLogo.width * scale, height: embeddedLogo.height * scale });
     }
-    right(page, bold, issuerName, 553, 787, 10, colors.heading, 245);
-    right(page, regular, issuerAddressText, 553, 772, 8, colors.muted, 245);
-    if (issuerEmail) right(page, regular, issuerEmail, 553, 760, 8, colors.muted, 245);
-    if (issuerPhone) right(page, regular, issuerPhone, 553, 748, 8, colors.muted, 245);
-    if (issuer.siret) right(page, regular, `SIRET ${issuer.siret}`, 553, 736, 8, colors.muted, 245);
-    if (issuer.vat_number) right(page, regular, `TVA ${issuer.vat_number}`, 553, 724, 8, colors.muted, 245);
-    y = continuation ? 696 : 692;
+    if (!referenceLayout) {
+      right(page, bold, issuerName, 553, 787, 10, colors.heading, 245);
+      right(page, regular, issuerAddressText, 553, 772, 8, colors.muted, 245);
+      if (issuerEmail) right(page, regular, issuerEmail, 553, 760, 8, colors.muted, 245);
+      if (issuerPhone) right(page, regular, issuerPhone, 553, 748, 8, colors.muted, 245);
+      if (issuer.siret) right(page, regular, `SIRET ${issuer.siret}`, 553, 736, 8, colors.muted, 245);
+      if (issuer.vat_number) right(page, regular, `TVA ${issuer.vat_number}`, 553, 724, 8, colors.muted, 245);
+    }
+    y = continuation ? 696 : (referenceLayout ? 625 : 692);
     if (continuation) drawColumns();
   };
 
@@ -278,26 +311,31 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   const metaBoxHeight = metrics.metaBoxHeight + clientContactLines.length * 10;
 
   addPage();
-  page.drawRectangle({ x: 42, y: 682 - metaBoxHeight, width: 511, height: metaBoxHeight, color: colors.tableBackground });
-  const metaTop = 682 - 19;
-  page.drawText("Date d'emission", { x: 52, y: metaTop, size: 8, font: bold, color: colors.muted });
-  page.drawText(date(doc.issue_date), { x: 132, y: metaTop, size: 8, font: regular, color: colors.text });
-  page.drawText(doc.document_type === "quote" ? "Date de validite" : "Date d'echeance", { x: 52, y: metaTop - 15, size: 8, font: bold, color: colors.muted });
-  page.drawText(date(doc.document_type === "quote" ? doc.validity_date : doc.due_date), { x: 132, y: metaTop - 15, size: 8, font: regular, color: colors.text });
-  if (doc.subject) {
-    page.drawText("Objet", { x: 52, y: metaTop - 30, size: 8, font: bold, color: colors.muted });
-    page.drawText(fit(regular, doc.subject, 8, 193), { x: 132, y: metaTop - 30, size: 8, font: regular, color: colors.text });
+  if (!referenceLayout) page.drawRectangle({ x: 42, y: 682 - metaBoxHeight, width: 511, height: metaBoxHeight, color: colors.tableBackground });
+  const metaTop = referenceLayout ? 718 : 682 - 19;
+  if (!referenceLayout) {
+    page.drawText("Date d'emission", { x: 52, y: metaTop, size: 8, font: bold, color: colors.muted });
+    page.drawText(date(doc.issue_date), { x: 132, y: metaTop, size: 8, font: regular, color: colors.text });
+    page.drawText(doc.document_type === "quote" ? "Date de validite" : "Date d'echeance", { x: 52, y: metaTop - 15, size: 8, font: bold, color: colors.muted });
+    page.drawText(date(doc.document_type === "quote" ? doc.validity_date : doc.due_date), { x: 132, y: metaTop - 15, size: 8, font: regular, color: colors.text });
+    if (doc.subject) {
+      page.drawText("Objet", { x: 52, y: metaTop - 30, size: 8, font: bold, color: colors.muted });
+      page.drawText(fit(regular, doc.subject, 8, 193), { x: 132, y: metaTop - 30, size: 8, font: regular, color: colors.text });
+    }
+    if (saleTypeLabel) {
+      page.drawText("Type de vente", { x: 52, y: metaTop - 45, size: 8, font: bold, color: colors.muted });
+      page.drawText(fit(regular, saleTypeLabel, 8, 193), { x: 132, y: metaTop - 45, size: 8, font: regular, color: colors.text });
+    }
   }
-  if (saleTypeLabel) {
-    page.drawText("Type de vente", { x: 52, y: metaTop - 45, size: 8, font: bold, color: colors.muted });
-    page.drawText(fit(regular, saleTypeLabel, 8, 193), { x: 132, y: metaTop - 45, size: 8, font: regular, color: colors.text });
-  }
-  page.drawText("DESTINATAIRE", { x: 345, y: metaTop, size: 7, font: bold, color: colors.muted });
-  page.drawText(fit(bold, partyName(client), 10, 198), { x: 345, y: metaTop - 15, size: 10, font: bold, color: colors.heading });
+  page.drawText(referenceLayout ? "Client ou Cliente" : "DESTINATAIRE", { x: 345, y: metaTop, size: referenceLayout ? 8 : 7, font: referenceLayout ? regular : bold, color: referenceLayout ? colors.text : colors.muted });
+  page.drawText(fit(bold, partyName(client), referenceLayout ? 9 : 10, 198), { x: 345, y: metaTop - 15, size: referenceLayout ? 9 : 10, font: bold, color: referenceLayout ? colors.muted : colors.heading });
   const clientAddressLines = limitedLines(regular, address(client), 8, 198, 2);
-  clientAddressLines.forEach((line, index) => page.drawText(line, { x: 345, y: metaTop - 29 - index * 11, size: 8, font: regular, color: colors.muted }));
-  clientContactLines.forEach((line, index) => page.drawText(line, { x: 345, y: metaTop - 29 - clientAddressLines.length * 11 - index * 10, size: 8, font: regular, color: colors.muted }));
-  y = 682 - metaBoxHeight - 10;
+  const clientIdentityLines = referenceLayout
+    ? [client.siret || client.siren, ...clientAddressLines, client.vat_number && `N° de TVA ${client.vat_number}`].filter(Boolean).map(text)
+    : clientAddressLines;
+  clientIdentityLines.forEach((line, index) => page.drawText(line, { x: 345, y: metaTop - 29 - index * 11, size: 8, font: regular, color: referenceLayout ? colors.text : colors.muted }));
+  clientContactLines.forEach((line, index) => page.drawText(line, { x: 345, y: metaTop - 29 - clientIdentityLines.length * 11 - index * 10, size: 8, font: regular, color: colors.muted }));
+  y = referenceLayout ? 625 : 682 - metaBoxHeight - 10;
   if (acceptsBankTransfer && bankVisibility === "body") {
     const bankLine = [settings.bank_account_holder && `Titulaire ${settings.bank_account_holder}`, settings.iban && `IBAN ${settings.iban}`, settings.bic && `BIC ${settings.bic}`].filter(Boolean).join(" - ");
     if (bankLine) {
@@ -331,13 +369,18 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
       if (showDiscountColumn) right(page, regular, `${Number(line.discount_rate || 0).toLocaleString("fr-FR")}%`, columnX.discount, y - 7, metrics.lineSize - 1, colors.muted, 34);
       right(page, regular, `${Number(line.tax_rate || 0).toLocaleString("fr-FR")} %`, columnX.tax, y - 7, metrics.lineSize, colors.text, 40);
       right(page, bold, amount(line.total_excl_tax ?? ((Number(line.quantity) || 0) * (Number(line.unit_price) || 0)), currency), columnX.total, y - 7, metrics.lineSize, colors.heading, 62);
+      if (referenceLayout) {
+        const lineExclTax = Number(line.total_excl_tax ?? ((Number(line.quantity) || 0) * (Number(line.unit_price) || 0))) || 0;
+        const lineTax = Number(line.total_tax ?? lineExclTax * (Number(line.tax_rate) || 0) / 100) || 0;
+        right(page, regular, amount(line.total_incl_tax ?? lineExclTax + lineTax, currency), columnX.totalTtc, y - 7, metrics.lineSize, colors.text, 62);
+      }
     }
     page.drawLine({ start: { x: 42, y: y - rowHeight + 4 }, end: { x: 553, y: y - rowHeight + 4 }, thickness: 0.5, color: colors.border });
     y -= rowHeight;
   }
 
   if (y < 185) addPage(false);
-  const totalsY = Math.min(y - 22, 190);
+  const totalsY = referenceLayout ? Math.min(y - 22, 558) : Math.min(y - 22, 190);
   const vat = new Map<number, { base: number; tax: number }>();
   for (const line of payload.lines || []) {
     if (!["item", "free_item", "discount"].includes(text(line.line_type || "item")) || line.optional) continue;
@@ -347,25 +390,32 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     const current = vat.get(rate) || { base: 0, tax: 0 };
     vat.set(rate, { base: current.base + base, tax: current.tax + tax });
   }
-  page.drawText("DETAIL TVA", { x: 42, y: totalsY + 3, size: 7, font: bold, color: colors.muted });
+  page.drawText(referenceLayout ? "Détails TVA" : "DETAIL TVA", { x: 42, y: totalsY + 3, size: referenceLayout ? 11 : 7, font: bold, color: colors.muted });
+  if (referenceLayout) {
+    page.drawText("Taux", { x: 42, y: totalsY - 13, size: 7, font: bold, color: colors.text });
+    right(page, bold, "Montant TVA", 205, totalsY - 13, 7, colors.text, 100);
+    right(page, bold, "Base HT", 330, totalsY - 13, 7, colors.text, 100);
+    page.drawText("Récapitulatif", { x: 354, y: totalsY + 3, size: 11, font: bold, color: colors.muted });
+  }
   [...vat.entries()].sort((a, b) => a[0] - b[0]).slice(0, 5).forEach(([rate, values], index) => {
-    const rowY = totalsY - 13 - index * 12;
+    const rowY = totalsY - (referenceLayout ? 28 : 13) - index * 12;
     page.drawText(`${rate.toLocaleString("fr-FR")} %`, { x: 42, y: rowY, size: 7, font: regular, color: colors.text });
-    right(page, regular, `Base ${amount(values.base, currency)}`, 205, rowY, 7, colors.muted, 135);
-    right(page, regular, `TVA ${amount(values.tax, currency)}`, 330, rowY, 7, colors.muted, 115);
+    right(page, regular, referenceLayout ? amount(values.tax, currency) : `Base ${amount(values.base, currency)}`, 205, rowY, 7, referenceLayout ? colors.text : colors.muted, 135);
+    right(page, regular, referenceLayout ? amount(values.base, currency) : `TVA ${amount(values.tax, currency)}`, 330, rowY, 7, referenceLayout ? colors.text : colors.muted, 115);
   });
   const showPaymentBalance = doc.document_type !== "quote";
   const totalsBoxHeight = showPaymentBalance ? 108 : (layoutKey === "modern" ? 84 : 76);
-  page.drawRectangle({ x: 354, y: totalsY - totalsBoxHeight + 12, width: 199, height: totalsBoxHeight, color: layoutKey === "modern" ? colors.totals : colors.tableBackground });
+  if (!referenceLayout) page.drawRectangle({ x: 354, y: totalsY - totalsBoxHeight + 12, width: 199, height: totalsBoxHeight, color: layoutKey === "modern" ? colors.totals : colors.tableBackground });
   const totalsTextColor = layoutKey === "modern" ? rgb(1, 1, 1) : colors.text;
-  page.drawText("Total HT", { x: 374, y: totalsY - 7, size: 9, font: bold, color: totalsTextColor });
+  page.drawText("Total HT", { x: referenceLayout ? 354 : 374, y: totalsY - 7, size: referenceLayout ? 8 : 9, font: bold, color: totalsTextColor });
   right(page, regular, amount(doc.total_excl_tax, currency), 538, totalsY - 7, 9, totalsTextColor);
-  page.drawText("TVA", { x: 374, y: totalsY - 27, size: 9, font: bold, color: totalsTextColor });
-  right(page, regular, amount(doc.total_tax, currency), 538, totalsY - 27, 9, totalsTextColor);
+  page.drawText("Total TVA", { x: referenceLayout ? 354 : 374, y: totalsY - 23, size: referenceLayout ? 8 : 9, font: bold, color: totalsTextColor });
+  right(page, regular, amount(doc.total_tax, currency), 538, totalsY - (referenceLayout ? 23 : 27), 9, totalsTextColor);
   const grandTotalColor = layoutKey === "modern" ? rgb(1, 1, 1) : colors.totals;
-  page.drawLine({ start: { x: 370, y: totalsY - 37 }, end: { x: 538, y: totalsY - 37 }, thickness: 1, color: grandTotalColor });
-  page.drawText("Total TTC", { x: 374, y: totalsY - 54, size: 10, font: bold, color: grandTotalColor });
-  right(page, bold, amount(doc.total_incl_tax, currency), 538, totalsY - 54, 10, grandTotalColor);
+  if (referenceLayout) page.drawRectangle({ x: 350, y: totalsY - 46, width: 203, height: 17, color: colors.tableBackground });
+  else page.drawLine({ start: { x: 370, y: totalsY - 37 }, end: { x: 538, y: totalsY - 37 }, thickness: 1, color: grandTotalColor });
+  page.drawText("Total TTC", { x: referenceLayout ? 354 : 374, y: totalsY - (referenceLayout ? 41 : 54), size: referenceLayout ? 8 : 10, font: bold, color: grandTotalColor });
+  right(page, bold, amount(doc.total_incl_tax, currency), 538, totalsY - (referenceLayout ? 41 : 54), referenceLayout ? 8 : 10, grandTotalColor);
   if (showPaymentBalance) {
     const paidAmount = Number(doc.amount_paid || doc.paid_amount || 0);
     const remainingAmount = Math.max(0, Number(doc.total_incl_tax || 0) - paidAmount);
@@ -380,11 +430,13 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   }
 
   const footerLines: string[] = [];
+  let legalIdentity = "";
+  let legalContact = "";
   if (templateVersion.free_field) footerLines.push(String(templateVersion.free_field));
   if (templateFooter.body) footerLines.push(String(templateFooter.body));
   if (showLegalMentions) {
     const registeredAddress = [issuer.address_line1 || issuer.address_line_1, issuer.address_line2 || issuer.address_line_2, issuer.postal_code, issuer.city, issuer.country_code].filter(Boolean).map(text).join(" - ");
-    const legalIdentity = [
+    legalIdentity = [
       issuer.legal_name || issuer.trade_name,
       issuer.legal_form,
       issuer.social_capital && `Capital ${issuer.social_capital}`,
@@ -396,21 +448,29 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
       issuer.registry_court && `Greffe ${issuer.registry_court}`,
       issuer.vat_number && `TVA ${issuer.vat_number}`,
     ].filter(Boolean).map(text).join(" - ");
-    const legalContact = [issuer.phone_e164 || issuer.phone, issuer.email, issuer.website].filter(Boolean).map(text).join(" - ");
-    if (legalIdentity) footerLines.push(legalIdentity);
-    if (legalContact) footerLines.push(legalContact);
+    legalContact = [issuer.phone_e164 || issuer.phone, issuer.email, issuer.website].filter(Boolean).map(text).join(" - ");
+    if (!referenceLayout && legalIdentity) footerLines.push(legalIdentity);
+    if (!referenceLayout && legalContact) footerLines.push(legalContact);
     [doc.public_notes, settings.visible_mention, settings.legal_notice].filter(Boolean).forEach(value => footerLines.push(String(value)));
   }
   if (showLatePenalties && settings.collection_fee_notice) footerLines.push(String(settings.collection_fee_notice));
   footerLines.push(`Moyens de paiement acceptes : ${activeMethods.map(key => paymentMethodsCatalog[key] || key).join(", ")}`);
   const footerNote = footerLines.join(" | ");
-  limitedLines(regular, footerNote, 6.5, 500, 6).forEach((line, index) => page.drawText(line, { x: 42, y: 86 - index * 8, size: 6.5, font: regular, color: colors.muted }));
+  limitedLines(regular, footerNote, 6.5, 500, 6).forEach((line, index) => page.drawText(line, { x: 42, y: (referenceLayout ? 145 : 86) - index * 8, size: 6.5, font: regular, color: colors.muted }));
+  if (referenceLayout && doc.document_type === "quote") {
+    page.drawText("Date et signature précédées de la mention « Bon pour accord »", { x: 42, y: 101, size: 8, font: regular, color: colors.text });
+  }
   if (showBankInFooter) {
     const bank = [settings.bank_account_holder && `Titulaire ${settings.bank_account_holder}`, settings.iban && `IBAN ${settings.iban}`, settings.bic && `BIC ${settings.bic}`].filter(Boolean).join(" - ");
-    if (bank) page.drawText(fit(regular, bank, 7, 500), { x: 42, y: 38, size: 7, font: regular, color: colors.muted });
+    if (bank) page.drawText(fit(regular, bank, 7, 500), { x: 42, y: referenceLayout ? 55 : 38, size: 7, font: regular, color: colors.muted });
   }
   if (showPaymentTerms) {
-    page.drawText(fit(regular, [doc.payment_terms, doc.payment_method].filter(Boolean).join(" - "), 7, 420), { x: 42, y: 27, size: 7, font: regular, color: colors.muted });
+    page.drawText(fit(regular, [doc.payment_terms, doc.payment_method].filter(Boolean).join(" - "), 7, 420), { x: 42, y: referenceLayout ? 43 : 27, size: 7, font: regular, color: colors.muted });
+  }
+  if (referenceLayout && showLegalMentions) {
+    limitedLines(regular, [legalIdentity, legalContact].filter(Boolean).join(" - "), 5.5, 460, 2).forEach((line, index) => {
+      page.drawText(line, { x: 42, y: 27 - index * 7, size: 5.5, font: regular, color: colors.muted });
+    });
   }
 
   if (showPageNumber) {

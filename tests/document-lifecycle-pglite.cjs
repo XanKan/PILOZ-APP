@@ -93,6 +93,30 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
   const db=new PGlite({extensions:{pgcrypto}});
   try{
     await bootstrap(db);
+    await db.exec('reset role');
+    await db.exec(`
+      insert into public.document_templates(id,company_id,name,document_type,language,status,is_default,current_version,created_by,updated_by)
+      values
+        ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','${company}','Ancien devis','quote','fr','active',false,1,'${actor}','${actor}'),
+        ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2','${company}','Ancienne facture','invoice','fr','active',false,1,'${actor}','${actor}'),
+        ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3','${company}','Old English quote','quote','en','active',false,1,'${actor}','${actor}');
+      select public._piloz_seed_document_templates('${company}','${actor}');
+    `);
+    const activeTemplates=await db.query(`
+      select document_type,name,is_default from public.document_templates
+      where company_id=$1 and status='active' and document_type in('quote','invoice')
+      order by document_type
+    `,[company]);
+    if(activeTemplates.rows.length!==2)throw new Error(`templates: expected exactly 2 active models, got ${JSON.stringify(activeTemplates.rows)}`);
+    if(!activeTemplates.rows.every(row=>row.is_default))throw new Error(`templates: both active models must be defaults ${JSON.stringify(activeTemplates.rows)}`);
+    if(!activeTemplates.rows.some(row=>row.document_type==='quote'&&row.name==='Modèle de devis'))throw new Error('templates: unique quote model is missing');
+    if(!activeTemplates.rows.some(row=>row.document_type==='invoice'&&row.name==='Modèle de facture'))throw new Error('templates: unique invoice model is missing');
+    const archivedTemplates=await db.query(`
+      select count(*)::int count from public.document_templates
+      where company_id=$1 and status='archived' and document_type in('quote','invoice')
+    `,[company]);
+    if(Number(archivedTemplates.rows[0]?.count)!==3)throw new Error('templates: previous models must be archived, not deleted');
+    await db.exec(`set request.jwt.claim.sub='${actor}'; set role authenticated;`);
     // Le devis reçoit son numéro officiel et son statut "en attente" dès son
     // premier enregistrement — plus de brouillon, plus de finalisation.
     const quote=await saveDraft(db,'quote');

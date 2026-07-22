@@ -16,7 +16,7 @@
  };
  const typeLabels={quote:'Devis',invoice:'Facture',deposit_invoice:'Facture d’acompte',balance_invoice:'Facture de solde',credit_note:'Avoir',proforma_invoice:'Facture pro forma',recurring_invoice:'Facture récurrente'};
  const linkLabels={invoice:'Facture',deposit:'Acompte',progress:'Situation',balance:'Solde',credit_note:'Avoir',proforma:'Pro forma',version:'Version',related:'Document lié'};
- const ui={id:'',kind:'quote',query:'',tab:'all',status:'all',zoom:85,page:1,listCollapsed:false,infoOpen:true,mobileDocument:false,editingComment:'',busy:false,modal:null,pdfUrls:new Map(),pdfLoading:new Set(),pdfGenerating:new Set(),pdfTried:new Set(),pdfAttempts:new Map(),pdfRetryTimers:new Map()};
+ const ui={id:'',kind:'quote',query:'',tab:'all',status:'all',zoom:95,page:1,listCollapsed:false,infoOpen:true,mobileDocument:false,editingComment:'',busy:false,modal:null,pdfUrls:new Map(),pdfLoading:new Set(),pdfGenerating:new Set(),pdfTried:new Set(),pdfAttempts:new Map(),pdfRetryTimers:new Map()};
 
  const state=()=>app()?.getState?.();
  const esc=value=>global.PilozCommercialV2?.esc?.(value)??String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -233,7 +233,7 @@
   return true;
  }
 
- function select(id){const doc=(state()?.data?.documents||[]).find(row=>row.id===id);if(!doc)return;ui.id=id;ui.kind=documentKind(doc);ui.tab='all';ui.status='all';ui.page=1;ui.zoom=85;ui.mobileDocument=true;ui.infoOpen=true;updateHash(id);renderViewer(state());}
+ function select(id){const doc=(state()?.data?.documents||[]).find(row=>row.id===id);if(!doc)return;ui.id=id;ui.kind=documentKind(doc);ui.tab='all';ui.status='all';ui.page=1;ui.zoom=95;ui.mobileDocument=true;ui.infoOpen=true;updateHash(id);renderViewer(state());}
  function open(id){const data=state()?.data||{},doc=(data.documents||[]).find(row=>row.id===id);ui.id=id||'';if(doc)ui.kind=documentKind(doc);ui.mobileDocument=!!id;ui.infoOpen=true;ui.page=1;updateHash(id,false);if(hashPath()==='document-viewer')renderViewer(state());}
  function close(){app()?.go?.(ui.kind==='quote'?'sales/quotes':'sales/invoices');}
  function create(kind){app()?.newDocument?.(kind==='quote'?'quote':'invoice');}
