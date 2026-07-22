@@ -711,9 +711,19 @@ async function buildSavedDraftPreviewPayload(
   documentId: string,
 ): Promise<{ payload: SnapshotPayload; companyId: string }> {
   if (!UUID.test(documentId)) throw previewFailure("Document invalide", 400);
+  // Ces tables exposent volontairement des privilèges colonne par colonne.
+  // `select("*")` échoue donc dès qu'une colonne interne non lisible est
+  // ajoutée, même si le document est parfaitement visible via la RLS.
+  const documentColumns = [
+    "id", "company_id", "document_type", "number", "status", "client_id", "template_id",
+    "issue_date", "due_date", "validity_date", "subject", "currency", "language",
+    "payment_terms", "payment_method", "public_notes", "discount_rate",
+    "total_excl_tax", "total_tax", "total_incl_tax", "metadata",
+  ].join(",");
   const { data: documentData, error: documentError } = await userClient.from("documents")
-    .select("*").eq("id", documentId).maybeSingle();
-  if (documentError || !documentData) throw previewFailure("Document introuvable", 404);
+    .select(documentColumns).eq("id", documentId).maybeSingle();
+  if (documentError) throw previewFailure("Le document est temporairement indisponible", 503);
+  if (!documentData) throw previewFailure("Document introuvable", 404);
   const document = record(documentData);
   if (String(document.document_type || "") !== "quote" && !["draft", "to_finalize"].includes(String(document.status || "draft"))) {
     throw previewFailure("Ce document n'est plus un brouillon", 409);
@@ -722,7 +732,12 @@ async function buildSavedDraftPreviewPayload(
   const companyId = String(document.company_id || "");
   const lines: Record<string, unknown>[] = [];
   for (let offset = 0; offset < MAX_PREVIEW_LINES; offset += PREVIEW_PAGE_SIZE) {
-    const { data, error } = await userClient.from("document_lines").select("*")
+    const lineColumns = [
+      "id", "company_id", "document_id", "position", "line_type", "reference", "name", "description",
+      "quantity", "unit", "unit_price", "discount_rate", "tax_rate", "optional",
+      "total_excl_tax", "total_tax", "total_incl_tax",
+    ].join(",");
+    const { data, error } = await userClient.from("document_lines").select(lineColumns)
       .eq("company_id", companyId).eq("document_id", documentId)
       .order("position", { ascending: true }).order("id", { ascending: true })
       .range(offset, offset + PREVIEW_PAGE_SIZE - 1);

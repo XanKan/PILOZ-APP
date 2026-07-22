@@ -99,7 +99,7 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   check('fermeture restaure la vue ligne',document.querySelector('.document-viewer-v2.list-only.layout-list')&&getComputedStyle(document.querySelector('.document-viewer-list-scroll')).display==='block');
   PilozDocumentViewerV2.setLayout('cards');check('bouton active la vue cartes',document.querySelector('.document-viewer-v2.list-only.layout-cards')&&getComputedStyle(document.querySelector('.document-viewer-list-scroll')).display==='grid');PilozDocumentViewerV2.setLayout('list');
   PilozDocumentViewerV2.resetFilters();PilozDocumentViewerV2.select('q2');await wait(30);
-  check('devis non finalisé utilise aperçu serveur',calls.some(call=>call[0]==='invokeBlob'&&call[1]==='generate-document-pdf'&&call[2].draftDocumentId==='q2'));
+  check('devis non finalisé utilise ses données chargées',calls.some(call=>call[0]==='invokeBlob'&&call[1]==='generate-document-pdf'&&call[2].preview?.document?.id==='q2'&&Array.isArray(call[2].preview.lines)));
   const quoteStatus=document.querySelector('[aria-label="Statut du devis"]');quoteStatus.value='accepted';await PilozDocumentViewerV2.changeQuoteStatus('accepted');
   check('statut devis manuel persisté par RPC',calls.some(call=>call[0]==='rpc'&&call[1]==='transition_document_status'&&call[2].target_status==='accepted'));
   check('statut devis manuel actualisé',state.data.documents.find(row=>row.id==='q2').status==='accepted');
@@ -110,7 +110,8 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   PilozDocumentViewerV2.select('q1');document.querySelector('#document-viewer-comment-form textarea').value='Nouveau commentaire';await PilozDocumentViewerV2.saveComment();
   check('création commentaire par RPC',calls.some(call=>call[0]==='rpc'&&call[1]==='save_document_comment'));
   await PilozDocumentViewerV2.convert('invoice');check('conversion standard atomique',calls.some(call=>call[0]==='rpc'&&call[1]==='convert_quote_to_invoice'));
-  await PilozDocumentViewerV2.convert('deposit_invoice');check('formulaire acompte',main.textContent.includes('Pourcentage du devis'));await PilozDocumentViewerV2.saveConversion();check('RPC acompte spécialisée',calls.some(call=>call[0]==='rpc'&&call[1]==='create_deposit_invoice'));
+  check('facture convertie ouverte directement',location.hash.includes('id=f1')&&main.textContent.includes('Factures clients'));
+  PilozDocumentViewerV2.select('q1');await PilozDocumentViewerV2.convert('deposit_invoice');check('formulaire acompte',main.textContent.includes('Pourcentage du devis'));await PilozDocumentViewerV2.saveConversion();check('RPC acompte spécialisée',calls.some(call=>call[0]==='rpc'&&call[1]==='create_deposit_invoice'));
   PilozDocumentViewerV2.select('q1');await PilozDocumentViewerV2.convert('progress_invoice');const progress=document.querySelector('[name^="progress_"]');if(progress)progress.value='40';await PilozDocumentViewerV2.saveConversion();check('RPC situation spécialisée',calls.some(call=>call[0]==='rpc'&&call[1]==='create_progress_invoice'));
   PilozDocumentViewerV2.select('q1');await PilozDocumentViewerV2.convert('balance_invoice');await PilozDocumentViewerV2.saveConversion();check('RPC solde spécialisée',calls.some(call=>call[0]==='rpc'&&call[1]==='create_balance_invoice'));
 
@@ -138,7 +139,7 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
 
   PilozDocumentViewerV2.select('f3');await wait(30);
   check('actions facture brouillon',main.textContent.includes('Modifier le brouillon')&&main.textContent.includes('Finaliser la facture'));
-  check('aperçu brouillon demandé côté serveur',calls.some(call=>call[0]==='invokeBlob'&&call[2].draftDocumentId==='f3'));
+  check('aperçu brouillon transmet les quatre lignes',calls.some(call=>call[0]==='invokeBlob'&&call[2].preview?.document?.id==='f3'&&call[2].preview.lines.length===4));
   check('toutes les lignes du brouillon disponibles',PilozDocumentViewerV2.snapshotContext(state.data,state.data.documents.find(row=>row.id==='f3')).lines.length===4);
   PilozDocumentViewerV2.openFinalization();check('confirmation finalisation légale',main.textContent.includes('Finaliser cette facture ?')&&main.textContent.includes('émettre un avoir'));PilozDocumentViewerV2.closeModal();
   PilozDocumentViewerV2.openDelete();check('suppression brouillon confirmée',main.textContent.includes('Supprimer cette facture brouillon ?')&&main.textContent.includes('Supprimer le brouillon'));await PilozDocumentViewerV2.deleteDocument();check('brouillon supprimé en base',!state.data.documents.some(row=>row.id==='f3'));

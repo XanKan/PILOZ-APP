@@ -45,6 +45,17 @@
     if(value.includes('document_client_required'))return'Sélectionnez un client actif avant de finaliser ce document.';
     if(value.includes('document_lines_required'))return'Ajoutez au moins une ligne avec une désignation et une quantité supérieure à zéro.';
     if(value.includes('document_total_must_be_positive'))return'Le total du document doit être supérieur à zéro avant la finalisation.';
+    if(value.includes('issuer_legal_name_required'))return'Complétez la raison sociale de votre entreprise avant de finaliser la facture.';
+    if(value.includes('issuer_siret_required'))return'Complétez un SIRET valide pour votre entreprise avant de finaliser la facture.';
+    if(value.includes('issuer_address_required'))return'Complétez l’adresse de votre entreprise avant de finaliser la facture.';
+    if(value.includes('client_required')||value.includes('client_name_required'))return'Sélectionnez un client avec un nom valide avant de finaliser la facture.';
+    if(value.includes('client_address_required'))return'Complétez l’adresse du client (adresse, code postal, ville et pays) avant de finaliser la facture.';
+    if(value.includes('issue_date_required'))return'Renseignez la date d’émission avant de finaliser la facture.';
+    if(value.includes('due_date_required'))return'Renseignez la date d’échéance avant de finaliser la facture.';
+    if(value.includes('currency_invalid'))return'Choisissez une devise valide avant de finaliser la facture.';
+    if(value.includes('invalid_document_lines'))return'Corrigez les lignes incomplètes ou optionnelles avant de finaliser la facture.';
+    if(value.includes('vat_rate_for_non_vat_company'))return'La facture contient de la TVA alors que l’entreprise est configurée comme non assujettie.';
+    if(value.includes('invoice_validation_failed'))return'La facture contient des informations obligatoires incomplètes. Corrigez-les avant de la finaliser.';
     if(value.includes('quote_validity_date_required'))return'Renseignez la date de validité du devis avant de le finaliser.';
     if(value.includes('invalid_document_state')||value.includes('document_is_locked'))return'Ce document ne peut plus être modifié dans son état actuel.';
     if(value.includes('invalid input syntax for type uuid')||value.includes('22p02'))return'Une référence sélectionnée n’est plus valide. Rechargez la page puis sélectionnez-la à nouveau.';
