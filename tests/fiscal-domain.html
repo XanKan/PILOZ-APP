@@ -1,0 +1,11 @@
+<!doctype html><html lang="fr"><meta charset="utf-8"><title>Domaine fiscal PILOZ</title><body><main id="result">RUNNING</main>
+<script src="../assets/js/domain/fiscal-domain.js"></script><script>
+(()=>{const checks=[],check=(name,value)=>checks.push([name,!!value]),f=PilozFiscalDomain;
+const line=f.calculateLine({quantity:'1.2345',unit_price:'99.9999',discount_rate:'3.25',tax_rate:'20'});
+check('calcul entier HT',line.htMinor===11944n);check('calcul entier TVA',line.taxMinor===2389n);check('total exact',line.ttcMinor===14333n);
+const total=f.calculateDocument([{line_type:'item',quantity:'2',unit_price:'10.10',discount_rate:0,tax_rate:20},{line_type:'item',quantity:'1',unit_price:'5',discount_rate:0,tax_rate:5.5}],10);
+check('remise globale HT',total.htMinor===2268n);check('remise globale TVA',total.taxMinor===389n);check('version calcul',total.version==='financial-v1');
+const validation=f.validateInvoice({document:{issue_date:'2026-07-22',currency:'EUR',sale_type:'service',payment_terms:'30 jours'},issuer:{legal_name:'Test',siret:'12345678900012',subject_to_vat:true},client:{id:'1'},lines:[{line_type:'item'}]});
+check('validation centrale',validation.valid);check('aucune mention inventée',validation.mentions.every(item=>!('text'in item)));
+const failed=checks.filter(([,ok])=>!ok),node=document.getElementById('result');node.dataset.status=failed.length?'failed':'passed';node.textContent=failed.length?'Échec : '+failed.map(x=>x[0]).join(', '):`${checks.length}/${checks.length} contrôles fiscaux réussis`;})();
+</script></body></html>

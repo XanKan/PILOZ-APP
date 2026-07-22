@@ -21,6 +21,19 @@
     try{return JSON.stringify(value,(key,item)=>item===undefined?null:item);}
     catch(error){console.error('[PILOZ API] Sérialisation de la requête impossible',{name:error.name,message:error.message});const failure=new Error('Certaines informations du formulaire ne peuvent pas être enregistrées.');failure.code='invalid_request_body';throw failure;}
   }
+  const FISCAL_DOCUMENT_TYPES=new Set(['invoice','deposit_invoice','balance_invoice','credit_note','proforma_invoice']);
+  const FISCAL_DOCUMENT_FIELDS=new Set(['document_type','number','client_id','status','issue_date','due_date','currency','payment_terms','payment_method','discount_rate','total_cost','total_excl_tax','total_tax','total_incl_tax','source_document_id','validated_at','finalized_at','finalized_by','locked_at','snapshot_id','fiscal_security_status']);
+  function parsedRequestBody(body){if(body==null)return null;if(typeof body!=='string')return body;try{return JSON.parse(body);}catch{return null;}}
+  function guardDirectFiscalWrite(path,options={}){
+    const method=String(options.method||'GET').toUpperCase(),table=(String(path||'').match(/\/rest\/v1\/([^?]+)/)||[])[1];
+    if(!table||!['POST','PATCH','PUT','DELETE'].includes(method))return;
+    if(table==='document_lines'&&method==='DELETE')throw Object.assign(new Error('La modification des lignes d’un document commercial exige le service transactionnel Supabase.'),{code:'fiscal_rpc_required'});
+    if(table!=='documents')return;
+    if(method==='DELETE')throw Object.assign(new Error('La suppression d’un document commercial exige le service transactionnel Supabase.'),{code:'fiscal_rpc_required'});
+    const payload=parsedRequestBody(options.body),rows=Array.isArray(payload)?payload:[payload||{}];
+    if(method==='POST'&&rows.some(row=>FISCAL_DOCUMENT_TYPES.has(String(row.document_type||''))))throw Object.assign(new Error('La création d’un document fiscal exige le service transactionnel Supabase.'),{code:'fiscal_rpc_required'});
+    if(['PATCH','PUT'].includes(method)&&rows.some(row=>Object.keys(row).some(key=>FISCAL_DOCUMENT_FIELDS.has(key))))throw Object.assign(new Error('La modification fiscale exige le service transactionnel Supabase.'),{code:'fiscal_rpc_required'});
+  }
   function translateError(message,status){
     const value=String(message||'').toLowerCase();
     if(value.includes('rate limit')||status===429)return'Trop de tentatives ont été effectuées. Réessayez plus tard.';
@@ -45,6 +58,7 @@
   }
   async function request(path,options={}){
     const runtime=global.PilozRuntime;if(!runtime?.config||!runtime?.session) throw new Error('Authentification requise.');
+    guardDirectFiscalWrite(path,options);
     const response=await runtime.request(path,options);
     let data;
     try{data=await readBody(response,path);}catch(error){if(!response.ok)technicalLog('Réponse d’erreur illisible',response,path,error);throw error;}

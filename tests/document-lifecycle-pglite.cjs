@@ -159,6 +159,16 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     const final=await db.query('select public.finalize_document($1) result',[invoice.id]);
     const finalized=final.rows[0].result;
     if(!finalized?.number||invoice.number!==null||finalized.status!=='finalized'||!finalized.snapshot_id)throw new Error(`invoice: invalid final result ${JSON.stringify(finalized)}`);
+    const validation=await db.query('select public.validate_invoice_for_finalization($1) result',[invoice.id]);
+    if(!validation.rows[0].result?.valid)throw new Error(`invoice: central validation failed ${JSON.stringify(validation.rows[0].result)}`);
+    const allocation=await db.query('select full_number,sequence_value from public.document_number_allocations where document_id=$1',[invoice.id]);
+    if(allocation.rows.length!==1||allocation.rows[0].full_number!==finalized.number||Number(allocation.rows[0].sequence_value)!==1)
+      throw new Error(`invoice: number allocation is not traceable ${JSON.stringify(allocation.rows)}`);
+    const versioned=await db.query('select fiscal_security_status,application_version,database_schema_version,calculation_version,legal_mentions_snapshot from public.documents where id=$1',[invoice.id]);
+    if(versioned.rows[0].fiscal_security_status!=='legacy_unsecured'||!versioned.rows[0].application_version||versioned.rows[0].calculation_version!=='financial-v1')
+      throw new Error(`invoice: version manifest is incomplete ${JSON.stringify(versioned.rows[0])}`);
+    const allocationMutation=await db.query('delete from public.document_number_allocations where document_id=$1',[invoice.id]).then(()=>null,error=>error);
+    if(!allocationMutation||!/(immutable_fiscal_record|permission denied)/.test(allocationMutation.message))throw new Error('invoice: number allocation must be immutable');
     console.log(JSON.stringify({ok:true,quote:{...quote,convertedInvoiceId:convertedInvoiceId.rows[0].result},invoice:{id:invoice.id,draftNumber:invoice.number,number:finalized.number,total:invoice.total,status:finalized.status,finalizedAt:finalized.finalized_at}}));
   }finally{
     await db.close();
