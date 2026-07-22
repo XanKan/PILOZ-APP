@@ -201,8 +201,6 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     }).filter(([key]) => Boolean(key)))
     : record(rawVisibleColumns);
   const showDiscountColumn = visibleColumns.discount === true;
-  const bankVisibility = ["hidden", "body", "summary", "footer"].includes(String(templateVersion.bank_details_visibility))
-    ? String(templateVersion.bank_details_visibility) : "footer";
   const showLogo = logoSettings.show !== false;
   const metrics = LAYOUT_METRICS[layoutKey];
   const hasFooterConfig = Object.keys(templateFooter).length > 0;
@@ -223,11 +221,17 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   const showClientEmail = clientProfile.show_email !== false;
   const showClientPhone = clientProfile.show_phone !== false;
 
-  const paymentMethodsCatalog: Record<string, string> = { bank_transfer: "Virement bancaire", card: "Carte bancaire", check: "Cheque", cash: "Especes", direct_debit: "Prelevement SEPA" };
+  const paymentMethodsCatalog: Record<string, string> = { bank_transfer: "Virement bancaire", card: "Carte bancaire", check: "Chèque", cash: "Espèces", direct_debit: "Prélèvement SEPA" };
+  const paymentTermsCatalog: Record<string, string> = { cash: "Comptant", receipt: "À réception", due_on_receipt: "À réception", end_of_month: "Fin de mois", days_30_end_of_month: "30 jours fin de mois" };
   const activeMethods = Array.isArray(templateVersion.payment_methods) && templateVersion.payment_methods.length
     ? (templateVersion.payment_methods as unknown[]).map(value => String(value)) : ["bank_transfer"];
   const acceptsBankTransfer = activeMethods.includes("bank_transfer");
-  const showBankInFooter = acceptsBankTransfer && bankVisibility === "footer";
+  const rawPaymentTerm = text(doc.payment_terms || "");
+  const rawPaymentMethod = text(doc.payment_method || "");
+  const paymentTermLabel = paymentTermsCatalog[rawPaymentTerm]
+    || (rawPaymentTerm.match(/^days_(\d+)$/)?.[1] ? `${rawPaymentTerm.match(/^days_(\d+)$/)?.[1]} jours` : rawPaymentTerm)
+    || "—";
+  const paymentMethodLabel = paymentMethodsCatalog[rawPaymentMethod] || rawPaymentMethod || "—";
 
   const templateDocTitle = text(templateVersion.document_title || "");
   const kind = (doc.document_type === "quote" || doc.document_type === "invoice") && templateDocTitle ? templateDocTitle
@@ -372,10 +376,6 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   clientIdentityLines.forEach((line, index) => page.drawText(line, { x: 345, y: metaTop - 29 - index * 11, size: 8, font: regular, color: referenceLayout ? colors.text : colors.muted }));
   clientContactLines.forEach((line, index) => page.drawText(line, { x: 345, y: metaTop - 29 - clientIdentityLines.length * 11 - index * 10, size: 8, font: regular, color: colors.muted }));
   y = referenceLayout ? 606 : 662 - metaBoxHeight - 10;
-  if (acceptsBankTransfer && bankVisibility === "body") {
-    const bankHeight = drawBankDetails(page, 303, y - 2, 250);
-    if (bankHeight) y -= bankHeight + 8;
-  }
   drawColumns();
 
   for (const line of payload.lines || []) {
@@ -411,8 +411,8 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     y -= rowHeight;
   }
 
-  if (y < 185) addPage(false);
-  const totalsY = referenceLayout ? Math.min(y - 22, 558) : Math.min(y - 22, 190);
+  if (y < 330) addPage(false);
+  const totalsY = referenceLayout ? Math.min(y - 22, 558) : Math.min(y - 22, 300);
   const vat = new Map<number, { base: number; tax: number }>();
   for (const line of payload.lines || []) {
     if (!["item", "free_item", "discount"].includes(text(line.line_type || "item")) || line.optional) continue;
@@ -456,10 +456,6 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     page.drawText("Reste à payer", { x: 374, y: totalsY - 88, size: 8, font: bold, color: grandTotalColor });
     right(page, bold, amount(remainingAmount, currency), 538, totalsY - 88, 8, grandTotalColor);
   }
-  if (acceptsBankTransfer && bankVisibility === "summary") {
-    drawBankDetails(page, 42, totalsY - 38, 245, 6);
-  }
-
   const footerLines: string[] = [];
   let legalIdentity = "";
   let legalContact = "";
@@ -485,21 +481,20 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     [doc.public_notes, settings.visible_mention, settings.legal_notice].filter(Boolean).forEach(value => footerLines.push(String(value)));
   }
   if (showLatePenalties && settings.collection_fee_notice) footerLines.push(String(settings.collection_fee_notice));
-  footerLines.push(`Moyens de paiement acceptes : ${activeMethods.map(key => paymentMethodsCatalog[key] || key).join(", ")}`);
   const footerNote = footerLines.join(" | ");
-  limitedLines(regular, footerNote, 6.5, showBankInFooter ? 245 : 500, 6).forEach((line, index) => page.drawText(line, { x: 42, y: (referenceLayout ? 145 : 86) - index * 8, size: 6.5, font: regular, color: colors.muted }));
+  limitedLines(regular, footerNote, 6.5, 245, 6).forEach((line, index) => page.drawText(line, { x: 303, y: 175 - index * 8, size: 6.5, font: regular, color: colors.muted }));
+  if (showPaymentTerms || acceptsBankTransfer) {
+    page.drawText("Conditions de paiement :", { x: 42, y: 175, size: 8, font: bold, color: colors.heading });
+    page.drawText(fit(regular, `Délai : ${paymentTermLabel}`, 7, 245), { x: 42, y: 161, size: 7, font: regular, color: colors.text });
+    page.drawText(fit(regular, `Mode de paiement : ${paymentMethodLabel}`, 7, 245), { x: 42, y: 149, size: 7, font: regular, color: colors.text });
+  }
+  if (acceptsBankTransfer) drawBankDetails(page, 42, 136, 245);
   if (referenceLayout && doc.document_type === "quote") {
-    page.drawText("Date et signature précédées de la mention « Bon pour accord »", { x: 42, y: 101, size: 8, font: regular, color: colors.text });
-  }
-  if (showBankInFooter) {
-    drawBankDetails(page, 303, referenceLayout ? 180 : 83, 250);
-  }
-  if (showPaymentTerms) {
-    page.drawText(fit(regular, [doc.payment_terms, doc.payment_method].filter(Boolean).join(" - "), 7, 245), { x: 42, y: referenceLayout ? 43 : 27, size: 7, font: regular, color: colors.muted });
+    page.drawText(fit(regular, "Date et signature précédées de la mention « Bon pour accord »", 8, 250), { x: 303, y: 101, size: 8, font: regular, color: colors.text });
   }
   if (referenceLayout && showLegalMentions) {
-    limitedLines(regular, [legalIdentity, legalContact].filter(Boolean).join(" - "), 5.5, 460, 2).forEach((line, index) => {
-      page.drawText(line, { x: 42, y: 27 - index * 7, size: 5.5, font: regular, color: colors.muted });
+    limitedLines(regular, [legalIdentity, legalContact].filter(Boolean).join(" - "), 5.5, 245, 2).forEach((line, index) => {
+      page.drawText(line, { x: 303, y: 45 - index * 7, size: 5.5, font: regular, color: colors.muted });
     });
   }
 
