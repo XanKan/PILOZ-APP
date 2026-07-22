@@ -188,6 +188,26 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
       throw new Error(`closure: unsigned state must remain explicit ${JSON.stringify(closureRow.rows[0])}`);
     const finalChain=await db.query('select public.verify_fiscal_event_chain($1) result',[company]);
     if(!finalChain.rows[0].result?.valid||Number(finalChain.rows[0].result.checked_events)<5)throw new Error(`fiscal events: chain verification failed ${JSON.stringify(finalChain.rows[0].result)}`);
+    // Une archive stricte ne peut référencer un PDF final absent. Le test
+    // simule ici l'achèvement du job par le rôle serveur, puis contrôle le
+    // manifeste, son empreinte, son immutabilité et la trace d'export.
+    await db.exec('reset role');
+    await db.query(`update public.document_snapshots set pdf_status='ready',pdf_storage_path=$2,pdf_sha256=$3,pdf_generated_at=now() where id=$1`,
+      [finalized.snapshot_id,`${company}/documents/${invoice.id}/${finalized.snapshot_id}.pdf`,'a'.repeat(64)]);
+    await db.exec(`set request.jwt.claim.sub='${actor}'; set role authenticated;`);
+    const archive=await db.query("select public.create_fiscal_archive($1,date_trunc('day',clock_timestamp()),clock_timestamp(),false) result",[company]);
+    const archiveId=archive.rows[0].result;
+    const archiveControl=await db.query('select public.verify_fiscal_archive_record($1) result',[archiveId]);
+    if(!archiveControl.rows[0].result?.valid||archiveControl.rows[0].result.signature_status!=='not_configured')
+      throw new Error(`archive: integrity control failed ${JSON.stringify(archiveControl.rows[0].result)}`);
+    const archiveItems=await db.query('select category,content_status,content_hash from public.fiscal_archive_items where archive_id=$1 order by relative_path',[archiveId]);
+    if(archiveItems.rows.length!==2||!archiveItems.rows.some(row=>row.category==='structured_data'&&row.content_status==='embedded')
+      ||!archiveItems.rows.some(row=>row.category==='pdf'&&row.content_status==='storage_reference'))
+      throw new Error(`archive: manifest items are incomplete ${JSON.stringify(archiveItems.rows)}`);
+    const archiveMutation=await db.query("update public.fiscal_archives set integrity_status='signed' where id=$1",[archiveId]).then(()=>null,error=>error);
+    if(!archiveMutation||!/(immutable_fiscal_record|permission denied)/.test(archiveMutation.message))throw new Error('archive: frozen record must be immutable');
+    const archiveExport=await db.query("select public.register_fiscal_archive_export($1,'json_bundle',null,'unsigned') result",[archiveId]);
+    if(!archiveExport.rows[0].result)throw new Error('archive: export event was not recorded');
     console.log(JSON.stringify({ok:true,quote:{...quote,convertedInvoiceId:convertedInvoiceId.rows[0].result},invoice:{id:invoice.id,draftNumber:invoice.number,number:finalized.number,total:invoice.total,status:finalized.status,finalizedAt:finalized.finalized_at}}));
   }finally{
     await db.close();

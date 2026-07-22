@@ -12,10 +12,12 @@ Ce fichier indexe les preuves disponibles et celles restant à produire. Une pre
 | E-006 | Analyse initiale des écarts | `compliance/COMPLIANCE_GAP_ANALYSIS.md` | Disponible | Audit interne |
 | E-007 | Matrice de conformité | `compliance/COMPLIANCE_MATRIX.csv` | Initialisée ; clauses AFNOR à compléter | Responsable conformité |
 | E-008 | Registre des risques | `compliance/RISK_REGISTER.md` | Disponible | Responsable conformité |
-| E-009 | Vérification de chaîne fiscale | Rapport à générer | Manquante | `verify_fiscal_chain` |
-| E-010 | Manifestes d'archives | Storage fiscal privé | Manquants | `fiscalArchiveService` |
+| E-009 | Vérification de chaîne fiscale | `verify_fiscal_event_chain` et test PGlite | Disponible dans le code ; à exécuter en production | PostgreSQL |
+| E-010 | Manifestes d'archives | `fiscal_archives`, `ARCHIVE_FORMAT.md` | Génération et contrôle testés ; déploiement Supabase requis | `create_fiscal_archive` |
 | E-011 | Signature et certificat de clé | KMS externe | Non configurés | Exploitation sécurité |
-| E-012 | Exercice de restauration | Rapport horodaté | Non exécuté | Exploitation |
+| E-012 | Exercice de restauration | `BACKUP_AND_RESTORE_CONTROL.md` | Procédure disponible ; exercice réel non exécuté | Exploitation |
+| E-017 | Vérificateur d'archive autonome | `scripts/verify-fiscal-archive.mjs` | Altération détectée par test automatisé | Node.js |
+| E-018 | Générateur de dossier de preuves | `scripts/generate-compliance-evidence-pack.mjs` | Exécution locale réussie ; dossier non signé | Node.js |
 | E-013 | Validation UBL/CII/Factur-X | Rapports de validateurs officiels | Non exécutée | Intégration e-invoicing |
 | E-014 | Accusés de plateforme agréée | Connecteur réel | Non configurés | Plateforme retenue |
 | E-015 | Revue juridique | Avis signé et versionné | Non fourni | Conseil juridique |
