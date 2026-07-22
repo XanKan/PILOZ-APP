@@ -45,10 +45,11 @@ const LAYOUT_DEFAULTS: Record<LayoutKey, { primary: string; secondary: string; h
 
 function resolveColors(layoutKey: LayoutKey, overrides: Record<string, unknown>) {
   const base = LAYOUT_DEFAULTS[layoutKey];
+  const accent = overrides.primary || overrides.secondary || overrides.heading || base.primary;
   return {
-    primary: hexToRgb(overrides.primary, hexToRgb(base.primary, rgb(0.05, 0.43, 0.45))),
-    secondary: hexToRgb(overrides.secondary, hexToRgb(base.secondary, rgb(0.05, 0.43, 0.45))),
-    heading: hexToRgb(overrides.heading, hexToRgb(base.heading, rgb(0.08, 0.12, 0.2))),
+    primary: hexToRgb(accent, hexToRgb(base.primary, rgb(0.05, 0.43, 0.45))),
+    secondary: hexToRgb(accent, hexToRgb(base.primary, rgb(0.05, 0.43, 0.45))),
+    heading: hexToRgb(accent, hexToRgb(base.primary, rgb(0.05, 0.43, 0.45))),
     border: hexToRgb(overrides.border, hexToRgb(base.border, rgb(0.85, 0.88, 0.91))),
     tableBackground: hexToRgb(overrides.tableBackground, hexToRgb(base.tableBackground, rgb(0.96, 0.97, 0.98))),
     text: hexToRgb(overrides.text, hexToRgb(base.text, rgb(0.08, 0.12, 0.2))),
@@ -211,7 +212,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   const showPageNumber = hasFooterConfig ? templateFooter.show_page_number !== false : true;
 
   const issuerProfile = record(templateVersion.issuer_profile);
-  const issuerName = text(issuerProfile.trade_name || "") || partyName(issuer);
+  const issuerName = text(issuerProfile.trade_name || issuer.trade_name || issuer.legal_name || "") || partyName(issuer);
   const issuerAddressText = issuerProfile.address ? text(issuerProfile.address) : address(issuer);
   const issuerEmail = text(issuerProfile.email || issuer.email || "");
   const issuerPhone = text(issuerProfile.phone || issuer.phone_e164 || issuer.phone || "");
@@ -241,6 +242,21 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   const pages: PDFPage[] = [];
   let page!: PDFPage;
   let y = 0;
+  const bankRows = [
+    ["TITULAIRE", settings.bank_account_holder || issuer.legal_name || issuer.trade_name],
+    ["IBAN :", settings.iban],
+    ["BIC :", settings.bic],
+  ].filter((row) => Boolean(text(row[1]))) as [string, unknown][];
+  const drawBankDetails = (target: PDFPage, x: number, topY: number, width = 245, size = 6.5) => {
+    if (!bankRows.length) return 0;
+    const labelWidth = 60;
+    bankRows.forEach(([label, value], index) => {
+      const rowY = topY - index * 9;
+      target.drawText(label, { x, y: rowY, size: size - 0.4, font: bold, color: colors.text });
+      target.drawText(fit(regular, value, size, width - labelWidth), { x: x + labelWidth, y: rowY, size, font: regular, color: colors.muted });
+    });
+    return bankRows.length * 9;
+  };
 
   const referenceLayout = layoutKey === "classic";
   const columnX = referenceLayout
@@ -285,13 +301,20 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
       limitedLines(regular, issuerAddressText, 8, 208, 2).forEach((line, index) => page.drawText(line, { x: 345, y: 763 - index * 11, size: 8, font: regular, color: colors.text }));
       if (issuerEmail) page.drawText(fit(regular, issuerEmail, 8, 208), { x: 345, y: 741, size: 8, font: regular, color: colors.text });
     } else {
-      page.drawText(fit(bold, kind.toUpperCase(), metrics.titleSize, 270), { x: 42, y: 787, size: metrics.titleSize, font: bold, color: colors.primary });
-      page.drawText(fit(bold, number, metrics.numberSize, 270), { x: 42, y: 765, size: metrics.numberSize, font: bold, color: colors.heading });
+      page.drawText(fit(bold, issuerName, 9, 270), { x: 42, y: 804, size: 9, font: bold, color: colors.heading });
+      page.drawText(fit(bold, kind.toUpperCase(), metrics.titleSize, 270), { x: 42, y: 785, size: metrics.titleSize, font: bold, color: colors.primary });
+      page.drawText(fit(bold, number, metrics.numberSize, 270), { x: 42, y: 763, size: metrics.numberSize, font: bold, color: colors.heading });
     }
     if (firstPage && embeddedLogo && showLogo && !referenceLayout) {
       const maxWidth = Number(logoSettings.max_width) || 140;
       const scale = Math.min(maxWidth / embeddedLogo.width, 44 / embeddedLogo.height, 1);
       page.drawImage(embeddedLogo, { x: 42, y: 704, width: embeddedLogo.width * scale, height: embeddedLogo.height * scale });
+    }
+    if (firstPage && embeddedLogo && showLogo && referenceLayout) {
+      const maxWidth = Math.min(Number(logoSettings.max_width) || 140, 70);
+      const scale = Math.min(maxWidth / embeddedLogo.width, 28 / embeddedLogo.height, 1);
+      const width = embeddedLogo.width * scale;
+      page.drawImage(embeddedLogo, { x: 553 - width, y: 806, width, height: embeddedLogo.height * scale });
     }
     if (!referenceLayout) {
       right(page, bold, issuerName, 553, 787, 10, colors.heading, 245);
@@ -337,12 +360,8 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   clientContactLines.forEach((line, index) => page.drawText(line, { x: 345, y: metaTop - 29 - clientIdentityLines.length * 11 - index * 10, size: 8, font: regular, color: colors.muted }));
   y = referenceLayout ? 625 : 682 - metaBoxHeight - 10;
   if (acceptsBankTransfer && bankVisibility === "body") {
-    const bankLine = [settings.bank_account_holder && `Titulaire ${settings.bank_account_holder}`, settings.iban && `IBAN ${settings.iban}`, settings.bic && `BIC ${settings.bic}`].filter(Boolean).join(" - ");
-    if (bankLine) {
-      page.drawRectangle({ x: 42, y: y - 18, width: 511, height: 18, color: colors.tableBackground });
-      page.drawText(fit(regular, bankLine, 7, 500), { x: 48, y: y - 12, size: 7, font: regular, color: colors.text });
-      y -= 24;
-    }
+    const bankHeight = drawBankDetails(page, 303, y - 2, 250);
+    if (bankHeight) y -= bankHeight + 8;
   }
   drawColumns();
 
@@ -425,8 +444,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     right(page, bold, amount(remainingAmount, currency), 538, totalsY - 88, 8, grandTotalColor);
   }
   if (acceptsBankTransfer && bankVisibility === "summary") {
-    const bankLine = [settings.bank_account_holder && `Titulaire ${settings.bank_account_holder}`, settings.iban && `IBAN ${settings.iban}`, settings.bic && `BIC ${settings.bic}`].filter(Boolean).join(" - ");
-    if (bankLine) limitedLines(regular, bankLine, 6, 190, 2).forEach((line, index) => page.drawText(line, { x: 358, y: totalsY - totalsBoxHeight - 2 - index * 8, size: 6, font: regular, color: colors.muted }));
+    drawBankDetails(page, 42, totalsY - 58, 245, 6);
   }
 
   const footerLines: string[] = [];
@@ -461,11 +479,10 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     page.drawText("Date et signature précédées de la mention « Bon pour accord »", { x: 42, y: 101, size: 8, font: regular, color: colors.text });
   }
   if (showBankInFooter) {
-    const bank = [settings.bank_account_holder && `Titulaire ${settings.bank_account_holder}`, settings.iban && `IBAN ${settings.iban}`, settings.bic && `BIC ${settings.bic}`].filter(Boolean).join(" - ");
-    if (bank) page.drawText(fit(regular, bank, 7, 500), { x: 42, y: referenceLayout ? 55 : 38, size: 7, font: regular, color: colors.muted });
+    drawBankDetails(page, 303, referenceLayout ? 62 : 54, 250);
   }
   if (showPaymentTerms) {
-    page.drawText(fit(regular, [doc.payment_terms, doc.payment_method].filter(Boolean).join(" - "), 7, 420), { x: 42, y: referenceLayout ? 43 : 27, size: 7, font: regular, color: colors.muted });
+    page.drawText(fit(regular, [doc.payment_terms, doc.payment_method].filter(Boolean).join(" - "), 7, 245), { x: 42, y: referenceLayout ? 43 : 27, size: 7, font: regular, color: colors.muted });
   }
   if (referenceLayout && showLegalMentions) {
     limitedLines(regular, [legalIdentity, legalContact].filter(Boolean).join(" - "), 5.5, 460, 2).forEach((line, index) => {
