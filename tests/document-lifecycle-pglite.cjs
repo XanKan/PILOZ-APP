@@ -91,18 +91,36 @@ async function saveDraft(db,type){
   const db=new PGlite({extensions:{pgcrypto}});
   try{
     await bootstrap(db);
-    // Le devis reçoit son numéro officiel dès la création et n'est jamais
-    // finalisé/verrouillé : il reste modifiable et finalize_document le refuse.
+    // Le devis reçoit son numéro officiel dès la création. Son enregistrement
+    // le finalise désormais immédiatement (verrouillage + snapshot), avec un
+    // statut initial "en attente" (pending).
     const quote=await saveDraft(db,'quote');
-    const quoteFinalizeAttempt=await db.query('select public.finalize_document($1) result',[quote.id]).then(()=>null,error=>error);
-    if(!quoteFinalizeAttempt||!/document_type_cannot_be_finalized/.test(quoteFinalizeAttempt.message))throw new Error(`quote: finalize_document should reject quotes, got ${quoteFinalizeAttempt&&quoteFinalizeAttempt.message}`);
+    const quoteFinal=await db.query('select public.finalize_document($1) result',[quote.id]);
+    const quoteFinalized=quoteFinal.rows[0].result;
+    if(!quoteFinalized?.number||quoteFinalized.number!==quote.number||quoteFinalized.status!=='pending'||!quoteFinalized.snapshot_id)
+      throw new Error(`quote: invalid finalize result ${JSON.stringify(quoteFinalized)}`);
+    // Tant qu'aucune facture n'en découle, le statut peut basculer vers
+    // accepté ou refusé.
+    const accepted=await db.query("select public.transition_document_status($1,'accepted') result",[quote.id]);
+    if(accepted.rows[0].result.status!=='accepted')throw new Error(`quote: expected status accepted, got ${JSON.stringify(accepted.rows[0].result)}`);
+    const rejectedBack=await db.query("select public.transition_document_status($1,'rejected') result",[quote.id]);
+    if(rejectedBack.rows[0].result.status!=='rejected')throw new Error(`quote: expected status rejected, got ${JSON.stringify(rejectedBack.rows[0].result)}`);
+    await db.query("select public.transition_document_status($1,'accepted') result",[quote.id]);
+    // Dès qu'une facture est créée à partir du devis, celui-ci passe
+    // automatiquement à "accepté" et son statut se verrouille définitivement.
+    const convertedInvoiceId=await db.query('select public.convert_quote_to_invoice($1) result',[quote.id]);
+    const quoteAfterConversion=await db.query('select status from public.documents where id=$1',[quote.id]);
+    if(quoteAfterConversion.rows[0].status!=='accepted')throw new Error(`quote: expected accepted after conversion, got ${quoteAfterConversion.rows[0].status}`);
+    const lockedAttempt=await db.query("select public.transition_document_status($1,'rejected') result",[quote.id]).then(()=>null,error=>error);
+    if(!lockedAttempt||!/quote_locked_by_invoice/.test(lockedAttempt.message))
+      throw new Error(`quote: transition_document_status should be locked once invoiced, got ${lockedAttempt&&lockedAttempt.message}`);
     // La facture reçoit aussi son numéro dès la création ; la finalisation ne
     // le change plus, elle se contente de verrouiller le document.
     const invoice=await saveDraft(db,'invoice');
     const final=await db.query('select public.finalize_document($1) result',[invoice.id]);
     const finalized=final.rows[0].result;
     if(!finalized?.number||finalized.number!==invoice.number||finalized.status!=='finalized'||!finalized.snapshot_id)throw new Error(`invoice: invalid final result ${JSON.stringify(finalized)}`);
-    console.log(JSON.stringify({ok:true,quote,invoice:{...invoice,finalizedAt:finalized.finalized_at}}));
+    console.log(JSON.stringify({ok:true,quote:{...quote,finalizedStatus:quoteFinalized.status,convertedInvoiceId:convertedInvoiceId.rows[0].result},invoice:{...invoice,finalizedAt:finalized.finalized_at}}));
   }finally{
     await db.close();
   }
