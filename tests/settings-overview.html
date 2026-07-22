@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Smoke accueil des paramètres PILOZ</title>
+  <link rel="stylesheet" href="../assets/css/modern-erp.css">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}html,body{min-height:100%}.app{display:flex;min-height:100vh}.rail{display:flex;flex-direction:column;position:relative;height:100vh;flex:0 0 auto}.brand{display:flex;align-items:center;gap:11px}.plogo{display:grid;place-items:center}.tabs{display:flex;flex-direction:column}.main{flex:1}.plier{display:flex;border:0;background:transparent}#result{position:fixed;right:12px;bottom:12px;z-index:500;background:#fff;border:1px solid #dce3ec;border-radius:8px;padding:8px 12px;font:13px system-ui}
+  </style>
+</head>
+<body data-theme="light">
+  <div class="app" id="app">
+    <nav class="rail">
+      <div class="brand"><div class="plogo">P</div><div><div class="disp">PILOZ</div><small>Gestion commerciale</small></div></div>
+      <div class="tabs" id="tabs"></div>
+      <button class="plier" style="margin-top:auto"><span class="nav-control-icon">⌕</span><span class="lbl">Rechercher</span></button>
+    </nav>
+    <main class="main" id="main"></main>
+  </div>
+  <div id="result" data-status="running">Vérification…</div>
+  <script>
+    window.esc=value=>String(value??'');
+    window.toast=()=>{};
+    window.PilozRuntime={session:{user_id:'test-user',email:'test@piloz.fr'}};
+    window.PilozERP={};
+    const state={data:{documents:[],reminders:[],opportunities:[],levels:[],catalog:[]}};
+    window.PilozApp={go(path){this.lastRoute=path;},render(){},getState(){return state;}};
+    location.hash='settings/overview';
+  </script>
+  <script src="../assets/js/modules/erp/erp-modern.js"></script>
+  <script>
+    const checks=[];
+    try{
+      PilozModern.renderNavigation(document.getElementById('tabs'),state,'settings/overview');
+      checks.push(['route rendue',PilozModern.renderRoute('settings',state)===true]);
+      const cards=[...document.querySelectorAll('.settings-overview-card')],paths=cards.map(card=>card.getAttribute('onclick'));
+      checks.push(['14 réglages visibles',cards.length===14]);
+      checks.push(['4 groupes visibles',document.querySelectorAll('.settings-overview-section').length===4]);
+      checks.push(['liens uniques',new Set(paths).size===cards.length]);
+      checks.push(['rubriques essentielles',document.getElementById('main').textContent.includes('Mon entreprise')&&document.getElementById('main').textContent.includes('Ventes & TVA')&&document.getElementById('main').textContent.includes('Modèles de documents')&&document.getElementById('main').textContent.includes('Utilisateurs')&&document.getElementById('main').textContent.includes('Données')]);
+      checks.push(['aucune valeur vide technique',!/undefined|null/.test(document.getElementById('main').textContent)]);
+      cards[0].click();
+      checks.push(['navigation carte',PilozApp.lastRoute==='settings/company']);
+    }catch(error){checks.push(['exécution',false,error.message]);}
+    const failed=checks.filter(([,ok])=>!ok),result=document.getElementById('result');
+    result.dataset.status=failed.length?'failed':'passed';
+    result.textContent=failed.length?`Échec : ${failed.map(row=>row[0]+(row[2]?` (${row[2]})`:'')).join(', ')}`:`${checks.length}/${checks.length} contrôles de l’accueil des paramètres réussis`;
+  </script>
+</body>
+</html>

@@ -57,6 +57,11 @@
       checks.push(['navigation stock',PilozApp.lastRoute==='stock/items']);
       PilozModern.openArea('crm');
       checks.push(['navigation suivi commercial',PilozApp.lastRoute==='crm/pipeline']);
+      PilozModern.openArea('settings');
+      checks.push(['navigation paramètres complète',PilozApp.lastRoute==='settings/overview']);
+      PilozModern.renderNavigation(document.getElementById('tabs'),state,'settings/overview');
+      const settingsItems=[...document.querySelectorAll('.modern-secondary-item')].map(x=>x.textContent.trim());
+      checks.push(['toutes les familles de paramètres visibles',settingsItems.includes('Vue d’ensemble')&&settingsItems.includes('Mon entreprise')&&settingsItems.includes('Ventes & TVA')&&settingsItems.includes('Modèles')&&settingsItems.includes('Utilisateurs')&&settingsItems.includes('Sécurité')&&settingsItems.includes('Données')]);
       PilozModern.renderNavigation(document.getElementById('tabs'),state,'crm/pipeline');
       const crmItems=[...document.querySelectorAll('.modern-secondary-item')].map(x=>x.textContent.trim());
       checks.push(['sous-menu commercial simplifié',crmItems.join('|')==='Pipeline|Activités|Prospects']);
