@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607220047' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607230048' ok
   union all
   select 'payment_reversal_rpc',coalesce(to_regprocedure('public.record_document_payment_reversal(uuid,text,numeric,text,timestamptz)')::text,'missing'),
     to_regprocedure('public.record_document_payment_reversal(uuid,text,numeric,text,timestamptz)') is not null
@@ -25,6 +25,12 @@ with controls as(
   select 'browser_scheduled_job_blocked',has_function_privilege('authenticated','public.run_due_fiscal_maintenance(timestamptz)','EXECUTE')::text,
     not has_function_privilege('authenticated','public.run_due_fiscal_maintenance(timestamptz)','EXECUTE')
   union all
+  select 'invoice_chronology_trigger',count(*)::text,count(*)=1
+  from pg_trigger
+  where tgrelid='public.documents'::regclass
+    and tgname='documents_enforce_issue_date_chronology'
+    and not tgisinternal
+  union all
   select 'production_without_kms',count(*)::text,count(*)=0
   from public.company_fiscal_configurations
   where mode='production' and activation_status='production_active'
@@ -40,7 +46,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607220047',
+  'schema_version','202607230048',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;

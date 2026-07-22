@@ -168,6 +168,19 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     const versioned=await db.query('select fiscal_security_status,application_version,database_schema_version,calculation_version,legal_mentions_snapshot from public.documents where id=$1',[invoice.id]);
     if(versioned.rows[0].fiscal_security_status!=='legacy_unsecured'||!versioned.rows[0].application_version||versioned.rows[0].calculation_version!=='financial-v1')
       throw new Error(`invoice: version manifest is incomplete ${JSON.stringify(versioned.rows[0])}`);
+    const convertedDraftId=convertedInvoiceId.rows[0].result;
+    const draftPaymentAttempt=await db.query("select public.record_document_payment_v2($1,10,'bank_transfer','DRAFT','2026-07-21T10:00:00Z',null) result",[convertedDraftId]).then(()=>null,error=>error);
+    if(!draftPaymentAttempt||!/invalid_invoice_state/.test(draftPaymentAttempt.message))
+      throw new Error(`payments: a draft invoice must reject payments, got ${draftPaymentAttempt&&draftPaymentAttempt.message}`);
+    await db.exec('reset role');
+    await db.query("update public.documents set issue_date='2026-07-20',due_date='2026-08-19' where id=$1",[convertedDraftId]);
+    await db.exec(`set request.jwt.claim.sub='${actor}'; set role authenticated;`);
+    const backdatedFinalization=await db.query('select public.finalize_document($1) result',[convertedDraftId]).then(()=>null,error=>error);
+    if(!backdatedFinalization||!/invoice_issue_date_before_last_finalized:2026-07-21/.test(backdatedFinalization.message))
+      throw new Error(`invoice: a backdated finalization must be rejected, got ${backdatedFinalization&&backdatedFinalization.message}`);
+    const backdatedDraft=await db.query('select status,number,finalized_at from public.documents where id=$1',[convertedDraftId]);
+    if(backdatedDraft.rows[0].status!=='draft'||backdatedDraft.rows[0].number||backdatedDraft.rows[0].finalized_at)
+      throw new Error(`invoice: rejected backdated document must remain an unnumbered draft ${JSON.stringify(backdatedDraft.rows[0])}`);
     const allocationMutation=await db.query('delete from public.document_number_allocations where document_id=$1',[invoice.id]).then(()=>null,error=>error);
     if(!allocationMutation||!/(immutable_fiscal_record|permission denied)/.test(allocationMutation.message))throw new Error('invoice: number allocation must be immutable');
     const initialChain=await db.query('select public.verify_fiscal_event_chain($1) result',[company]);

@@ -27,6 +27,7 @@
     check('JSON invalide signalé clairement',malformed);
     check('undefined sérialisé sans échec',PilozERP.serializeBody({value:undefined})==='{"value":null}');
     check('adresse client manquante expliquée en français',PilozERP.translateError('invoice_validation_failed:[{"code":"client_address_required"}]',400).includes('adresse du client'));
+    check('antidatage de facture expliqué en français',PilozERP.translateError('invoice_issue_date_before_last_finalized:2026-07-23',400).includes('numérotation chronologique'));
     queue.push(new Response('[{"id":1},{"id":2}]',{status:200,headers:{'content-type':'application/json'}}),new Response('[{"id":3},{"id":4}]',{status:200,headers:{'content-type':'application/json'}}),new Response('[{"id":5}]',{status:200,headers:{'content-type':'application/json'}}));
     const paginated=await PilozERP.queryAll('document_lines','select=id&order=id.asc',2);
     check('pagination complète au-delà de la limite serveur',paginated.length===5&&paginated[4].id===5&&requestPaths.some(path=>path.includes('offset=4')));

@@ -80,8 +80,10 @@
       check('date du au regroupée',!!document.querySelector('.modern-date-range')&&!document.querySelector('.modern-filters-row>label input[type="date"]'));
       PilozModern.openDocumentClientSearch();await wait(30);check('client filtré par recherche',!!document.querySelector('[data-modern-client-search]')&&document.querySelectorAll('[data-modern-client-suggestion]').length<=6&&!document.querySelector('.modern-filters select option[value="'+clientId+'"]'));
       check('expiration calculée',document.getElementById('main').textContent.includes('Expiré'));
-      check('colonnes coût marge pipeline',document.querySelector('.modern-table')?.textContent.includes('Coût d’achat')&&document.querySelector('.modern-table')?.textContent.includes('Marge')&&document.querySelector('.modern-table')?.textContent.includes('Opportunité'));
-      check('actions devis',document.querySelector('.erp-action-menu')?.textContent.includes('Dupliquer')&&document.querySelector('.erp-action-menu')?.textContent.includes('Aperçu / PDF')&&document.querySelector('.erp-action-menu')?.textContent.includes('Convertir en facture'));
+      PilozModern.closeDocumentClientSearch();await wait(160);PilozModern.setDocumentFilter('search','C');await wait(30);PilozModern.setDocumentFilter('search','Cl');await wait(30);check('recherche devis lettre par lettre',document.querySelector('.modern-filters-row>.modern-filter-field:first-child input')?.value==='Cl');PilozModern.setDocumentFilter('search','');await wait(30);
+      const quoteHeaders=[...document.querySelectorAll('.modern-table thead th')].map(node=>node.textContent.trim().replace(/[↑↓]/g,'').trim());check('colonnes devis par défaut dans le bon ordre',JSON.stringify(quoteHeaders)===JSON.stringify(['Statut','Émission','Échéance','Client','Numéro','Montant HT','Actions']));
+      check('actions devis limitées à modifier et dupliquer',document.querySelectorAll('.modern-row-actions button').length===2&&!document.querySelector('.modern-table .erp-action-menu'));
+      PilozModern.setDocumentLayout('cards');await wait(30);check('vue en blocs disponible depuis Ventes devis',!!document.querySelector('.modern-document-cards'));PilozModern.setDocumentLayout('list');await wait(30);
 
       currentStep='éditeur de devis';PilozApp.newDocument('quote');await wait(60);
       check('éditeur grande page',!!document.querySelector('.erp-document-canvas')&&!!document.querySelector('.erp-side-panel'));
@@ -112,6 +114,7 @@
 
       await go('sales/invoices');
       check('filtres factures sans pro forma',document.querySelector('.modern-view-tabs')?.textContent.includes('Partiellement payées')&&document.querySelector('.modern-view-tabs')?.textContent.includes('Acomptes')&&!document.querySelector('.modern-view-tabs')?.textContent.includes('Pro forma'));
+      const invoiceHeaders=[...document.querySelectorAll('.modern-table thead th')].map(node=>node.textContent.trim().replace(/[↑↓]/g,'').trim());check('colonnes factures par défaut dans le bon ordre',JSON.stringify(invoiceHeaders)===JSON.stringify(['Statut','Émission','Échéance','Client','Numéro','Montant HT','Paiement']));
       PilozModern.openInvoiceDetail(invoiceId);
       check('fiche facture détaillée',document.getElementById('modern-drawer')?.textContent.includes('Historique des paiements')&&document.getElementById('modern-drawer')?.textContent.includes('Reste à payer')&&document.getElementById('modern-drawer')?.textContent.includes('Relancer le client'));
       PilozModern.openInvoicePayment(invoiceId,true);await PilozModern.saveInvoicePayment(invoiceId);await wait(100);

@@ -101,6 +101,7 @@ button:disabled,.btn:disabled,input:disabled,select:disabled,textarea:disabled{o
 .modern-filter-field input[type="search"]{min-width:220px}
 .modern-date-range,.modern-client-filter{position:relative;min-width:210px}
 .modern-date-range>button{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:7px;min-width:210px;min-height:38px;padding:8px 10px;border:1px solid var(--border-strong);border-radius:8px;background:#fff;color:var(--text-primary);text-align:left;font:inherit;font-size:.78rem;cursor:pointer}
+.modern-date-range>button>svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;color:var(--text-muted)}
 .modern-date-range>button b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:550}.modern-date-range>button i{font-style:normal;color:var(--text-muted)}
 .modern-date-range-popover,.modern-client-suggestions{position:absolute;z-index:60;top:100%;right:0;left:0;margin-top:5px;padding:8px;border:1px solid var(--border);border-radius:10px;background:#fff;box-shadow:0 15px 35px rgba(15,23,42,.17)}
 .modern-date-range-popover{display:grid;grid-template-columns:1fr 1fr;gap:8px}.modern-date-range-popover label{display:grid;gap:4px}.modern-date-range-popover label span{font-size:.68rem;color:var(--text-muted)}
@@ -128,6 +129,8 @@ button:disabled,.btn:disabled,input:disabled,select:disabled,textarea:disabled{o
 .modern-table tbody tr:last-child td{border-bottom:0}.modern-table tbody tr:hover td{background:#f9fbfd}
 .modern-table td.primary{color:var(--text-primary);font-weight:720}.modern-table td.wrap{white-space:normal;min-width:190px}
 .modern-table small{display:block;color:var(--text-muted);margin-top:3px}.modern-table .money{text-align:right;font-variant-numeric:tabular-nums}
+.modern-row-actions{display:inline-flex;align-items:center;justify-content:flex-end;gap:5px}.modern-row-actions button{display:grid;place-items:center;width:31px;height:31px;padding:0;border:1px solid var(--border);border-radius:7px;background:#fff;color:var(--text-secondary);font:700 .9rem inherit;cursor:pointer}.modern-row-actions button:hover{border-color:var(--primary);background:var(--primary-soft);color:var(--primary)}
+.modern-payment-cell>span{color:var(--text-muted)}
 .modern-table-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid var(--border);padding:10px 13px;color:var(--text-muted);font-size:.76rem}
 .modern-status{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:99px;background:#eef2f6;color:#4c5b6f;font-size:.7rem;font-weight:760}
 .modern-status.success{background:#e7f6ed;color:#12633e}.modern-status.warning{background:#fff2dc;color:#8c4c00}.modern-status.danger{background:#feeceb;color:#9d2118}.modern-status.info{background:#e9f1ff;color:#2257b8}
@@ -137,6 +140,8 @@ button:disabled,.btn:disabled,input:disabled,select:disabled,textarea:disabled{o
 
 .modern-column-panel{position:absolute;right:12px;top:58px;z-index:20;width:285px;max-height:440px;overflow:auto;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-md);padding:12px}
 .modern-column-panel h3{font-size:.86rem;margin:2px 4px 9px}.modern-column-row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:7px;padding:7px;border-radius:8px}
+.modern-layout-choice>span:last-child{display:inline-flex;min-height:38px;padding:3px;border:1px solid var(--border-strong);border-radius:8px;background:#fff}.modern-layout-choice button{display:grid;place-items:center;width:32px;border:0;border-radius:6px;background:transparent;color:var(--text-muted);font:700 1rem inherit;cursor:pointer}.modern-layout-choice button.active{background:var(--primary-soft);color:var(--primary)}
+.modern-document-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:1px;background:var(--border)}.modern-document-card{display:grid;gap:11px;min-height:205px;padding:16px;background:#fff;cursor:pointer}.modern-document-card:hover{background:#f9fbfd}.modern-document-card>header{display:flex;align-items:center;justify-content:space-between;gap:10px}.modern-document-card h3{margin:0;font-size:.9rem}.modern-document-card dl{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0}.modern-document-card dl>div{display:grid;gap:3px}.modern-document-card dt{color:var(--text-muted);font-size:.66rem;text-transform:uppercase;letter-spacing:.035em}.modern-document-card dd{margin:0;font-size:.78rem;font-weight:700}.modern-document-card dd small{display:block;margin-top:3px;color:var(--text-muted);font-weight:500}.modern-document-card>footer{margin-top:auto;justify-self:end}
 .modern-column-row:hover{background:var(--surface-hover)}.modern-column-row label{display:flex;gap:8px;align-items:center;font-size:.8rem}.modern-column-row button{border:0;background:transparent;color:var(--text-muted);cursor:pointer;padding:3px}
 
 .modern-dashboard-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}

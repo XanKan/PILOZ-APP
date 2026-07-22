@@ -52,6 +52,7 @@
     if(value.includes('client_address_required'))return'Complétez l’adresse du client (adresse, code postal, ville et pays) avant de finaliser la facture.';
     if(value.includes('issue_date_required'))return'Renseignez la date d’émission avant de finaliser la facture.';
     if(value.includes('due_date_required'))return'Renseignez la date d’échéance avant de finaliser la facture.';
+    if(value.includes('invoice_issue_date_before_last_finalized'))return'La date d’émission est antérieure à la dernière facture finalisée. Choisissez une date identique ou postérieure afin de conserver une numérotation chronologique.';
     if(value.includes('currency_invalid'))return'Choisissez une devise valide avant de finaliser la facture.';
     if(value.includes('invalid_document_lines'))return'Corrigez les lignes incomplètes ou optionnelles avant de finaliser la facture.';
     if(value.includes('vat_rate_for_non_vat_company'))return'La facture contient de la TVA alors que l’entreprise est configurée comme non assujettie.';
