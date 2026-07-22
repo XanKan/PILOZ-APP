@@ -1,0 +1,21 @@
+requirement_id;description;implementation;test;evidence;status;external_validation
+FIS-001;Numérotation et verrouillage serveur;finalize_document et document_number_allocations;document-lifecycle-pglite.cjs;PHASE_2_FISCAL_DOCUMENTS.md;Implémenté;Juridique et audit
+FIS-002;Recalcul financier serveur;recalculate_document_amounts_v1;fiscal-domain.html et PGlite;FINANCIAL_CALCULATION_POLICY.md;Implémenté;Juridique
+FIS-003;Snapshot et versions;document_snapshots et champs de version;document-lifecycle-pglite.cjs;EVIDENCE_INDEX.md;Implémenté;Audit
+FIS-004;Correction par document lié;credit_note et document_links;Tests existants à étendre;COMPLIANCE_GAP_ANALYSIS.md;Partiel;Juridique
+PAY-001;Paiement append-only;payments et cancel_document_payment;document-lifecycle-pglite.cjs;PHASE_3_EVENTS_PAYMENTS_CLOSURES.md;Implémenté;NF 525
+JRN-001;Journal hashé chaîné;fiscal_events et verify_fiscal_event_chain;document-lifecycle-pglite.cjs;CANONICALIZATION_AND_SIGNATURES.md;Implémenté sans signature;KMS et NF 525
+CLO-001;Clôtures figées;fiscal_closures et generate_fiscal_closure;document-lifecycle-pglite.cjs;PHASE_3_EVENTS_PAYMENTS_CLOSURES.md;Partiel;NF 525
+ARC-001;Archive vérifiable;fiscal_archives et verify-fiscal-archive;fiscal-archive-verifier.mjs;ARCHIVE_FORMAT.md;Implémenté sans signature;KMS et NF 525
+EIN-001;Modèle canonique;electronic_invoice_records;electronic-invoice.html et PGlite;ELECTRONIC_INVOICING_ARCHITECTURE.md;Implémenté;Plateforme et expert
+EIN-002;Blocage format non validé;electronic_format_profiles et adapters;electronic-invoice.html;PHASE_5_ELECTRONIC_INVOICE_FOUNDATION.md;Implémenté;XP Z12-012
+PDP-001;Production bloquée;platform_connectors et Edge Function;document-lifecycle-pglite.cjs;PLATFORM_CONNECTOR_ARCHITECTURE.md;Implémenté;Plateforme
+PDP-002;Idempotence transmission;platform_transmissions;document-lifecycle-pglite.cjs;PHASE_6_PLATFORM_AND_REPORTING.md;Implémenté en simulation;Plateforme
+ERP-001;Préclassification explicable;classifyTransactionForFrenchEInvoicing;electronic-invoice.html;E_REPORTING_CLASSIFICATION.md;Partiel;Fiscaliste
+TEN-001;Isolation locataire;RLS company_id;tests SQL de migrations;CURRENT_DATA_AND_ARCHITECTURE_REPORT.md;Partiel;Audit production
+SEC-001;Absence de secrets;CI secret scan;compliance-checks.yml;SECURE_DEVELOPMENT_LIFECYCLE.md;Implémenté dépôt;Audit infrastructure
+IAM-001;RPC sensibles;révocations et SECURITY DEFINER;tests SQL de migrations;COMPLIANCE_GAP_ANALYSIS.md;Partiel;Audit production
+BCK-001;Sauvegarde et restauration;procédure;Exercice réel requis;BACKUP_AND_RESTORE_CONTROL.md;Documenté non exécuté;Exploitation
+PRV-001;Droits et conservation;phase 8;À créer;privacy/;À faire;DPO et juridique
+VER-001;Versions reliées;VERSION et RELEASE_MANIFEST.json;verify-release.mjs;FISCAL_CHANGE_LOG.md;Implémenté;Audit
+QLT-001;Gate de release;workflow compliance-checks;CI et procédure;RELEASE_PROCESS.md;Implémenté;Revue organisationnelle

@@ -1,0 +1,40 @@
+name: Compliance checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify release metadata and static safety
+        run: |
+          node scripts/verify-release.mjs
+          test "$(tr -d '\r\n' < CNAME)" = "app.piloz.fr"
+          ! git ls-files | grep -E '(^|/)\.env($|\.)'
+          ! rg -n -S 'service_role.*eyJ|SUPABASE_SERVICE_ROLE_KEY.*eyJ|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' . --glob '!compliance/**' --glob '!docs/**' --glob '!.github/**'
+      - name: Install isolated PGlite test dependency
+        run: npm install --prefix "$RUNNER_TEMP/piloz-pglite" @electric-sql/pglite@0.5.4
+      - name: Apply every migration and run the fiscal lifecycle
+        env:
+          PILOZ_PGLITE_ROOT: ${{ runner.temp }}/piloz-pglite/node_modules/@electric-sql/pglite
+        run: node tests/document-lifecycle-pglite.cjs
+      - name: Verify archive tamper detection
+        run: node tests/fiscal-archive-verifier.mjs
+      - name: Run browser suites
+        run: |
+          tests=(browser-tests.html api-response.html fiscal-domain.html electronic-invoice.html erp-smoke.html production-regression.html)
+          for test in "${tests[@]}"; do
+            output=$(google-chrome --headless --no-sandbox --disable-gpu --virtual-time-budget=10000 --user-data-dir="$RUNNER_TEMP/chrome-${test}" --dump-dom "file://$PWD/tests/${test}")
+            echo "$output" | grep 'data-status="passed"'
+          done

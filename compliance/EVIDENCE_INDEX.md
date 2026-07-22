@@ -22,6 +22,8 @@ Ce fichier indexe les preuves disponibles et celles restant à produire. Une pre
 | E-020 | Blocage des formats sans profil | `check_electronic_format_profile`, adaptateurs serveur | UBL/CII/Factur-X bloqués comme attendu | PostgreSQL et navigateur |
 | E-021 | Simulation de plateforme idempotente | `run_platform_sandbox_simulation`, test PGlite | Réussie, sans statut transmis | PostgreSQL |
 | E-022 | Préclassification e-reporting | `classifyTransactionForFrenchEInvoicing`, `e_reporting_records` | Cas B2B/B2C/paiement/incomplet testés | Navigateur et PostgreSQL |
+| E-023 | Système qualité et traçabilité | `compliance/quality/`, `compliance-checks.yml` | Documents et contrôles techniques disponibles ; application organisationnelle à prouver | Équipe qualité |
+| E-024 | Manifeste de release | `VERSION`, `RELEASE_MANIFEST.json`, `verify-release.mjs` | Cohérence version/schéma/CNAME testée | CI |
 | E-013 | Validation UBL/CII/Factur-X | Rapports de validateurs officiels | Non exécutée | Intégration e-invoicing |
 | E-014 | Accusés de plateforme agréée | Connecteur réel | Non configurés | Plateforme retenue |
 | E-015 | Revue juridique | Avis signé et versionné | Non fourni | Conseil juridique |

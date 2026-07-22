@@ -1,0 +1,22 @@
+{
+  "application": "PILOZ-APP",
+  "version": "0.9.0-compliance.1",
+  "release_status": "pre-release",
+  "release_date": "2026-07-22",
+  "source_base_commit": "fd3af5f",
+  "build_commit": "injected-at-deployment",
+  "schema_version": "202607220044",
+  "calculation_version": "financial-v1",
+  "pdf_generator_version": "pdf-v2",
+  "canonical_invoice_version": "1.0",
+  "electronic_format_version": "not-configured",
+  "fiscal_policy_version": "draft-2026-07",
+  "canonicalization_version": "jsonb-text-v1",
+  "certification_claim": false,
+  "nf525_certified": false,
+  "nf203_certified": false,
+  "afnor_conformity_validated": false,
+  "electronic_invoicing_conformity_validated": false,
+  "approved_platform_configured": false,
+  "kms_configured": false
+}

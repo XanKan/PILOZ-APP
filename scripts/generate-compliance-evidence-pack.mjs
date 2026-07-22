@@ -8,7 +8,7 @@ const root = path.resolve(import.meta.dirname, "..");
 const stamp = new Date().toISOString().replaceAll(":", "-").replace(/\.\d{3}Z$/, "Z");
 const output = path.resolve(process.argv.find(value => value.startsWith("--output="))?.slice(9)
   || path.join(root, "artifacts", `compliance-evidence-${stamp}`));
-const allowlisted = ["CNAME", "compliance", "docs", "supabase/migrations", "supabase/tests", "tests"];
+const allowlisted = ["VERSION", "CHANGELOG.md", "CNAME", ".github/workflows", "compliance", "docs", "supabase/migrations", "supabase/tests", "tests"];
 const excludedExtensions = new Set([".png", ".jpg", ".jpeg", ".pdf", ".zip", ".db"]);
 const secretPatterns = [
   /SUPABASE_SERVICE_ROLE_KEY\s*=\s*\S+/i,
