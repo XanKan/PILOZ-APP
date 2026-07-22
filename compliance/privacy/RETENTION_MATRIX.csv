@@ -1,0 +1,14 @@
+category;scope;trigger;proposed_duration;expiry_action;legal_or_operational_basis;validation_status
+accounting_documents;final invoices credit notes payment evidence and accounting archives;financial year end;10 years;archive then delete after legal review;French Commercial Code accounting retention guidance;legal validation required
+tax_documents;tax records and supporting evidence;taxable event or document date;6 years;archive then delete after legal review;French tax administration guidance;legal validation required
+commercial_contracts;quotes orders contracts and correspondence;end of contract;5 years;delete or anonymize after dispute hold review;French civil/commercial limitation guidance;legal validation required
+prospects;inactive prospects and contacts;last contact;36 months;delete or anonymize;CNIL prospecting guidance;legal validation required
+customers_crm;non-fiscal customer and contact data;end of commercial relationship;60 months;delete or anonymize unless linked to retained evidence;legitimate business need;legal validation required
+user_accounts;profiles permissions and authentication metadata;account closure;3 months;anonymize then delete subject to security hold;security and contract;legal validation required
+security_logs;authentication and security events;event date;12 months;delete or aggregate;security legitimate interest;security and legal validation required
+fiscal_events;hash-chained fiscal event register;financial year end;120 months;archive then legal review;integrity and accounting evidence;NF or legal validation required
+platform_messages;electronic invoice transmissions receipts and statuses;event date;120 months;archive with fiscal record;electronic invoicing evidence;platform and legal validation required
+support_tickets;support requests and attachments;ticket closure;36 months;delete or anonymize;contract and support quality;legal validation required
+data_subject_requests;request evidence and decisions;request closure;60 months;delete after litigation hold review;accountability and limitation;DPO or legal validation required
+backups;encrypted production backups;backup creation;3 months;automatic secure expiry;resilience and minimisation;operational validation required
+

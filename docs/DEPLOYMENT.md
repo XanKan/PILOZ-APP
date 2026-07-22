@@ -19,7 +19,7 @@ Appliquer les migrations dans l’ordre :
 11. `202607210011_backfill_legacy_company_settings.sql`
 12. `202607210012_subscriptions_and_plans.sql`
 
-Puis appliquer **tous** les fichiers suivants selon l'ordre lexical jusqu'à `202607220044_release_version.sql`. La liste ci-dessus est historique et non exhaustive ; le fichier portant le plus grand préfixe définit la version de schéma attendue par `compliance/RELEASE_MANIFEST.json`. Ne jamais sélectionner seulement certaines migrations intermédiaires.
+Puis appliquer **tous** les fichiers suivants selon l'ordre lexical jusqu'à `202607220045_privacy_roles_and_compliance.sql`. La liste ci-dessus est historique et non exhaustive ; le fichier portant le plus grand préfixe définit la version de schéma attendue par `compliance/RELEASE_MANIFEST.json`. Ne jamais sélectionner seulement certaines migrations intermédiaires.
 
 La sixième migration ajoute les contacts clients, catégories, taux de TVA, étapes du pipeline, activités, relances, échéanciers et widgets. Elle ajoute aussi les RPC atomiques de conversion devis-facture, paiement et mouvement de stock, ainsi que leurs politiques RLS. Les septième et huitième migrations retirent l’exécution anonyme héritée puis réduisent les droits des utilisateurs authentifiés à une liste explicite de RPC métier. La dixième migration ajoute notamment `documents.sent_at`, les champs comptables/légaux de `company_settings`, et les RPC `cancel_document_payment`/`reopen_invoice_for_correction` — **cette liste doit être tenue à jour à chaque nouvelle migration** ; un déploiement qui s'arrête avant la fin de la liste laisse l'application dans un état incohérent (colonnes ou fonctions absentes malgré un code applicatif qui les suppose présentes).
 
@@ -37,7 +37,9 @@ Fonctions Edge utilisées :
 - `export-fiscal-archive`
 - `platform-connector`
 
-Les migrations 039 à 044 installent la fondation fiscale, le journal/paiements/clôtures, les archives, le modèle canonique, le sandbox de plateforme et la version de release. Elles doivent d'abord être appliquées et testées sur un projet isolé. Le moteur reste désactivé par défaut ; ne pas activer le mode production sans KMS, sauvegarde vérifiée, profils électroniques officiels et validations externes.
+Les migrations 039 à 045 installent la fondation fiscale, le journal/paiements/clôtures, les archives, le modèle canonique, le sandbox de plateforme, les rôles, les registres de conformité et l’activation contrôlée. Elles doivent d'abord être appliquées et testées sur un projet isolé. Le moteur reste désactivé par défaut ; ne pas activer le mode production sans KMS, sauvegarde vérifiée, profils électroniques officiels et validations externes.
+
+Après la migration 045, vérifier avec un compte de chaque rôle les politiques RLS et le tableau `Paramètres → Conformité et fiscalité`. Les preuves saisies par un administrateur restent `claimed`; une validation serveur ou opérationnelle indépendante est nécessaire pour leur donner le statut `verified`. Ne jamais remplir la table des certifications sans certificat authentique et preuve contrôlée.
 
 Les secrets `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `EMAIL_FROM` et les identifiants Twilio ne doivent jamais être présents dans le dépôt ni dans le navigateur.
 

@@ -22,6 +22,10 @@
 | R-016 | Purge contraire à une obligation | Pas de politique par finalité | 5 | 3 | 15 | Matrice de conservation et blocage des données fiscales | Ouvert |
 | R-017 | Version non reproductible | Documents sans toutes les versions moteur | 4 | 4 | 16 | Snapshot des versions à la finalisation | Ouvert |
 | R-018 | Migration partielle en production | Documentation de déploiement arrêtée à la migration 012 | 5 | 3 | 15 | Inventaire automatique et contrôle de version du schéma | Ouvert critique |
+| R-019 | Rôles sensibles trop larges | Ancien rôle `member` et RPC historiques | 5 | 2 | 10 | Rôles explicites, gardes de finalisation/paiement et audit de chaque RPC | Réduit dans le code, à tester en production |
+| R-020 | Effacement RGPD détruisant une preuve fiscale | Confusion entre droit à l’effacement et conservation légale | 5 | 2 | 10 | Décision par catégorie, legal hold et aucune purge automatique avant validation | Sous contrôle technique |
+| R-021 | Activation prématurée du moteur fiscal | Preuves externes ou KMS absents | 5 | 2 | 10 | Évaluation serveur et activation réservée au propriétaire | Réduit dans le code, dépend des preuves |
+| R-022 | Interface suggérant une certification | Statuts techniques mal interprétés | 5 | 2 | 10 | Table vide, textes explicites et manifeste `certification_claim:false` | Sous contrôle |
 
 ## Acceptation des risques
 

@@ -232,6 +232,45 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     if(reporting.rows[0].result?.classification!=='e_invoice'||reporting.rows[0].result?.external_validation_required!==true
       ||reporting.rows[0].result?.transmitted!==false)
       throw new Error(`reporting: preliminary classification is invalid ${JSON.stringify(reporting.rows[0].result)}`);
+    // Phase 8: least privilege, honest activation and append-only controls.
+    const limitedUser='66666666-6666-4666-8666-666666666666';
+    await db.exec('reset role');
+    await db.query(`insert into auth.users(id,email) values($1,'readonly@piloz.fr')`,[limitedUser]);
+    await db.exec(`set request.jwt.claim.sub='${actor}';`);
+    await db.query("insert into public.company_members(company_id,user_id,role) values($1,$2,'read_only')",[company,limitedUser]);
+    await db.exec('set role authenticated;');
+    const permissionEvent=await db.query("select count(*)::int count from public.fiscal_events where company_id=$1 and event_type='user_permission_changed'",[company]);
+    if(Number(permissionEvent.rows[0]?.count)<1)throw new Error('roles: permission change was not written to the fiscal journal');
+    await db.exec(`set request.jwt.claim.sub='${limitedUser}';`);
+    const limitedPermissions=await db.query("select public.has_company_permission($1,'application_read') can_read,public.has_company_permission($1,'finalize_invoice') can_finalize",[company]);
+    if(!limitedPermissions.rows[0].can_read||limitedPermissions.rows[0].can_finalize)throw new Error(`roles: read-only permissions are invalid ${JSON.stringify(limitedPermissions.rows[0])}`);
+    const forbiddenSummary=await db.query('select public.get_company_compliance_summary($1)',[company]).then(()=>null,error=>error);
+    if(!forbiddenSummary||!/forbidden/.test(forbiddenSummary.message))throw new Error('roles: read-only user must not access the compliance dashboard');
+    await db.exec(`set request.jwt.claim.sub='${actor}';`);
+    const ownerMutation=await db.query("update public.company_members set role='admin' where company_id=$1 and user_id=$2",[company,actor]).then(()=>null,error=>error);
+    if(!ownerMutation||!/(owner_role_requires_dedicated_transfer|permission denied)/.test(ownerMutation.message))throw new Error('roles: owner role must not be changed through generic CRUD');
+    const ownerRpcMutation=await db.query("select public.set_company_member_access($1,$2,'admin','{}'::jsonb)",[company,actor]).then(()=>null,error=>error);
+    if(!ownerRpcMutation||!/owner_role_requires_dedicated_transfer/.test(ownerRpcMutation.message))throw new Error('roles: controlled RPC must protect the owner role');
+    const activation=await db.query("select public.evaluate_fiscal_activation($1,'production') result",[company]);
+    if(activation.rows[0].result?.ready!==false||!activation.rows[0].result?.blockers?.some(item=>/KMS|preuve|profil/i.test(item)))
+      throw new Error(`activation: production should remain blocked without external evidence ${JSON.stringify(activation.rows[0].result)}`);
+    const productionAttempt=await db.query("select public.activate_fiscal_engine($1,'production')",[company]).then(()=>null,error=>error);
+    if(!productionAttempt||!/fiscal_activation_prerequisites_missing/.test(productionAttempt.message))throw new Error('activation: production was not blocked');
+    const integrity=await db.query('select public.run_company_integrity_check($1) result',[company]);
+    if(integrity.rows[0].result?.status!=='valid')throw new Error(`integrity: expected valid result ${JSON.stringify(integrity.rows[0].result)}`);
+    const integrityEvidence=await db.query('select status,report_sha256 from public.compliance_integrity_checks where company_id=$1',[company]);
+    if(integrityEvidence.rows.length!==1||integrityEvidence.rows[0].status!=='valid'||!integrityEvidence.rows[0].report_sha256)
+      throw new Error(`integrity: immutable evidence is missing ${JSON.stringify(integrityEvidence.rows)}`);
+    const directCertificate=await db.query("insert into public.company_software_certifications(company_id,certification_type,certificate_number,certification_body,issued_at,application_version_from) values($1,'NF 525','FAKE','Test','2026-07-22','0.0.0')",[company]).then(()=>null,error=>error);
+    if(!directCertificate||!/permission denied/.test(directCertificate.message))throw new Error('certifications: browser must not create a certification directly');
+    const certificationCount=await db.query('select count(*)::int count from public.company_software_certifications where company_id=$1',[company]);
+    if(Number(certificationCount.rows[0]?.count)!==0)throw new Error('certifications: registry must remain empty by default');
+    const rightsRequest=await db.query("select public.create_data_subject_request($1,'access','client','CLIENT-TEST',now(),'{}'::jsonb) result",[company]);
+    if(!rightsRequest.rows[0].result)throw new Error('privacy: data subject request was not recorded');
+    const complianceSummary=await db.query('select public.get_company_compliance_summary($1) result',[company]);
+    if(Number(complianceSummary.rows[0].result?.open_data_subject_requests)!==1||complianceSummary.rows[0].result?.certifications?.length!==0)
+      throw new Error(`compliance summary: dishonest or incomplete result ${JSON.stringify(complianceSummary.rows[0].result)}`);
+    await db.exec(fs.readFileSync(path.join(repoRoot,'supabase','tests','202607220045_privacy_roles_and_compliance_checks.sql'),'utf8'));
     console.log(JSON.stringify({ok:true,quote:{...quote,convertedInvoiceId:convertedInvoiceId.rows[0].result},invoice:{id:invoice.id,draftNumber:invoice.number,number:finalized.number,total:invoice.total,status:finalized.status,finalizedAt:finalized.finalized_at}}));
   }finally{
     await db.close();

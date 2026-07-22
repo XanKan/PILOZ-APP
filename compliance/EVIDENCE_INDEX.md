@@ -24,6 +24,12 @@ Ce fichier indexe les preuves disponibles et celles restant à produire. Une pre
 | E-022 | Préclassification e-reporting | `classifyTransactionForFrenchEInvoicing`, `e_reporting_records` | Cas B2B/B2C/paiement/incomplet testés | Navigateur et PostgreSQL |
 | E-023 | Système qualité et traçabilité | `compliance/quality/`, `compliance-checks.yml` | Documents et contrôles techniques disponibles ; application organisationnelle à prouver | Équipe qualité |
 | E-024 | Manifeste de release | `VERSION`, `RELEASE_MANIFEST.json`, `verify-release.mjs` | Cohérence version/schéma/CNAME testée | CI |
+| E-025 | Contrôle d’intégrité daté | `compliance_integrity_checks`, `run_company_integrity_check` | Implémenté et testé localement ; migration production requise | PostgreSQL |
+| E-026 | Contrôle du moindre privilège | `has_company_permission`, triggers de garde | Rôles lecture seule et propriétaire testés localement | PostgreSQL |
+| E-027 | Registre de demandes RGPD | `data_subject_requests`, `data_subject_request_items` | Infrastructure testée ; procédure juridique à valider | DPO et PostgreSQL |
+| E-028 | Activation de production bloquée | `evaluate_fiscal_activation`, `activate_fiscal_engine` | Blocage sans KMS/preuves/profils testé | PostgreSQL |
+| E-029 | Absence de certification fictive | `company_software_certifications`, écran À propos | Table vide par défaut et insertion navigateur refusée | PostgreSQL et navigateur |
+| E-030 | Rapport de tests final local | `reports/FINAL_TEST_REPORT_2026-07-22.md` | Migrations, 14 suites navigateur, archives et release réussies | CI locale |
 | E-013 | Validation UBL/CII/Factur-X | Rapports de validateurs officiels | Non exécutée | Intégration e-invoicing |
 | E-014 | Accusés de plateforme agréée | Connecteur réel | Non configurés | Plateforme retenue |
 | E-015 | Revue juridique | Avis signé et versionné | Non fourni | Conseil juridique |

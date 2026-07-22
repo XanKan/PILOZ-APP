@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.0-compliance.2 — 22 juillet 2026
+
+- rôles métier et permissions sensibles côté PostgreSQL ;
+- changements d’accès journalisés et propriétaire protégé ;
+- registres RGPD, preuves, contrôles d’intégrité, anomalies et certifications réelles éventuelles ;
+- activation fiscale contrôlée et bloquée sans prérequis vérifiés ;
+- écrans administrateur de conformité et de version ;
+- documentation RGPD, sécurité, opérations fiscales et rapport de tests final.
+
+Le moteur de production reste désactivé. Cette pré-release ne constitue aucune certification, homologation ou validation juridique.
+
 ## 0.9.0-compliance.1 — 22 juillet 2026
 
 - audit, matrice, risques et registre de preuves ;

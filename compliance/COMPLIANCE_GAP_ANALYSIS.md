@@ -130,3 +130,9 @@ Sources publiques consultées : [mentions obligatoires d'une facture](https://ww
 ## Décision de sécurité immédiate
 
 Le nouveau moteur doit être livré désactivé par défaut. Son activation de production sera refusée tant que les migrations, les séquences, les données entreprise, les tests, les sauvegardes, le KMS et la revue externe requise ne sont pas attestés. Les données antérieures resteront marquées `legacy_unsecured` et ne recevront aucune fausse signature rétroactive.
+
+## État technique après les phases 2 à 8
+
+Les écarts « journal », « paiements correctifs », « clôtures », « archives », « modèle canonique », « connecteur abstrait », « rôles » et « dossier de preuves » disposent désormais d’une implémentation technique et de tests locaux. Leur ancien classement « non conforme à l’architecture cible » décrit l’état de départ et ne doit pas être lu comme l’état du code actuel.
+
+Ils restent cependant partiels au sens conformité : signatures sans KMS, archives non signées, profils officiels absents, plateforme réelle absente, restauration et audit production non exécutés, référentiels complets non consultés et validations juridique/AFNOR/certificateur non obtenues. Le moteur de production est donc toujours désactivé et les données existantes restent `legacy_unsecured`.

@@ -16,6 +16,10 @@ TEN-001;Isolation locataire;RLS company_id;tests SQL de migrations;CURRENT_DATA_
 SEC-001;Absence de secrets;CI secret scan;compliance-checks.yml;SECURE_DEVELOPMENT_LIFECYCLE.md;Implémenté dépôt;Audit infrastructure
 IAM-001;RPC sensibles;révocations et SECURITY DEFINER;tests SQL de migrations;COMPLIANCE_GAP_ANALYSIS.md;Partiel;Audit production
 BCK-001;Sauvegarde et restauration;procédure;Exercice réel requis;BACKUP_AND_RESTORE_CONTROL.md;Documenté non exécuté;Exploitation
-PRV-001;Droits et conservation;phase 8;À créer;privacy/;À faire;DPO et juridique
+PRV-001;Droits et conservation;data_subject_requests et documentation privacy;document-lifecycle-pglite.cjs;privacy/DATA_SUBJECT_REQUEST_PROCESS.md;Implémenté sans purge automatique;DPO et juridique
+IAM-002;Rôles métier et moindre privilège;has_company_permission et triggers de garde;document-lifecycle-pglite.cjs;PHASE_8_PRIVACY_SECURITY_AND_UI.md;Implémenté;Audit production
+OBS-001;Anomalies et contrôle d’intégrité;compliance_anomalies et compliance_integrity_checks;document-lifecycle-pglite.cjs;EVIDENCE_INDEX.md;Implémenté sans supervision externe;Exploitation
+ACT-001;Activation fiscale contrôlée;evaluate_fiscal_activation et activate_fiscal_engine;document-lifecycle-pglite.cjs;PHASE_8_PRIVACY_SECURITY_AND_UI.md;Implémenté et bloqué par défaut;Juridique sécurité audit
+CRT-001;Aucune certification fictive;company_software_certifications;document-lifecycle-pglite.cjs et erp-smoke.html;PHASE_8_PRIVACY_SECURITY_AND_UI.md;Implémenté;Organisme certificateur
 VER-001;Versions reliées;VERSION et RELEASE_MANIFEST.json;verify-release.mjs;FISCAL_CHANGE_LOG.md;Implémenté;Audit
 QLT-001;Gate de release;workflow compliance-checks;CI et procédure;RELEASE_PROCESS.md;Implémenté;Revue organisationnelle
