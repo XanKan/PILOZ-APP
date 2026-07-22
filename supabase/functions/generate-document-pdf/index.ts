@@ -37,10 +37,10 @@ function resolveLayoutKey(value: unknown): LayoutKey {
   return LAYOUT_KEYS.includes(value as LayoutKey) ? (value as LayoutKey) : "classic";
 }
 
-const LAYOUT_DEFAULTS: Record<LayoutKey, { primary: string; secondary: string; heading: string; border: string; tableBackground: string; text: string }> = {
-  classic: { primary: "#0d6e73", secondary: "#0d6e73", heading: "#14202f", border: "#d9e0e8", tableBackground: "#f5f7f8", text: "#14202f" },
-  modern: { primary: "#0f766e", secondary: "#0891b2", heading: "#0f172a", border: "#cbd5e1", tableBackground: "#ecfeff", text: "#0f172a" },
-  compact: { primary: "#334155", secondary: "#475569", heading: "#0f172a", border: "#e2e8f0", tableBackground: "#f8fafc", text: "#1e293b" },
+const LAYOUT_DEFAULTS: Record<LayoutKey, { primary: string; secondary: string; heading: string; border: string; tableBackground: string; text: string; totals: string }> = {
+  classic: { primary: "#0d6e73", secondary: "#0d6e73", heading: "#14202f", border: "#d9e0e8", tableBackground: "#f5f7f8", text: "#14202f", totals: "#0d6e73" },
+  modern: { primary: "#0f766e", secondary: "#0891b2", heading: "#0f172a", border: "#cbd5e1", tableBackground: "#ecfeff", text: "#0f172a", totals: "#0f766e" },
+  compact: { primary: "#334155", secondary: "#475569", heading: "#0f172a", border: "#e2e8f0", tableBackground: "#f8fafc", text: "#1e293b", totals: "#334155" },
 };
 
 function resolveColors(layoutKey: LayoutKey, overrides: Record<string, unknown>) {
@@ -52,6 +52,7 @@ function resolveColors(layoutKey: LayoutKey, overrides: Record<string, unknown>)
     border: hexToRgb(overrides.border, hexToRgb(base.border, rgb(0.85, 0.88, 0.91))),
     tableBackground: hexToRgb(overrides.tableBackground, hexToRgb(base.tableBackground, rgb(0.96, 0.97, 0.98))),
     text: hexToRgb(overrides.text, hexToRgb(base.text, rgb(0.08, 0.12, 0.2))),
+    totals: hexToRgb(overrides.totals, hexToRgb(base.totals, rgb(0.05, 0.43, 0.45))),
     muted: rgb(0.38, 0.43, 0.51),
   };
 }
@@ -183,7 +184,13 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   const layoutKey = resolveLayoutKey(templateVersion.layout_key);
   const colors = resolveColors(layoutKey, record(templateVersion.color_settings));
   const logoSettings = record(templateVersion.logo_settings);
-  const visibleColumns = record(templateVersion.visible_columns);
+  const rawVisibleColumns = templateVersion.visible_columns;
+  const visibleColumns = Array.isArray(rawVisibleColumns)
+    ? Object.fromEntries(rawVisibleColumns.map((column) => {
+      const definition = record(column);
+      return [text(definition.key || definition.id), definition.visible !== false];
+    }).filter(([key]) => Boolean(key)))
+    : record(rawVisibleColumns);
   const showDiscountColumn = visibleColumns.discount === true;
   const bankVisibility = ["hidden", "body", "summary", "footer"].includes(String(templateVersion.bank_details_visibility))
     ? String(templateVersion.bank_details_visibility) : "footer";
@@ -347,16 +354,26 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     right(page, regular, `Base ${amount(values.base, currency)}`, 205, rowY, 7, colors.muted, 135);
     right(page, regular, `TVA ${amount(values.tax, currency)}`, 330, rowY, 7, colors.muted, 115);
   });
-  const totalsBoxHeight = layoutKey === "modern" ? 84 : 76;
-  page.drawRectangle({ x: 354, y: totalsY - totalsBoxHeight + 12, width: 199, height: totalsBoxHeight, color: layoutKey === "modern" ? colors.primary : colors.tableBackground });
-  const totalsTextColor = layoutKey === "modern" ? rgb(1, 1, 1) : colors.heading;
+  const showPaymentBalance = doc.document_type !== "quote";
+  const totalsBoxHeight = showPaymentBalance ? 108 : (layoutKey === "modern" ? 84 : 76);
+  page.drawRectangle({ x: 354, y: totalsY - totalsBoxHeight + 12, width: 199, height: totalsBoxHeight, color: layoutKey === "modern" ? colors.totals : colors.tableBackground });
+  const totalsTextColor = layoutKey === "modern" ? rgb(1, 1, 1) : colors.text;
   page.drawText("Total HT", { x: 374, y: totalsY - 7, size: 9, font: bold, color: totalsTextColor });
   right(page, regular, amount(doc.total_excl_tax, currency), 538, totalsY - 7, 9, totalsTextColor);
   page.drawText("TVA", { x: 374, y: totalsY - 27, size: 9, font: bold, color: totalsTextColor });
   right(page, regular, amount(doc.total_tax, currency), 538, totalsY - 27, 9, totalsTextColor);
-  page.drawLine({ start: { x: 370, y: totalsY - 37 }, end: { x: 538, y: totalsY - 37 }, thickness: 1, color: totalsTextColor });
-  page.drawText("Total TTC", { x: 374, y: totalsY - 54, size: 10, font: bold, color: totalsTextColor });
-  right(page, bold, amount(doc.total_incl_tax, currency), 538, totalsY - 54, 10, totalsTextColor);
+  const grandTotalColor = layoutKey === "modern" ? rgb(1, 1, 1) : colors.totals;
+  page.drawLine({ start: { x: 370, y: totalsY - 37 }, end: { x: 538, y: totalsY - 37 }, thickness: 1, color: grandTotalColor });
+  page.drawText("Total TTC", { x: 374, y: totalsY - 54, size: 10, font: bold, color: grandTotalColor });
+  right(page, bold, amount(doc.total_incl_tax, currency), 538, totalsY - 54, 10, grandTotalColor);
+  if (showPaymentBalance) {
+    const paidAmount = Number(doc.amount_paid || doc.paid_amount || 0);
+    const remainingAmount = Math.max(0, Number(doc.total_incl_tax || 0) - paidAmount);
+    page.drawText("Encaissé", { x: 374, y: totalsY - 72, size: 8, font: regular, color: totalsTextColor });
+    right(page, regular, amount(paidAmount, currency), 538, totalsY - 72, 8, totalsTextColor);
+    page.drawText("Reste à payer", { x: 374, y: totalsY - 88, size: 8, font: bold, color: grandTotalColor });
+    right(page, bold, amount(remainingAmount, currency), 538, totalsY - 88, 8, grandTotalColor);
+  }
   if (acceptsBankTransfer && bankVisibility === "summary") {
     const bankLine = [settings.bank_account_holder && `Titulaire ${settings.bank_account_holder}`, settings.iban && `IBAN ${settings.iban}`, settings.bic && `BIC ${settings.bic}`].filter(Boolean).join(" - ");
     if (bankLine) limitedLines(regular, bankLine, 6, 190, 2).forEach((line, index) => page.drawText(line, { x: 358, y: totalsY - totalsBoxHeight - 2 - index * 8, size: 6, font: regular, color: colors.muted }));
@@ -365,11 +382,29 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   const footerLines: string[] = [];
   if (templateVersion.free_field) footerLines.push(String(templateVersion.free_field));
   if (templateFooter.body) footerLines.push(String(templateFooter.body));
-  if (showLegalMentions) [doc.public_notes, settings.visible_mention, settings.legal_notice].filter(Boolean).forEach(value => footerLines.push(String(value)));
+  if (showLegalMentions) {
+    const registeredAddress = [issuer.address_line1 || issuer.address_line_1, issuer.address_line2 || issuer.address_line_2, issuer.postal_code, issuer.city, issuer.country_code].filter(Boolean).map(text).join(" - ");
+    const legalIdentity = [
+      issuer.legal_name || issuer.trade_name,
+      issuer.legal_form,
+      issuer.social_capital && `Capital ${issuer.social_capital}`,
+      registeredAddress,
+      issuer.siren && `SIREN ${issuer.siren}`,
+      issuer.siret && `SIRET ${issuer.siret}`,
+      issuer.ape_code && `APE ${issuer.ape_code}`,
+      issuer.rcs_number && `RCS ${issuer.rcs_number}`,
+      issuer.registry_court && `Greffe ${issuer.registry_court}`,
+      issuer.vat_number && `TVA ${issuer.vat_number}`,
+    ].filter(Boolean).map(text).join(" - ");
+    const legalContact = [issuer.phone_e164 || issuer.phone, issuer.email, issuer.website].filter(Boolean).map(text).join(" - ");
+    if (legalIdentity) footerLines.push(legalIdentity);
+    if (legalContact) footerLines.push(legalContact);
+    [doc.public_notes, settings.visible_mention, settings.legal_notice].filter(Boolean).forEach(value => footerLines.push(String(value)));
+  }
   if (showLatePenalties && settings.collection_fee_notice) footerLines.push(String(settings.collection_fee_notice));
   footerLines.push(`Moyens de paiement acceptes : ${activeMethods.map(key => paymentMethodsCatalog[key] || key).join(", ")}`);
   const footerNote = footerLines.join(" | ");
-  limitedLines(regular, footerNote, 7, 500, 4).forEach((line, index) => page.drawText(line, { x: 42, y: 76 - index * 9, size: 7, font: regular, color: colors.muted }));
+  limitedLines(regular, footerNote, 6.5, 500, 6).forEach((line, index) => page.drawText(line, { x: 42, y: 86 - index * 8, size: 6.5, font: regular, color: colors.muted }));
   if (showBankInFooter) {
     const bank = [settings.bank_account_holder && `Titulaire ${settings.bank_account_holder}`, settings.iban && `IBAN ${settings.iban}`, settings.bic && `BIC ${settings.bic}`].filter(Boolean).join(" - ");
     if (bank) page.drawText(fit(regular, bank, 7, 500), { x: 42, y: 38, size: 7, font: regular, color: colors.muted });

@@ -81,7 +81,7 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
   );
   const saved=draft.rows[0].result;
   const expectedStatus=existingId?null:(type==='quote'?'pending':'draft');
-  if(!saved?.id||!saved.number||(expectedStatus&&saved.status!==expectedStatus))throw new Error(`${type}: invalid draft result ${JSON.stringify(saved)}`);
+  if(!saved?.id||(type==='quote'&&!saved.number)||(type!=='quote'&&saved.number)||(expectedStatus&&saved.status!==expectedStatus))throw new Error(`${type}: invalid draft result ${JSON.stringify(saved)}`);
   const totals=await db.query('select total_excl_tax,total_tax,total_incl_tax from public.documents where id=$1',[saved.id]);
   const total=Number(totals.rows[0]?.total_incl_tax||0);
   const expectedTotal=Math.round((unitPrice*1.2)*100)/100;
@@ -129,13 +129,13 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     const editAfterInvoiceAttempt=await saveDraft(db,'quote',quote.id,999).then(()=>null,error=>error);
     if(!editAfterInvoiceAttempt||!/quote_locked_by_invoice/.test(editAfterInvoiceAttempt.message))
       throw new Error(`quote: content edits should be locked once invoiced, got ${editAfterInvoiceAttempt&&editAfterInvoiceAttempt.message}`);
-    // La facture reçoit aussi son numéro dès la création ; la finalisation ne
-    // le change plus, elle se contente de verrouiller le document.
+    // La facture brouillon n'a aucun numéro légal. La finalisation l'attribue
+    // dans la même transaction que le verrouillage et l'instantané.
     const invoice=await saveDraft(db,'invoice');
     const final=await db.query('select public.finalize_document($1) result',[invoice.id]);
     const finalized=final.rows[0].result;
-    if(!finalized?.number||finalized.number!==invoice.number||finalized.status!=='finalized'||!finalized.snapshot_id)throw new Error(`invoice: invalid final result ${JSON.stringify(finalized)}`);
-    console.log(JSON.stringify({ok:true,quote:{...quote,convertedInvoiceId:convertedInvoiceId.rows[0].result},invoice:{...invoice,finalizedAt:finalized.finalized_at}}));
+    if(!finalized?.number||invoice.number!==null||finalized.status!=='finalized'||!finalized.snapshot_id)throw new Error(`invoice: invalid final result ${JSON.stringify(finalized)}`);
+    console.log(JSON.stringify({ok:true,quote:{...quote,convertedInvoiceId:convertedInvoiceId.rows[0].result},invoice:{id:invoice.id,draftNumber:invoice.number,number:finalized.number,total:invoice.total,status:finalized.status,finalizedAt:finalized.finalized_at}}));
   }finally{
     await db.close();
   }

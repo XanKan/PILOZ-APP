@@ -141,7 +141,11 @@ begin
       'status',doc.status,'finalized_at',doc.finalized_at,'snapshot_id',doc.snapshot_id,'pdf_status',doc.pdf_status);
   end if;
   if doc.status not in('draft','to_finalize') or doc.validated_at is not null then raise exception 'invalid_document_state'; end if;
-  if doc.number is null then raise exception 'document_number_missing'; end if;
+  if doc.number is null then
+    update public.documents set number=public._piloz_take_document_number(
+      doc.company_id,doc.document_type,extract(year from coalesce(doc.issue_date,current_date))::integer,false
+    ),updated_at=now() where id=doc.id returning * into doc;
+  end if;
   if not public.is_company_onboarded(doc.company_id) then raise exception 'company_onboarding_required' using errcode='42501'; end if;
   if doc.client_id is null or not exists(select 1 from public.clients where id=doc.client_id and company_id=doc.company_id and active) then
     raise exception 'document_client_required';

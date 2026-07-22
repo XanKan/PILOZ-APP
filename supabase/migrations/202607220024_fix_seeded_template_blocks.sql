@@ -46,15 +46,17 @@ declare layout record; doc_type record; template_id uuid;
 begin
   for doc_type in select * from(values('quote'),('invoice'))v(document_type) loop
     for layout in select * from(values
-      ('classic','Classique',true,jsonb_build_object('primary','#0d6e73','secondary','#0d6e73','heading','#14202f','border','#d9e0e8','tableBackground','#f5f7f8','text','#14202f')),
-      ('modern','Moderne',false,jsonb_build_object('primary','#0f766e','secondary','#0891b2','heading','#0f172a','border','#cbd5e1','tableBackground','#ecfeff','text','#0f172a')),
-      ('compact','Compact',false,jsonb_build_object('primary','#334155','secondary','#475569','heading','#0f172a','border','#e2e8f0','tableBackground','#f8fafc','text','#1e293b'))
+      ('classic','Classique',true,jsonb_build_object('primary','#0d6e73','secondary','#0d6e73','heading','#14202f','border','#d9e0e8','tableBackground','#f5f7f8','text','#14202f','totals','#0d6e73')),
+      ('modern','Moderne',false,jsonb_build_object('primary','#0f766e','secondary','#0891b2','heading','#0f172a','border','#cbd5e1','tableBackground','#ecfeff','text','#0f172a','totals','#0f766e')),
+      ('compact','Compact',false,jsonb_build_object('primary','#334155','secondary','#475569','heading','#0f172a','border','#e2e8f0','tableBackground','#f8fafc','text','#1e293b','totals','#334155'))
     )v(layout_key,label,is_default_layout,colors) loop
       if exists(select 1 from public.document_templates where company_id=target_company_id and document_type=doc_type.document_type and name=layout.label) then
         continue;
       end if;
       insert into public.document_templates(company_id,name,document_type,language,status,is_default,current_version,created_by,updated_by)
-      values(target_company_id,layout.label,doc_type.document_type,'fr','active',layout.is_default_layout,1,target_owner_user_id,target_owner_user_id)
+      values(target_company_id,layout.label,doc_type.document_type,'fr','active',layout.is_default_layout and not exists(
+        select 1 from public.document_templates where company_id=target_company_id and document_type=doc_type.document_type and language='fr' and is_default and status='active'
+      ),1,target_owner_user_id,target_owner_user_id)
       returning id into template_id;
       insert into public.document_template_versions(
         company_id,template_id,version,visual_schema,html,css,change_comment,

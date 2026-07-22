@@ -1,17 +1,9 @@
 begin;
 
--- Retire la numérotation de brouillon (BROUILLON-XXX) : le numéro officiel
--- est désormais attribué dès la création du document (premier enregistrement),
--- devis comme facture, via un trigger générique qui remplace l'ancien trigger
--- de numéro de brouillon. Un devis reste toujours modifiable et n'est plus
--- jamais verrouillé par une finalisation ; seules les factures (et documents
--- assimilés : acompte, solde, avoir) restent verrouillables afin de figer
--- leur PDF légal définitif.
-
-drop trigger if exists documents_assign_draft_number on public.documents;
-drop function if exists public.assign_document_draft_number();
-revoke all on function public.ensure_document_draft_number(uuid) from public,anon,authenticated;
-drop function if exists public.ensure_document_draft_number(uuid);
+-- Le devis reçoit son numéro commercial dès sa création. Les factures et
+-- documents assimilés conservent uniquement leur identifiant de brouillon :
+-- leur numéro légal est attribué atomiquement lors de la finalisation.
+-- draft_number reste volontairement présent pour les brouillons historiques.
 
 -- ---------------------------------------------------------------------------
 -- 1. Numéro officiel attribué dès l'enregistrement initial, quel que soit le
@@ -21,9 +13,7 @@ drop function if exists public.ensure_document_draft_number(uuid);
 create or replace function public.assign_document_number()
 returns trigger language plpgsql security definer set search_path=public,pg_temp as $$
 begin
-  if new.number is null and new.document_type in(
-    'quote','invoice','deposit_invoice','balance_invoice','credit_note','proforma_invoice'
-  ) then
+  if new.number is null and new.document_type='quote' then
     new.number:=public._piloz_take_document_number(
       new.company_id,new.document_type,extract(year from coalesce(new.issue_date,current_date))::integer,false
     );
@@ -40,9 +30,7 @@ do $number_backfill$
 declare doc record;
 begin
   for doc in select id,company_id,document_type,issue_date from public.documents
-    where number is null and document_type in(
-      'quote','invoice','deposit_invoice','balance_invoice','credit_note','proforma_invoice'
-    ) order by company_id,created_at,id
+    where number is null and document_type='quote' order by company_id,created_at,id
   loop
     update public.documents set number=public._piloz_take_document_number(
       doc.company_id,doc.document_type,extract(year from coalesce(doc.issue_date,current_date))::integer,false
@@ -576,10 +564,10 @@ where quote.document_type='quote' and quote.archived_at is null;
 grant select on public.document_pipeline_view to authenticated;
 
 -- ---------------------------------------------------------------------------
--- 6. Colonne devenue inutile
+-- 6. Compatibilité des brouillons historiques
 -- ---------------------------------------------------------------------------
 
-drop index if exists public.documents_draft_number_uidx;
-alter table public.documents drop column if exists draft_number;
+-- La colonne et son index sont conservés : aucune donnée existante n'est
+-- supprimée par cette migration.
 
 commit;

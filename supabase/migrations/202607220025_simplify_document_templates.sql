@@ -8,20 +8,11 @@ begin;
 -- page, conditions de paiement) — l'utilisateur peut ensuite en créer
 -- d'autres à la main.
 
--- Supprime les 6 modèles auto-générés par la précédente approche, ainsi
--- que le trigger et la fonction qui les recréaient automatiquement. Les
--- références existantes (modèle par défaut de l'entreprise, ou déjà choisi
--- sur un document) sont d'abord détachées pour ne pas violer la contrainte
--- de clé étrangère.
+-- Les modèles et références existants sont conservés. Seule l'implémentation
+-- du seed est remplacée plus bas ; aucune donnée utilisateur n'est détachée
+-- ou supprimée par cette migration.
 drop trigger if exists companies_seed_document_templates on public.companies;
 drop function if exists public.seed_company_document_templates();
-update public.company_document_settings set default_quote_template_id=null
-  where default_quote_template_id in(select id from public.document_templates where name in('Classique','Moderne','Compact'));
-update public.company_document_settings set default_invoice_template_id=null
-  where default_invoice_template_id in(select id from public.document_templates where name in('Classique','Moderne','Compact'));
-update public.documents set template_id=null
-  where template_id in(select id from public.document_templates where name in('Classique','Moderne','Compact'));
-delete from public.document_templates where name in('Classique','Moderne','Compact');
 drop function if exists public._piloz_seed_document_templates(uuid,uuid);
 drop function if exists public._piloz_template_preview_html(text,text);
 drop function if exists public._piloz_template_preview_css(text,jsonb);
@@ -99,8 +90,7 @@ drop trigger if exists companies_seed_document_templates on public.companies;
 create trigger companies_seed_document_templates after insert on public.companies
   for each row execute function public.seed_company_document_templates();
 
--- Rattrapage pour les entreprises existantes (n'affecte que celles qui
--- n'ont plus aucun modèle après la suppression ci-dessus).
+-- Rattrapage idempotent pour les entreprises existantes.
 do $backfill$
 declare c record;
 begin
