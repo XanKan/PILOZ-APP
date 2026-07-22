@@ -1,0 +1,14 @@
+# Configuration locale minimale pour lier ce dépôt au projet hébergé.
+# Les secrets et l'identifiant du projet distant ne sont jamais stockés ici.
+project_id = "PILOZ-APP"
+
+[db]
+major_version = 17
+
+[db.migrations]
+enabled = true
+schema_paths = []
+
+[db.seed]
+enabled = false
+sql_paths = []

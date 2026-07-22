@@ -8,7 +8,7 @@
 | R-002 | Rupture ou doublon de séquence | Paramètres de séquence modifiables par le frontend | 5 | 3 | 15 | Configuration contrôlée avant activation, attribution RPC et journal dédié | Ouvert critique |
 | R-003 | Altération non détectée | Pas de chaîne fiscale append-only | 5 | 4 | 20 | Chaînage SHA-256 canonique et vérification complète | Ouvert critique |
 | R-004 | Fausse preuve cryptographique | Aucun KMS/signataire configuré | 5 | 4 | 20 | Interface de signature, état `non_configured`, blocage des allégations | Ouvert critique |
-| R-005 | Paiement original altéré | Annulation par mutation du statut du paiement | 5 | 4 | 20 | Registre append-only et événement inverse | Ouvert critique |
+| R-005 | Paiement original altéré | Annulation par mutation du statut du paiement | 5 | 4 | 20 | Registre append-only, écritures inverses partielles, remboursements, rejets et chargebacks | Réduit dans le code, à tester en production |
 | R-006 | Archive non probante | Aucun manifeste ni vérification hors application | 5 | 4 | 20 | Archive ouverte, empreintes, signature KMS et vérificateur | Ouvert critique |
 | R-007 | Transmission électronique invalide | Aucun artefact XSD/Schematron officiel fourni | 5 | 4 | 20 | Refuser le statut validé/transmis sans artefacts officiels | Ouvert critique |
 | R-008 | Mauvaise qualification e-reporting | Contexte client/opération incomplet | 5 | 3 | 15 | Moteur explicable retournant `à vérifier` si données manquantes | Ouvert |
@@ -19,13 +19,15 @@
 | R-013 | Calcul incohérent écran/PDF/XML | Calculs JS `Number` et SQL numeric séparés | 5 | 3 | 15 | Montants mineurs/decimal centralisés, serveur autoritaire | Ouvert critique |
 | R-014 | Droit d'accès excessif | Rôles limités à owner/admin/member | 4 | 4 | 16 | RBAC explicite et journal des permissions sensibles | Ouvert critique |
 | R-015 | Allégation commerciale non prouvée | Certification future confondue avec code livré | 5 | 2 | 10 | Statuts honnêtes et table de certificats vide par défaut | Sous contrôle |
-| R-016 | Purge contraire à une obligation | Pas de politique par finalité | 5 | 3 | 15 | Matrice de conservation et blocage des données fiscales | Ouvert |
+| R-016 | Purge contraire à une obligation | Durées non validées juridiquement | 5 | 3 | 15 | Matrice, aperçu non destructif et blocage de toute purge automatique | Sous contrôle technique, validation DPO requise |
 | R-017 | Version non reproductible | Documents sans toutes les versions moteur | 4 | 4 | 16 | Snapshot des versions à la finalisation | Ouvert |
 | R-018 | Migration partielle en production | Documentation de déploiement arrêtée à la migration 012 | 5 | 3 | 15 | Inventaire automatique et contrôle de version du schéma | Ouvert critique |
 | R-019 | Rôles sensibles trop larges | Ancien rôle `member` et RPC historiques | 5 | 2 | 10 | Rôles explicites, gardes de finalisation/paiement et audit de chaque RPC | Réduit dans le code, à tester en production |
 | R-020 | Effacement RGPD détruisant une preuve fiscale | Confusion entre droit à l’effacement et conservation légale | 5 | 2 | 10 | Décision par catégorie, legal hold et aucune purge automatique avant validation | Sous contrôle technique |
 | R-021 | Activation prématurée du moteur fiscal | Preuves externes ou KMS absents | 5 | 2 | 10 | Évaluation serveur et activation réservée au propriétaire | Réduit dans le code, dépend des preuves |
 | R-022 | Interface suggérant une certification | Statuts techniques mal interprétés | 5 | 2 | 10 | Table vide, textes explicites et manifeste `certification_claim:false` | Sous contrôle |
+| R-023 | Période fiscale non clôturée | Job planifié absent, arrêté ou en erreur | 5 | 3 | 15 | Détection des périodes manquantes, reprise idempotente, journal de maintenance et suivi Cron | Réduit dans le code, Cron production à activer |
+| R-024 | Remboursement supérieur à l’encaissement | Plusieurs corrections concurrentes | 5 | 2 | 10 | Verrou de l’écriture d’origine et calcul du montant encore réversible | Réduit et testé localement |
 
 ## Acceptation des risques
 

@@ -25,3 +25,15 @@ Chaque future entrée doit conserver version, date, modification, composants, do
 - Migration : additive ; élargissement contrôlé de la liste des rôles, aucune activation ou certification automatique.
 - Décision : pré-release technique ; moteur production maintenu désactivé.
 - Validation : technique interne uniquement. DPO, juridique, sécurité, AFNOR et organisme certificateur requis.
+
+## 0.9.0-compliance.3 — 22 juillet 2026
+
+- Modification : incidents de paiement append-only, trop-perçus, cycle complet des demandes RGPD et automatisation contrôlée des clôtures.
+- Composants : migrations 046–047, visionneuse de factures, écran de conformité, scripts de déploiement et contrôle post-production.
+- Données : remboursements, rejets, chargebacks, exports RGPD non persistés, événements de demandes, politiques et exécutions de maintenance.
+- Catégorie : impact fiscal et données personnelles important, réévaluation de conformité requise.
+- Risques : migrations production non exécutées, Cron non créé, KMS/archives signées non disponibles, durées RGPD non validées.
+- Tests : toutes migrations PGlite, remboursements partiels, trop-perçu, export RGPD, transitions, aperçu de conservation et maintenance à blanc.
+- Migrations : additives ; aucune suppression, aucune purge automatique, archives automatiques maintenues désactivées.
+- Décision : pré-release technique ; moteur production maintenu bloqué sans preuves externes.
+- Validation : technique interne uniquement. DPO, juridique, sécurité, AFNOR, organisme certificateur et plateforme requis.

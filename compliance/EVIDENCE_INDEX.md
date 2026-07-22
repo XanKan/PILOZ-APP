@@ -30,6 +30,10 @@ Ce fichier indexe les preuves disponibles et celles restant à produire. Une pre
 | E-028 | Activation de production bloquée | `evaluate_fiscal_activation`, `activate_fiscal_engine` | Blocage sans KMS/preuves/profils testé | PostgreSQL |
 | E-029 | Absence de certification fictive | `company_software_certifications`, écran À propos | Table vide par défaut et insertion navigateur refusée | PostgreSQL et navigateur |
 | E-030 | Rapport de tests final local | `reports/FINAL_TEST_REPORT_2026-07-22.md` | Migrations, 14 suites navigateur, archives et release réussies | CI locale |
+| E-031 | Incidents de paiement append-only | migration 046 et test PGlite | Trop-perçu et deux remboursements partiels testés sans mutation | PostgreSQL embarqué |
+| E-032 | Export de droit d’accès | `generate_data_subject_export` | Payload remis sans persistance, empreinte et événement conservés | PostgreSQL embarqué |
+| E-033 | Maintenance fiscale contrôlée | migration 047 et procédure de production | Détection/reprise implémentées ; Cron production à créer | PostgreSQL/Supabase Cron |
+| E-034 | Déploiement Supabase non interactif | `scripts/deploy-supabase-production.ps1` | Dry-run par défaut, sauvegarde exigée avant application | Exploitation |
 | E-013 | Validation UBL/CII/Factur-X | Rapports de validateurs officiels | Non exécutée | Intégration e-invoicing |
 | E-014 | Accusés de plateforme agréée | Connecteur réel | Non configurés | Plateforme retenue |
 | E-015 | Revue juridique | Avis signé et versionné | Non fourni | Conseil juridique |
