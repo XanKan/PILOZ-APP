@@ -192,6 +192,7 @@ button:disabled,.btn:disabled,input:disabled,select:disabled,textarea:disabled{o
 .erp-templates-toolbar{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:14px 0}
 .erp-templates-filter{display:grid;gap:4px;font-size:.7rem;font-weight:700;color:var(--text-muted)}
 .erp-templates-filter select{padding:8px;border:1px solid var(--border-strong);border-radius:8px;background:#fff}
+.erp-templates-list-card{margin-bottom:18px}.erp-templates-list-card .erp-templates-toolbar{margin:0}.erp-templates-table{table-layout:fixed;min-width:650px}.erp-templates-table th:nth-child(2),.erp-templates-table td:nth-child(2){width:22%}.erp-templates-table th:nth-child(3),.erp-templates-table td:nth-child(3){width:170px;text-align:center}.erp-templates-table th:nth-child(4),.erp-templates-table td:nth-child(4),.erp-footers-table th:last-child,.erp-footers-table td:last-child{width:130px;text-align:center}.erp-templates-table td:nth-child(4) .erp-row-actions,.erp-footers-table td:last-child .erp-row-actions{justify-content:center}
 .ic{width:31px;height:31px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text-secondary);cursor:pointer;font-size:.95rem;padding:0;line-height:1}
 .ic:hover:not(:disabled){border-color:var(--primary);color:var(--primary)}
 .ic:disabled{opacity:.35;cursor:not-allowed}

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Tests disposition modèles PILOZ</title>
+  <link rel="stylesheet" href="../assets/css/phase1-foundation.css">
+  <link rel="stylesheet" href="../assets/css/modern-erp.css">
+</head>
+<body>
+  <nav id="tabs"></nav>
+  <main id="main"></main>
+  <div id="result" data-status="running">RUNNING</div>
+  <script>
+    window.__errors=[];
+    addEventListener('error',event=>__errors.push(event.message));
+    window.esc=value=>String(value??'');
+    window.toast=()=>{};
+    window.render=()=>{};
+    window.renderTabs=()=>{};
+    window.PilozRuntime={session:{user_id:'u1'},config:{url:'https://example.invalid',key:'anon'}};
+    window.PilozERP={
+      companyContext:async()=> 'c1',
+      request:async path=>path.includes('/company_settings?')?[{company_id:'c1',legal_name:'Piloz SAS',onboarding_completed_at:'2026-07-20'}]:path.includes('/company_members?')?[{company_id:'c1',user_id:'u1',role:'owner',permissions:{}}]:[],
+      query:async()=>[],insert:async()=>[],update:async()=>[],remove:async()=>null,rpc:async()=>'',invoke:async()=>({}),invokeBlob:async()=>new Blob(['%PDF-1.7'],{type:'application/pdf'}),upload:async()=>({})
+    };
+    location.hash='dashboard';
+  </script>
+  <script src="../assets/js/utils/erp-calculations.js"></script>
+  <script src="../assets/js/modules/erp/erp-app.js"></script>
+  <script src="../assets/js/modules/erp/erp-modern.js"></script>
+  <script src="../assets/js/modules/erp/erp-commercial-v2.js"></script>
+  <script src="../assets/js/modules/erp/erp-commercial-workspace.js"></script>
+  <script src="../assets/js/modules/erp/erp-document-editor-v2.js"></script>
+  <script>
+    (async()=>{
+      const checks=[],check=(label,value)=>checks.push([label,!!value]),wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+      try{
+        await wait(280);
+        const state=PilozApp.getState();
+        state.data.templates=[
+          {id:'tpl-q',name:'Modèle de devis principal',document_type:'quote',language:'fr',status:'active',is_default:true},
+          {id:'tpl-f',name:'Modèle de facture principal',document_type:'invoice',language:'fr',status:'active',is_default:true}
+        ];
+        state.data.documentFooters=[{id:'ft1',name:'Pied de page légal par défaut',is_active:true,is_default_quote:true,is_default_invoice:true}];
+        PilozApp.go('templates');
+        await wait(80);
+        const block=document.querySelector('.erp-templates-list-card'),table=document.querySelector('.erp-templates-table'),footerTable=document.querySelector('.erp-footers-table');
+        check('bloc blanc des modèles',!!block&&getComputedStyle(block).backgroundColor==='rgb(255, 255, 255)');
+        check('titre Modèles dans le bloc',block?.querySelector('h2')?.textContent.trim()==='Modèles');
+        check('coche centrée sous son titre',getComputedStyle(table.rows[0].cells[2]).textAlign==='center'&&getComputedStyle(table.rows[1].cells[2]).textAlign==='center');
+        check('actions centrées sous leur titre',getComputedStyle(table.rows[0].cells[3]).textAlign==='center'&&getComputedStyle(table.rows[1].cells[3]).textAlign==='center'&&getComputedStyle(table.rows[1].cells[3].querySelector('.erp-row-actions')).justifyContent==='center');
+        check('actions des pieds de page alignées',getComputedStyle(footerTable.rows[0].cells[3]).textAlign==='center'&&getComputedStyle(footerTable.rows[1].cells[3]).textAlign==='center'&&getComputedStyle(footerTable.rows[1].cells[3].querySelector('.erp-row-actions')).justifyContent==='center');
+        check('aucune erreur javascript',!__errors.length);
+      }catch(error){checks.push(['exécution',false,error.stack||error.message]);}
+      const failed=checks.filter(row=>!row[1]),node=document.getElementById('result');
+      node.dataset.status=failed.length?'failed':'passed';
+      node.textContent=failed.length?`Échec ${failed.length}/${checks.length} : ${failed.map(row=>row[0]).join(', ')}`:`${checks.length}/${checks.length} contrôles de disposition réussis`;
+    })();
+  </script>
+</body>
+</html>
