@@ -153,7 +153,7 @@
    return null;
   }finally{
    state.busy=false;
-   if(action){action.disabled=false;action.textContent='Finaliser';}
+   if(action){action.disabled=false;action.textContent=isQuote?'Enregistrer':'Finaliser';}
   }
  }
  async function setDocumentStatus(statusValue){if(state.busy)return;state.busy=true;try{try{await api().rpc('transition_document_status',{target_document_id:state.draft.id,target_status:statusValue});}catch(error){if(!missingRpc(error))throw error;const changes={status:statusValue,archived_at:statusValue==='archived'?new Date().toISOString():null};if(!state.draft.number&&state.draft.document_type==='quote'&&statusValue!=='draft')changes.number=await api().rpc('next_document_number',{target_company_id:state.companyId,target_type:'quote'});await api().update('documents',state.draft.id,changes);}await refresh();editDocument(state.draft.id);notice('Statut mis à jour.','success');}catch(error){notice(error.message,'error');}finally{state.busy=false;}}
