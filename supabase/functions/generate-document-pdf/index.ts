@@ -358,7 +358,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   page.drawText("Total TTC", { x: 374, y: totalsY - 54, size: 10, font: bold, color: totalsTextColor });
   right(page, bold, amount(doc.total_incl_tax, currency), 538, totalsY - 54, 10, totalsTextColor);
   if (acceptsBankTransfer && bankVisibility === "summary") {
-    const bankLine = [settings.bank_account_holder, settings.iban && `IBAN ${settings.iban}`, settings.bic && `BIC ${settings.bic}`].filter(Boolean).join(" - ");
+    const bankLine = [settings.bank_account_holder && `Titulaire ${settings.bank_account_holder}`, settings.iban && `IBAN ${settings.iban}`, settings.bic && `BIC ${settings.bic}`].filter(Boolean).join(" - ");
     if (bankLine) limitedLines(regular, bankLine, 6, 190, 2).forEach((line, index) => page.drawText(line, { x: 358, y: totalsY - totalsBoxHeight - 2 - index * 8, size: 6, font: regular, color: colors.muted }));
   }
 
@@ -371,7 +371,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   const footerNote = footerLines.join(" | ");
   limitedLines(regular, footerNote, 7, 500, 4).forEach((line, index) => page.drawText(line, { x: 42, y: 76 - index * 9, size: 7, font: regular, color: colors.muted }));
   if (showBankInFooter) {
-    const bank = [settings.bank_account_holder, settings.iban && `IBAN ${settings.iban}`, settings.bic && `BIC ${settings.bic}`].filter(Boolean).join(" - ");
+    const bank = [settings.bank_account_holder && `Titulaire ${settings.bank_account_holder}`, settings.iban && `IBAN ${settings.iban}`, settings.bic && `BIC ${settings.bic}`].filter(Boolean).join(" - ");
     if (bank) page.drawText(fit(regular, bank, 7, 500), { x: 42, y: 38, size: 7, font: regular, color: colors.muted });
   }
   if (showPaymentTerms) {
