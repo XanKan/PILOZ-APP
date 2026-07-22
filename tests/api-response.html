@@ -5,9 +5,9 @@
 <body>
 <main id="result" data-status="running">Vérification…</main>
 <script>
-  const queue=[],edgeQueue=[];
+  const queue=[],edgeQueue=[],requestPaths=[];
   window.fetch=async()=>edgeQueue.shift();
-  window.PilozRuntime={config:{url:'https://example.invalid',key:'anon'},session:{access_token:'test'},request:async()=>queue.shift()};
+  window.PilozRuntime={config:{url:'https://example.invalid',key:'anon'},session:{access_token:'test'},request:async path=>{requestPaths.push(path);return queue.shift();}};
 </script>
 <script src="../assets/js/api/erp-api.js"></script>
 <script>
@@ -26,6 +26,9 @@
     try{await PilozERP.request('/malformed');}catch(error){malformed=error.code==='invalid_json_response';}
     check('JSON invalide signalé clairement',malformed);
     check('undefined sérialisé sans échec',PilozERP.serializeBody({value:undefined})==='{"value":null}');
+    queue.push(new Response('[{"id":1},{"id":2}]',{status:200,headers:{'content-type':'application/json'}}),new Response('[{"id":3},{"id":4}]',{status:200,headers:{'content-type':'application/json'}}),new Response('[{"id":5}]',{status:200,headers:{'content-type':'application/json'}}));
+    const paginated=await PilozERP.queryAll('document_lines','select=id&order=id.asc',2);
+    check('pagination complète au-delà de la limite serveur',paginated.length===5&&paginated[4].id===5&&requestPaths.some(path=>path.includes('offset=4')));
     edgeQueue.push(new Response(new Uint8Array([37,80,68,70,45]),{status:200,headers:{'content-type':'application/pdf'}}));
     check('aperçu PDF binaire accepté',(await PilozERP.invokeBlob('generate-document-pdf',{preview:{}})).size===5);
     let wrongBinary=false;edgeQueue.push(new Response('{"ok":true}',{status:200,headers:{'content-type':'application/json'}}));

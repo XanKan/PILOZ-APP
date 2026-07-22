@@ -70,6 +70,16 @@
   }
   async function upsertCompanySettings(companyId,data){return request('/rest/v1/company_settings?on_conflict=company_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body:serializeBody({company_id:companyId,...data})});}
   function query(table,params=''){return request(`/rest/v1/${table}?${params}`);}
+  async function queryAll(table,params='',pageSize=1000){
+    const size=Math.max(1,Math.min(1000,Number(pageSize)||1000)),rows=[];
+    for(let offset=0;;offset+=size){
+      const page=await query(table,`${params}${params?'&':''}limit=${size}&offset=${offset}`);
+      if(!Array.isArray(page))throw Object.assign(new Error('Le serveur n\u2019a pas renvoy\u00e9 une liste pagin\u00e9e valide.'),{code:'invalid_paginated_response'});
+      rows.push(...page);
+      if(page.length<size)break;
+    }
+    return rows;
+  }
   const restrictedReturns=new Set(['catalog_items','documents','document_lines','stock_movements']);
   function insert(table,data){return request(`/rest/v1/${table}${restrictedReturns.has(table)?'?select=id':''}`,{method:'POST',headers:{Prefer:'return=representation'},body:serializeBody(data)});}
   function update(table,id,data){return request(`/rest/v1/${table}?id=eq.${encodeURIComponent(id)}${restrictedReturns.has(table)?'&select=id':''}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:serializeBody(data)});}
@@ -83,5 +93,5 @@
     const base=(global.PilozRuntime?.config?.url||'').replace(/\/$/,''),full=base+(raw.startsWith('/storage/v1')?raw:raw.startsWith('/')?'/storage/v1'+raw:'/storage/v1/'+raw);
     return{...data,signedURL:full,signedUrl:full,url:full};
   }
-  global.PilozERP={request,companyContext,invoke,invokeBlob,upsertCompanySettings,query,insert,update,remove,rpc,upload,signedUrl,translateError,readBody,serializeBody};
+  global.PilozERP={request,companyContext,invoke,invokeBlob,upsertCompanySettings,query,queryAll,insert,update,remove,rpc,upload,signedUrl,translateError,readBody,serializeBody};
 })(window);

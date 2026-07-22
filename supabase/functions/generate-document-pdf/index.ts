@@ -492,6 +492,8 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PREVIEW_DOCUMENT_TYPES = new Set(["quote", "invoice", "deposit_invoice", "balance_invoice", "credit_note", "proforma_invoice", "recurring_invoice"]);
+const MAX_PREVIEW_LINES = 10_000;
+const PREVIEW_PAGE_SIZE = 1_000;
 
 type PreviewInput = {
   companyId?: unknown;
@@ -531,7 +533,7 @@ async function buildPreviewPayload(
   if (!PREVIEW_DOCUMENT_TYPES.has(documentType)) throw previewFailure("Type de document invalide", 400);
   const templateType = documentType === "quote" ? "quote" : "invoice";
   const sourceLines = Array.isArray(preview.lines) ? preview.lines : [];
-  if (sourceLines.length > 500) throw previewFailure("Le document contient trop de lignes", 413);
+  if (sourceLines.length > MAX_PREVIEW_LINES) throw previewFailure(`Le document depasse la limite de ${MAX_PREVIEW_LINES} lignes`, 413);
 
   const [{ data: issuer, error: issuerError }, { data: documentSettings, error: settingsError }] = await Promise.all([
     userClient.from("company_settings").select("*").eq("company_id", companyId).maybeSingle(),
@@ -651,6 +653,47 @@ async function buildPreviewPayload(
   };
 }
 
+async function buildSavedDraftPreviewPayload(
+  userClient: SupabaseClient<any, "public", "public", any, any>,
+  userId: string,
+  documentId: string,
+): Promise<{ payload: SnapshotPayload; companyId: string }> {
+  if (!UUID.test(documentId)) throw previewFailure("Document invalide", 400);
+  const { data: documentData, error: documentError } = await userClient.from("documents")
+    .select("*").eq("id", documentId).maybeSingle();
+  if (documentError || !documentData) throw previewFailure("Document introuvable", 404);
+  const document = record(documentData);
+  if (String(document.document_type || "") !== "quote" && !["draft", "to_finalize"].includes(String(document.status || "draft"))) {
+    throw previewFailure("Ce document n'est plus un brouillon", 409);
+  }
+
+  const companyId = String(document.company_id || "");
+  const lines: Record<string, unknown>[] = [];
+  for (let offset = 0; offset < MAX_PREVIEW_LINES; offset += PREVIEW_PAGE_SIZE) {
+    const { data, error } = await userClient.from("document_lines").select("*")
+      .eq("company_id", companyId).eq("document_id", documentId)
+      .order("position", { ascending: true }).order("id", { ascending: true })
+      .range(offset, offset + PREVIEW_PAGE_SIZE - 1);
+    if (error) throw previewFailure("Les lignes du document sont indisponibles", 503);
+    const page = (data || []).map(record);
+    lines.push(...page);
+    if (page.length < PREVIEW_PAGE_SIZE) break;
+  }
+  if (lines.length >= MAX_PREVIEW_LINES) {
+    const { count, error } = await userClient.from("document_lines").select("id", { count: "exact", head: true })
+      .eq("company_id", companyId).eq("document_id", documentId);
+    if (error) throw previewFailure("Le nombre de lignes est indisponible", 503);
+    if (Number(count) > MAX_PREVIEW_LINES) throw previewFailure(`Le document depasse la limite de ${MAX_PREVIEW_LINES} lignes`, 413);
+  }
+  return buildPreviewPayload(userClient, userId, {
+    companyId,
+    clientId: document.client_id,
+    templateId: document.template_id,
+    document,
+    lines,
+  });
+}
+
 function failureCode(error: unknown) {
   const value = record(error);
   const candidate = String(value.code || (error instanceof Error ? error.message : "pdf_generation_failed"));
@@ -725,12 +768,14 @@ Deno.serve(async (req) => {
   const userClient = createClient(url, anonKey, { global: { headers: { Authorization: authorization } } });
   const { data: { user } } = await userClient.auth.getUser();
   if (!user) return json({ error: "Session invalide" }, 401);
-  const body = await req.json().catch(() => null) as { documentId?: string; preview?: PreviewInput } | null;
+  const body = await req.json().catch(() => null) as { documentId?: string; draftDocumentId?: string; preview?: PreviewInput } | null;
   if (!body) return json({ error: "Requete invalide" }, 400);
-  if (body.preview) {
+  if (body.preview || body.draftDocumentId) {
     try {
-      if (JSON.stringify(body.preview).length > 1_000_000) return json({ error: "Apercu trop volumineux" }, 413);
-      const { payload, companyId } = await buildPreviewPayload(userClient, user.id, body.preview);
+      if (body.preview && JSON.stringify(body.preview).length > 5_000_000) return json({ error: "Apercu trop volumineux. Enregistrez le brouillon avant de le previsualiser." }, 413);
+      const { payload, companyId } = body.draftDocumentId
+        ? await buildSavedDraftPreviewPayload(userClient, user.id, body.draftDocumentId)
+        : await buildPreviewPayload(userClient, user.id, body.preview || {});
       const logo = await loadFrozenLogo(userClient, payload, companyId);
       const bytes = await buildPdf(payload, logo);
       return new Response(bytes, {
@@ -744,7 +789,7 @@ Deno.serve(async (req) => {
       });
     } catch (error) {
       const status = Number(record(error).status) || 500;
-      console.error("[PILOZ PDF] preview failed", { code: failureCode(error), status });
+      console.error("[PILOZ PDF] preview failed", { code: failureCode(error), status, source: body.draftDocumentId ? "saved_draft" : "payload" });
       return json({ error: status >= 500 ? "L'apercu PDF est temporairement indisponible" : error instanceof Error ? error.message : "Apercu invalide" }, status);
     }
   }
