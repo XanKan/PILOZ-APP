@@ -107,6 +107,24 @@ function address(value: Record<string, unknown>) {
   ].filter(Boolean).join(", "));
 }
 
+function resolveFooterTokens(value: unknown, issuer: Record<string, unknown>) {
+  const tokens: Record<string, unknown> = {
+    "@nomEntreprise": issuer.legal_name,
+    "@nomCommercial": issuer.trade_name || issuer.legal_name,
+    "@siren": issuer.siren,
+    "@siret": issuer.siret,
+    "@tva": issuer.vat_number,
+    "@ape": issuer.ape_code,
+    "@rcs": issuer.rcs_number,
+    "@capitalSocial": issuer.social_capital,
+    "@adresse": address(issuer),
+    "@email": issuer.email,
+    "@telephone": issuer.phone || issuer.phone_e164,
+    "@site": issuer.website,
+  };
+  return Object.entries(tokens).reduce((output, [token, replacement]) => output.split(token).join(text(replacement)), String(value || ""));
+}
+
 function splitToken(font: PDFFont, value: string, size: number, maxWidth: number) {
   if (font.widthOfTextAtSize(value, size) <= maxWidth) return [value];
   const chunks: string[] = [];
@@ -156,6 +174,11 @@ function limitedLines(font: PDFFont, value: unknown, size: number, maxWidth: num
 function right(page: PDFPage, font: PDFFont, value: unknown, x: number, y: number, size = 9, color = rgb(0.08, 0.12, 0.2), maxWidth = 245) {
   const output = fit(font, value, size, maxWidth);
   page.drawText(output, { x: x - font.widthOfTextAtSize(output, size), y, size, font, color });
+}
+
+function centered(page: PDFPage, font: PDFFont, value: unknown, y: number, size = 7, color = rgb(0.38, 0.43, 0.51), maxWidth = 500) {
+  const output = fit(font, value, size, maxWidth);
+  page.drawText(output, { x: (A4[0] - font.widthOfTextAtSize(output, size)) / 2, y, size, font, color });
 }
 
 // Réglages numériques propres à chaque mise en page : hauteur de bandeau,
@@ -427,8 +450,8 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     page.drawText("Taux", { x: 42, y: totalsY - 13, size: 7, font: bold, color: colors.text });
     right(page, bold, "Montant TVA", 205, totalsY - 13, 7, colors.text, 100);
     right(page, bold, "Base HT", 330, totalsY - 13, 7, colors.text, 100);
-    page.drawText("Récapitulatif", { x: 354, y: totalsY + 3, size: 11, font: bold, color: colors.heading });
   }
+  if (referenceLayout) page.drawText("Récapitulatif", { x: 354, y: totalsY + 3, size: 11, font: bold, color: colors.heading });
   [...vat.entries()].sort((a, b) => a[0] - b[0]).slice(0, 5).forEach(([rate, values], index) => {
     const rowY = totalsY - (referenceLayout ? 28 : 13) - index * 12;
     page.drawText(`${rate.toLocaleString("fr-FR")} %`, { x: 42, y: rowY, size: 7, font: regular, color: colors.text });
@@ -436,31 +459,32 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     right(page, regular, referenceLayout ? amount(values.base, currency) : `TVA ${amount(values.tax, currency)}`, 330, rowY, 7, referenceLayout ? colors.text : colors.muted, 115);
   });
   const showPaymentBalance = doc.document_type !== "quote";
-  const totalsBoxHeight = showPaymentBalance ? 108 : (layoutKey === "modern" ? 84 : 76);
+  const totalsBoxHeight = showPaymentBalance ? 115 : (layoutKey === "modern" ? 91 : 83);
   if (!referenceLayout) page.drawRectangle({ x: 354, y: totalsY - totalsBoxHeight + 12, width: 199, height: totalsBoxHeight, color: layoutKey === "modern" ? colors.totals : colors.tableBackground });
   const totalsTextColor = layoutKey === "modern" ? rgb(1, 1, 1) : colors.text;
-  page.drawText("Total HT", { x: referenceLayout ? 354 : 374, y: totalsY - 7, size: referenceLayout ? 8 : 9, font: bold, color: totalsTextColor });
-  right(page, regular, amount(doc.total_excl_tax, currency), 538, totalsY - 7, 9, totalsTextColor);
-  page.drawText("Total TVA", { x: referenceLayout ? 354 : 374, y: totalsY - 23, size: referenceLayout ? 8 : 9, font: bold, color: totalsTextColor });
-  right(page, regular, amount(doc.total_tax, currency), 538, totalsY - (referenceLayout ? 23 : 27), 9, totalsTextColor);
+  if (!referenceLayout) page.drawText("Récapitulatif", { x: 374, y: totalsY + 3, size: 9, font: bold, color: totalsTextColor });
+  page.drawText("Total HT", { x: referenceLayout ? 354 : 374, y: totalsY - 14, size: referenceLayout ? 8 : 9, font: bold, color: totalsTextColor });
+  right(page, regular, amount(doc.total_excl_tax, currency), 538, totalsY - 14, 9, totalsTextColor);
+  page.drawText("Total TVA", { x: referenceLayout ? 354 : 374, y: totalsY - 30, size: referenceLayout ? 8 : 9, font: bold, color: totalsTextColor });
+  right(page, regular, amount(doc.total_tax, currency), 538, totalsY - (referenceLayout ? 30 : 34), 9, totalsTextColor);
   const grandTotalColor = layoutKey === "modern" ? rgb(1, 1, 1) : colors.totals;
-  if (referenceLayout) page.drawRectangle({ x: 350, y: totalsY - 46, width: 203, height: 17, color: colors.tableBackground });
-  else page.drawLine({ start: { x: 370, y: totalsY - 37 }, end: { x: 538, y: totalsY - 37 }, thickness: 1, color: grandTotalColor });
-  page.drawText("Total TTC", { x: referenceLayout ? 354 : 374, y: totalsY - (referenceLayout ? 41 : 54), size: referenceLayout ? 8 : 10, font: bold, color: grandTotalColor });
-  right(page, bold, amount(doc.total_incl_tax, currency), 538, totalsY - (referenceLayout ? 41 : 54), referenceLayout ? 8 : 10, grandTotalColor);
+  if (referenceLayout) page.drawRectangle({ x: 350, y: totalsY - 53, width: 203, height: 17, color: colors.tableBackground });
+  else page.drawLine({ start: { x: 370, y: totalsY - 44 }, end: { x: 538, y: totalsY - 44 }, thickness: 1, color: grandTotalColor });
+  page.drawText("Total TTC", { x: referenceLayout ? 354 : 374, y: totalsY - (referenceLayout ? 48 : 61), size: referenceLayout ? 8 : 10, font: bold, color: grandTotalColor });
+  right(page, bold, amount(doc.total_incl_tax, currency), 538, totalsY - (referenceLayout ? 48 : 61), referenceLayout ? 8 : 10, grandTotalColor);
   if (showPaymentBalance) {
     const paidAmount = Number(doc.amount_paid || doc.paid_amount || 0);
     const remainingAmount = Math.max(0, Number(doc.total_incl_tax || 0) - paidAmount);
-    page.drawText("Encaissé", { x: 374, y: totalsY - 72, size: 8, font: regular, color: totalsTextColor });
-    right(page, regular, amount(paidAmount, currency), 538, totalsY - 72, 8, totalsTextColor);
-    page.drawText("Reste à payer", { x: 374, y: totalsY - 88, size: 8, font: bold, color: grandTotalColor });
-    right(page, bold, amount(remainingAmount, currency), 538, totalsY - 88, 8, grandTotalColor);
+    page.drawText("Encaissé", { x: 374, y: totalsY - 79, size: 8, font: regular, color: totalsTextColor });
+    right(page, regular, amount(paidAmount, currency), 538, totalsY - 79, 8, totalsTextColor);
+    page.drawText("Reste à payer", { x: 374, y: totalsY - 95, size: 8, font: bold, color: grandTotalColor });
+    right(page, bold, amount(remainingAmount, currency), 538, totalsY - 95, 8, grandTotalColor);
   }
   const footerLines: string[] = [];
+  const footerBody = resolveFooterTokens(templateFooter.body, issuer);
   let legalIdentity = "";
   let legalContact = "";
   if (templateVersion.free_field) footerLines.push(String(templateVersion.free_field));
-  if (templateFooter.body) footerLines.push(String(templateFooter.body));
   if (showLegalMentions) {
     const registeredAddress = [issuer.address_line1 || issuer.address_line_1, issuer.address_line2 || issuer.address_line_2, issuer.postal_code, issuer.city, issuer.country_code].filter(Boolean).map(text).join(" - ");
     legalIdentity = [
@@ -494,16 +518,19 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   }
   if (referenceLayout && showLegalMentions) {
     limitedLines(regular, [legalIdentity, legalContact].filter(Boolean).join(" - "), 5.5, 245, 2).forEach((line, index) => {
-      page.drawText(line, { x: 303, y: 45 - index * 7, size: 5.5, font: regular, color: colors.muted });
+      page.drawText(line, { x: 303, y: 60 - index * 7, size: 5.5, font: regular, color: colors.muted });
     });
   }
-
-  if (showPageNumber) {
-    pages.forEach((current, index) => {
+  pages.forEach((current, index) => {
+    if (footerBody) {
+      current.drawLine({ start: { x: 42, y: 46 }, end: { x: 553, y: 46 }, thickness: 0.5, color: colors.border });
+      limitedLines(regular, footerBody, 6.5, 500, 2).forEach((line, footerIndex) => centered(current, regular, line, 34 - footerIndex * 8, 6.5, colors.muted, 500));
+    }
+    if (showPageNumber) {
       const label = `${index + 1} / ${pages.length}`;
       right(current, regular, label, 553, 18, 7, colors.muted);
-    });
-  }
+    }
+  });
   pdf.setTitle(`${kind} ${number}`);
   pdf.setAuthor(issuerName);
   pdf.setCreator("PILOZ");
