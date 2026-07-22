@@ -63,13 +63,14 @@
   else if(raw==='rejected'||raw==='refused')stage='rejected';
   else if(raw==='expired'||quote.validity_date&&quote.validity_date<today()&&!['accepted','invoiced'].includes(raw))stage='expired';
   else if(raw==='accepted')stage='accepted';
-  else if(['viewed','responded','pending','waiting'].includes(raw))stage='pending';
+  else if(['sent','viewed'].includes(raw))stage='sent';
+  else if(['responded','pending','waiting'].includes(raw))stage='pending';
   else if(raw==='sent')stage='sent';
   else if(['validated','finalized','to_send'].includes(raw)||quote.validated_at)stage='finalized';
   else if(raw==='to_finalize'||storedStage==='to_finalize')stage='to_finalize';
   return{quote,invoices,credits,payments,activities,next,totalInvoiced,totalInvoicedTtc,collected,remaining,stage};
  }
- function pipelineStatusLabel(value){return({draft:'Brouillon',to_finalize:'À finaliser',validated:'Finalisé',finalized:'Finalisé',to_send:'Finalisé',sent:'Envoyé',viewed:'Consulté',responded:'En attente',pending:'En attente',waiting:'En attente',accepted:'Accepté',rejected:'Refusé',refused:'Refusé',expired:'Expiré',invoiced:'Facturé'}[String(value||'draft').toLowerCase()]||String(value||'Brouillon'));}
+ function pipelineStatusLabel(value){return({draft:'Brouillon',to_finalize:'À finaliser',validated:'Finalisé',finalized:'Finalisé',to_send:'Finalisé',sent:'Envoyé',viewed:'Envoyé',responded:'En attente',pending:'En attente',waiting:'En attente',accepted:'Accepté',rejected:'Refusé',refused:'Refusé',expired:'Expiré',invoiced:'Facturé'}[String(value||'draft').toLowerCase()]||String(value||'Brouillon'));}
  function quotePipelineRows(state,includeHidden=false){
   const q=ui.search.trim().toLocaleLowerCase('fr');
   const rows=(state.data.documents||[]).filter(row=>row.document_type==='quote'&&!['cancelled','archived'].includes(row.status)&&!row.archived_at).map(row=>quotePipelineMetrics(state,row)).sort((a,b)=>new Date(b.quote.updated_at||b.quote.created_at||b.quote.issue_date)-new Date(a.quote.updated_at||a.quote.created_at||a.quote.issue_date));

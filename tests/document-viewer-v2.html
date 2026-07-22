@@ -11,7 +11,7 @@ window.PilozRuntime={session:{user_id:'u1',email:'quentin@example.fr'}};
 const state={companyId:'c1',data:{
  settings:[{legal_name:'Piloz Test',address_line1:'1 rue Piloz',postal_code:'75001',city:'Paris',email:'contact@piloz.fr',siret:'12345678900011'}],docSettings:[{visible_mention:'Conditions générales Piloz'}],
  members:[{user_id:'u1',role:'owner',profile:{first_name:'Quentin'}},{user_id:'u2',role:'member',profile:{first_name:'Lina'}}],
- clients:[{id:'cl1',legal_name:'Client Alpha',address_line_1:'8 rue Client',postal_code:'69001',city:'Lyon',email:'alpha@example.fr',siret:'12345678900029'}],
+ clients:[{id:'cl1',legal_name:'Client Alpha',address_line_1:'8 rue Client',postal_code:'69001',city:'Lyon',email:'alpha@example.fr',siret:'12345678900029'},{id:'cl2',legal_name:'Client Bêta'},{id:'cl3',legal_name:'Client Gamma'},{id:'cl4',legal_name:'Client Delta'},{id:'cl5',legal_name:'Client Epsilon'},{id:'cl6',legal_name:'Client Zêta'},{id:'cl7',legal_name:'Client Êta'}],
  documents:[
   {id:'q1',company_id:'c1',document_type:'quote',number:'DEV-2026-0042',client_id:'cl1',subject:'Projet Alpha',status:'accepted',issue_date:'2026-07-15',validity_date:'2026-08-15',currency:'EUR',total_excl_tax:1000,total_tax:200,total_incl_tax:1200,finalized_at:'2026-07-15T10:00:00Z',snapshot_id:'s1'},
   {id:'q2',company_id:'c1',document_type:'quote',number:'DEV-2026-0043',client_id:'cl1',subject:'Projet Bêta',status:'draft',issue_date:'2026-07-20',validity_date:'2026-08-20',currency:'EUR',total_excl_tax:500,total_tax:100,total_incl_tax:600},
@@ -19,7 +19,8 @@ const state={companyId:'c1',data:{
   {id:'f1',company_id:'c1',document_type:'invoice',number:'FAC-2026-0081',client_id:'cl1',source_document_id:'q1',subject:'Projet Alpha',status:'partially_paid',issue_date:'2026-07-16',due_date:'2026-08-16',payment_method:'bank_transfer',currency:'EUR',total_excl_tax:1000,total_tax:200,total_incl_tax:1200,finalized_at:'2026-07-16T10:00:00Z'},
   {id:'f2',company_id:'c1',document_type:'invoice',number:'FAC-2026-0082',client_id:'cl1',status:'paid',issue_date:'2026-07-10',due_date:'2026-07-20',currency:'EUR',total_excl_tax:100,total_tax:20,total_incl_tax:120,finalized_at:'2026-07-10T10:00:00Z'},
   {id:'f3',company_id:'c1',document_type:'invoice',number:null,client_id:'cl1',template_id:'t-invoice',status:'draft',issue_date:'2026-07-21',due_date:'2026-08-21',currency:'EUR',total_excl_tax:250,total_tax:50,total_incl_tax:300,updated_at:'2026-07-21T12:00:00Z'},
-  {id:'f4',company_id:'c1',document_type:'invoice',number:'FAC-2026-0083',client_id:'cl1',status:'finalized',issue_date:'2026-06-01',due_date:'2026-07-01',currency:'EUR',total_excl_tax:300,total_tax:60,total_incl_tax:360,finalized_at:'2026-06-01T10:00:00Z'}
+  {id:'f4',company_id:'c1',document_type:'invoice',number:'FAC-2026-0083',client_id:'cl1',status:'finalized',issue_date:'2026-06-01',due_date:'2026-07-01',currency:'EUR',total_excl_tax:300,total_tax:60,total_incl_tax:360,finalized_at:'2026-06-01T10:00:00Z'},
+  {id:'pf1',company_id:'c1',document_type:'proforma_invoice',number:'PRO-2026-0001',client_id:'cl1',status:'draft',issue_date:'2026-07-21',due_date:'2026-08-21',currency:'EUR',total_incl_tax:99}
  ],
  lines:[{id:'l1',document_id:'q1',position:1,line_type:'item',name:'Conseil',description:'Mission de conseil',quantity:10,unit:'heure',unit_price:100,unit_cost_snapshot:45,tax_rate:20,total_excl_tax:1000},{id:'l2',document_id:'f1',position:1,line_type:'item',name:'Conseil',quantity:10,unit:'heure',unit_price:100,tax_rate:20,total_excl_tax:1000},{id:'l3',document_id:'f3',position:1,line_type:'item',name:'Audit',quantity:1,unit:'forfait',unit_price:100,tax_rate:20,total_excl_tax:100,total_tax:20,total_incl_tax:120,updated_at:'2026-07-21T12:00:00Z'},{id:'l4',document_id:'f3',position:2,line_type:'item',name:'Conseil',quantity:1,unit:'forfait',unit_price:50,tax_rate:20,total_excl_tax:50,total_tax:10,total_incl_tax:60,updated_at:'2026-07-21T12:00:00Z'},{id:'l5',document_id:'f3',position:3,line_type:'item',name:'Formation',quantity:1,unit:'forfait',unit_price:50,tax_rate:20,total_excl_tax:50,total_tax:10,total_incl_tax:60,updated_at:'2026-07-21T12:00:00Z'},{id:'l6',document_id:'f3',position:4,line_type:'item',name:'Support',quantity:1,unit:'forfait',unit_price:50,tax_rate:20,total_excl_tax:50,total_tax:10,total_incl_tax:60,updated_at:'2026-07-21T12:00:00Z'}],
  templates:[{id:'t-invoice',name:'Facture commerciale',document_type:'invoice',status:'active',is_default:true}],
@@ -53,15 +54,17 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   location.hash='document-viewer?id=q1&type=quote';PilozModern.renderRoute('document-viewer',state);await wait(30);
   check('structure en trois colonnes',!!document.querySelector('.document-viewer-list')&&!!document.querySelector('.document-viewer-preview')&&!!document.querySelector('.document-viewer-side'));
   check('liste devis complète',document.querySelectorAll('.document-viewer-list-item').length===3);
-  check('onglets devis complets',['Brouillons','En attente','Acceptés','Refusés','Facturés','Expirés'].every(label=>main.textContent.includes(label)));
+  check('onglets devis simplifiés',['Tous','Brouillon','Envoyé','En attente','Refusé','Facturés'].every(label=>main.textContent.includes(label))&&!main.textContent.includes('Acceptés')&&!main.textContent.includes('Expirés')&&!main.textContent.includes('Consulté'));
   check('comptages réels devis',Array.from(document.querySelectorAll('.document-viewer-tabs button')).find(node=>node.textContent.includes('Facturés'))?.textContent.includes('1'));
   check('barre PDF totalement retirée',!document.querySelector('.document-viewer-pdf-controls')&&!main.textContent.includes('95 %'));
+  check('aperçu PDF sans bord sombre',getComputedStyle(document.querySelector('.document-viewer-stage')).backgroundColor==='rgb(255, 255, 255)');
   check('aucun ancien bouton retour',!main.textContent.includes('Retour aux devis')&&!main.textContent.includes('Retour factures'));
   check('une fermeture accessible en haut',document.querySelectorAll('[aria-label="Fermer la consultation"]').length===1);
   check('anciennes actions retirées',['Historique','Relancer le client','Archiver'].every(label=>!main.textContent.includes(label)));
   check('actions texte présentes',['Télécharger','Imprimer','Dupliquer','Supprimer','Envoyer'].every(label=>main.textContent.includes(label)));
   check('suppression devis facturé désactivée',document.querySelector('.document-viewer-utility-actions button:last-child')?.disabled===true);
   check('statut manuel verrouillé après facturation',document.querySelector('[aria-label="Statut du devis"]')?.disabled===true);
+  check('statut devis intégré une seule fois',document.querySelectorAll('[aria-label="Statut du devis"]').length===1&&!document.querySelector('.document-viewer-status-control'));
   check('panneau devis complet',main.textContent.includes('Reste à facturer')&&main.textContent.includes('Convertir en…')&&main.textContent.includes('Modifier via une nouvelle version'));
   check('statut automatique facturé visible',main.textContent.includes('Facturé'));
   check('documents liés visibles',main.textContent.includes('FAC-2026-0081'));
@@ -70,10 +73,13 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
 
   PilozDocumentViewerV2.toggleAdvancedFilters();
   check('panneau Plus de filtres',!!document.querySelector('.document-viewer-filter-panel:not([hidden])'));
-  check('filtres dates manuels',document.querySelectorAll('.document-viewer-filter-panel input[type="date"]').length===4);
+  check('périodes du au regroupées',document.querySelectorAll('.document-viewer-date-range').length===2&&document.querySelectorAll('.document-viewer-filter-panel input[type="date"]').length===0);
+  PilozDocumentViewerV2.toggleDateRange('issue');
+  check('un bouton ouvre les deux bornes',document.querySelectorAll('.document-viewer-date-range-popover input[type="date"]').length===2&&main.textContent.includes('Du')&&main.textContent.includes('Au'));
   check('préréglages de date complets',['7 derniers jours','Mois dernier','Année dernière','7 prochains jours','Mois prochain','Date personnalisée'].every(label=>main.textContent.includes(label)));
   check('libellé date de validité explicite',main.textContent.includes('Date de validité'));
-  check('filtre client prédictif',!!document.querySelector('input[list="document-viewer-clients"]')&&!!document.querySelector('#document-viewer-clients'));
+  PilozDocumentViewerV2.openClientSearch();
+  check('filtre client avec recherche limitée',!!document.querySelector('[data-client-filter-search]')&&document.querySelectorAll('[data-client-suggestion]').length===6&&!document.querySelector('datalist'));
   check('filtre montant TTC',main.textContent.includes('Montant TTC min.')&&main.textContent.includes('Montant TTC max.'));
   check('boutons appliquer et réinitialiser',main.textContent.includes('Appliquer')&&main.textContent.includes('Réinitialiser'));
   PilozDocumentViewerV2.setFilter('issueFrom','2026-07-10');PilozDocumentViewerV2.setFilter('issueTo','2026-07-21');
@@ -90,6 +96,8 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   check('multi-statut appliqué au statut effectif',PilozDocumentViewerV2.filteredDocuments(state.data)[0]?.id==='q3');
   PilozDocumentViewerV2.resetFilters();PilozDocumentViewerV2.setFilter('amountMin','500');PilozDocumentViewerV2.select('q2');PilozDocumentViewerV2.clearSelection();
   check('filtres conservés après ouverture fermeture',main.textContent.includes('Plus de filtres · 1')&&PilozDocumentViewerV2.filteredDocuments(state.data).length===2);
+  check('fermeture restaure la vue ligne',document.querySelector('.document-viewer-v2.list-only.layout-list')&&getComputedStyle(document.querySelector('.document-viewer-list-scroll')).display==='block');
+  PilozDocumentViewerV2.setLayout('cards');check('bouton active la vue cartes',document.querySelector('.document-viewer-v2.list-only.layout-cards')&&getComputedStyle(document.querySelector('.document-viewer-list-scroll')).display==='grid');PilozDocumentViewerV2.setLayout('list');
   PilozDocumentViewerV2.resetFilters();PilozDocumentViewerV2.select('q2');await wait(30);
   check('devis non finalisé utilise aperçu serveur',calls.some(call=>call[0]==='invokeBlob'&&call[1]==='generate-document-pdf'&&call[2].draftDocumentId==='q2'));
   const quoteStatus=document.querySelector('[aria-label="Statut du devis"]');quoteStatus.value='accepted';await PilozDocumentViewerV2.changeQuoteStatus('accepted');
@@ -109,6 +117,7 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   PilozDocumentViewerV2.select('f1');
   check('navigation conserve la consultation',location.hash.includes('id=f1')&&!!document.querySelector('.document-viewer-v2'));
   check('onglets factures complets',['Brouillons','À encaisser','Encaissées','En retard'].every(label=>main.textContent.includes(label)));
+  check('pro forma retirée de la liste factures',!PilozDocumentViewerV2.filteredDocuments(state.data).some(row=>row.document_type==='proforma_invoice')&&!main.textContent.includes('Pro forma'));
   check('paiement réel et solde',main.textContent.includes('400,00')&&main.textContent.includes('800,00')&&main.textContent.includes('Enregistrer le paiement total'));
   check('facture finalisée non supprimable',document.querySelector('.document-viewer-utility-actions button:last-child')?.disabled===true);
   PilozDocumentViewerV2.toggleAdvancedFilters();check('filtre statut envoi facture',main.textContent.includes('Envoi')&&main.textContent.includes('Non envoyées'));

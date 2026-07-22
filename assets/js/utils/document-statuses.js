@@ -4,7 +4,7 @@
  const invoiceTypes=new Set(['invoice','deposit_invoice','balance_invoice','credit_note','proforma_invoice','recurring_invoice']);
  const accountingInvoiceTypes=new Set(['invoice','deposit_invoice','balance_invoice']);
  const meta={
-  draft:{label:'Brouillon',tone:'neutral'},pending:{label:'En attente',tone:'warning'},accepted:{label:'Accepté',tone:'positive'},
+  draft:{label:'Brouillon',tone:'neutral'},sent:{label:'Envoyé',tone:'info'},pending:{label:'En attente',tone:'warning'},accepted:{label:'Accepté',tone:'positive'},
   rejected:{label:'Refusé',tone:'danger'},invoiced:{label:'Facturé',tone:'positive'},expired:{label:'Expiré',tone:'danger'},
   finalized:{label:'Finalisée',tone:'info'},overdue:{label:'En retard',tone:'danger'},paid:{label:'Encaissée',tone:'positive'},
   partially_paid:{label:'Partiellement encaissée',tone:'warning'},cancelled:{label:'Annulée',tone:'neutral'},archived:{label:'Archivé',tone:'neutral'}
@@ -30,6 +30,7 @@
   if(quoteHasInvoice(data,doc))return'invoiced';
   if(['accepted','rejected'].includes(doc?.status))return doc.status;
   if(doc?.validity_date&&doc.validity_date<today)return'expired';
+  if(['sent','viewed'].includes(doc?.status))return'sent';
   return doc?.status==='draft'?'draft':'pending';
  };
  const invoiceStatus=(data,doc,today=isoToday())=>{

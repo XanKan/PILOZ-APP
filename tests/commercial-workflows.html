@@ -76,7 +76,9 @@
       check('réception fournisseur complète persistée',PilozApp.getState().data.purchaseOrderLines.filter(x=>x.purchase_order_id===purchaseOrder.id).every(x=>Number(x.received_quantity)===Number(x.quantity)));
       currentStep='liste des devis';await go('sales/quotes');
       check('liste de devis complète',document.querySelector('.modern-filters')&&document.querySelector('.modern-table'));
-      check('filtres de statuts devis',document.querySelector('.modern-view-tabs')?.textContent.includes('À envoyer')&&document.querySelector('.modern-view-tabs')?.textContent.includes('Consultés')&&document.querySelector('.modern-view-tabs')?.textContent.includes('Archivés'));
+      check('filtres de statuts devis simplifiés',['Tous','Brouillon','Envoyé','En attente','Refusé','Facturés'].every(label=>document.querySelector('.modern-view-tabs')?.textContent.includes(label))&&!document.querySelector('.modern-view-tabs')?.textContent.includes('Consulté')&&!document.querySelector('.modern-view-tabs')?.textContent.includes('Acceptés'));
+      check('date du au regroupée',!!document.querySelector('.modern-date-range')&&!document.querySelector('.modern-filters-row>label input[type="date"]'));
+      PilozModern.openDocumentClientSearch();await wait(30);check('client filtré par recherche',!!document.querySelector('[data-modern-client-search]')&&document.querySelectorAll('[data-modern-client-suggestion]').length<=6&&!document.querySelector('.modern-filters select option[value="'+clientId+'"]'));
       check('expiration calculée',document.getElementById('main').textContent.includes('Expiré'));
       check('colonnes coût marge pipeline',document.querySelector('.modern-table')?.textContent.includes('Coût d’achat')&&document.querySelector('.modern-table')?.textContent.includes('Marge')&&document.querySelector('.modern-table')?.textContent.includes('Opportunité'));
       check('actions devis',document.querySelector('.erp-action-menu')?.textContent.includes('Dupliquer')&&document.querySelector('.erp-action-menu')?.textContent.includes('Aperçu / PDF')&&document.querySelector('.erp-action-menu')?.textContent.includes('Convertir en facture'));
@@ -105,7 +107,7 @@
       check('paiement partiel',PilozApp.getState().draft?.status==='partially_paid'&&PilozApp.getState().data.payments.some(x=>x.document_id===invoiceId&&x.amount===120));
 
       await go('sales/invoices');
-      check('filtres factures',document.querySelector('.modern-view-tabs')?.textContent.includes('Partiellement payées')&&document.querySelector('.modern-view-tabs')?.textContent.includes('Acomptes')&&document.querySelector('.modern-view-tabs')?.textContent.includes('Pro forma'));
+      check('filtres factures sans pro forma',document.querySelector('.modern-view-tabs')?.textContent.includes('Partiellement payées')&&document.querySelector('.modern-view-tabs')?.textContent.includes('Acomptes')&&!document.querySelector('.modern-view-tabs')?.textContent.includes('Pro forma'));
       PilozModern.openInvoiceDetail(invoiceId);
       check('fiche facture détaillée',document.getElementById('modern-drawer')?.textContent.includes('Historique des paiements')&&document.getElementById('modern-drawer')?.textContent.includes('Reste à payer')&&document.getElementById('modern-drawer')?.textContent.includes('Relancer le client'));
       PilozModern.openInvoicePayment(invoiceId,true);await PilozModern.saveInvoicePayment(invoiceId);await wait(100);

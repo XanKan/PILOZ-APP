@@ -99,6 +99,13 @@ button:disabled,.btn:disabled,input:disabled,select:disabled,textarea:disabled{o
 .modern-filter-field span{white-space:nowrap}
 .modern-filter-field input,.modern-filter-field select{min-height:38px;border:1px solid var(--border-strong);border-radius:8px;background:#fff;color:var(--text-primary);padding:8px 10px;font-size:.82rem;font-weight:500}
 .modern-filter-field input[type="search"]{min-width:220px}
+.modern-date-range,.modern-client-filter{position:relative;min-width:210px}
+.modern-date-range>button{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:7px;min-width:210px;min-height:38px;padding:8px 10px;border:1px solid var(--border-strong);border-radius:8px;background:#fff;color:var(--text-primary);text-align:left;font:inherit;font-size:.78rem;cursor:pointer}
+.modern-date-range>button b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:550}.modern-date-range>button i{font-style:normal;color:var(--text-muted)}
+.modern-date-range-popover,.modern-client-suggestions{position:absolute;z-index:60;top:100%;right:0;left:0;margin-top:5px;padding:8px;border:1px solid var(--border);border-radius:10px;background:#fff;box-shadow:0 15px 35px rgba(15,23,42,.17)}
+.modern-date-range-popover{display:grid;grid-template-columns:1fr 1fr;gap:8px}.modern-date-range-popover label{display:grid;gap:4px}.modern-date-range-popover label span{font-size:.68rem;color:var(--text-muted)}
+.modern-client-filter>div:first-of-type{display:flex;align-items:center;min-height:38px;border:1px solid var(--border-strong);border-radius:8px;background:#fff}.modern-client-filter>div:first-of-type:focus-within{border-color:var(--primary)}.modern-client-filter>div:first-of-type input{min-width:190px;border:0}.modern-client-filter>div:first-of-type>button{width:31px;height:31px;border:0;background:transparent;color:var(--text-muted);font:inherit;font-size:1rem;cursor:pointer}
+.modern-client-suggestions{display:grid;max-height:270px;overflow:auto;padding:5px}.modern-client-suggestions>button{display:grid;gap:2px;padding:8px;border:0;border-radius:7px;background:#fff;color:var(--text-primary);text-align:left;font:inherit;cursor:pointer}.modern-client-suggestions>button:hover{background:var(--primary-soft)}.modern-client-suggestions b{font-size:.76rem}.modern-client-suggestions small,.modern-client-suggestions>span{color:var(--text-muted);font-size:.68rem}.modern-client-suggestions>span{padding:8px}
 .modern-filters-advanced{border-top:1px solid var(--border);margin-top:11px;padding-top:11px}
 .modern-filters-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:11px}
 .modern-view-tabs{display:flex;gap:4px;overflow:auto;padding-bottom:2px;margin:0 0 14px}
