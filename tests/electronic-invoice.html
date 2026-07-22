@@ -7,5 +7,9 @@ check('modèle canonique créé',invoice.format==='piloz-canonical-invoice'&&inv
 check('fournisseur conservé',invoice.supplier.siren==='123456789');check('client conservé',invoice.customer.legalName==='Client Test');
 check('ligne conservée',invoice.lines.length===1&&invoice.lines[0].totals.inclTax==='120');check('validation métier',validation.valid);
 for(const format of ['ubl','cii','facturx']){const ready=api.formatReadiness(format,[]);check(`${format} bloqué sans profil`,!ready.ready&&ready.code==='official_profile_not_configured');let blocked=false;try{api.exportStructured(format,invoice,[])}catch(error){blocked=error.code==='official_profile_not_configured'}check(`${format} sans XML approximatif`,blocked)}
+const b2b=api.classifyTransactionForFrenchEInvoicing({customerCategory:'b2b',customerCountry:'FR',operationCategory:'services'});check('B2B France présélectionné',b2b.classification==='e_invoice'&&b2b.externalValidationRequired&&!b2b.transmitted);
+const b2c=api.classifyTransactionForFrenchEInvoicing({customerCategory:'b2c',customerCountry:'FR',operationCategory:'goods'});check('B2C présélectionné e-reporting',b2c.classification==='e_reporting_transaction');
+const payment=api.classifyTransactionForFrenchEInvoicing({customerCategory:'b2c',customerCountry:'FR',operationCategory:'services',eventKind:'payment'});check('paiement de service présélectionné',payment.classification==='e_reporting_payment');
+const incomplete=api.classifyTransactionForFrenchEInvoicing({customerCategory:'unknown'});check('données manquantes visibles',incomplete.classification==='to_verify'&&incomplete.missingData.length===3);
 const failed=checks.filter(([,ok])=>!ok),node=document.getElementById('result');node.dataset.status=failed.length?'failed':'passed';node.textContent=failed.length?`Échec : ${failed.map(([name])=>name).join(', ')}`:`${checks.length}/${checks.length} contrôles de facturation électronique réussis`;})();
 </script></body></html>

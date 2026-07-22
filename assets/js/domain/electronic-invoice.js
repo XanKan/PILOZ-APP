@@ -52,5 +52,17 @@
     if(!readiness.ready){const error=new Error('Le profil officiel XSD/Schematron n’est pas installé ou vérifié.');error.code=readiness.code;error.format=format;throw error;}
     const error=new Error('L’adaptateur serveur validé pour ce profil n’est pas encore installé.');error.code='validated_server_adapter_not_installed';error.format=format;throw error;
   }
-  global.PilozElectronicInvoice=Object.freeze({VERSION,build,validate,formatReadiness,exportStructured,decimalString});
+  function classifyTransactionForFrenchEInvoicing(context={}){
+    const customerCategory=context.customerCategory||context.customer?.category||'unknown',customerCountry=context.customerCountry||context.customer?.countryCode,
+      operationCategory=context.operationCategory||context.invoice?.operationCategory,eventKind=context.eventKind||'transaction',missing=[];
+    if(customerCategory==='unknown')missing.push('customer.category');if(!customerCountry)missing.push('customer.countryCode');if(!operationCategory)missing.push('invoice.operationCategory');
+    let classification='to_verify',rule='FR-PRECHECK-UNRESOLVED',justification='Le cas doit être validé avec les règles réglementaires en vigueur.';
+    if(missing.length){rule='FR-PRECHECK-MISSING';justification='Des données de qualification sont manquantes.';}
+    else if(customerCategory==='public_sector'){rule='FR-PRECHECK-PUBLIC';justification='Le secteur public nécessite un routage et une validation spécifiques.';}
+    else if(eventKind==='payment'&&['service','services'].includes(operationCategory)){classification='e_reporting_payment';rule='FR-PRECHECK-SERVICE-PAYMENT';justification='Encaissement d’une prestation à qualifier pour le e-reporting.';}
+    else if(customerCategory==='b2b'&&customerCountry==='FR'){classification='e_invoice';rule='FR-PRECHECK-B2B-FR';justification='Transaction B2B France présélectionnée pour le e-invoicing.';}
+    else if(customerCategory==='b2c'||customerCountry!=='FR'){classification='e_reporting_transaction';rule='FR-PRECHECK-B2C-INTL';justification='Transaction B2C ou internationale présélectionnée pour le e-reporting.';}
+    return Object.freeze({classification,rule,justification,missingData:Object.freeze(missing),externalValidationRequired:true,transmitted:false,classificationVersion:'fr-preclassification-v1'});
+  }
+  global.PilozElectronicInvoice=Object.freeze({VERSION,build,validate,formatReadiness,exportStructured,classifyTransactionForFrenchEInvoicing,decimalString});
 })(window);

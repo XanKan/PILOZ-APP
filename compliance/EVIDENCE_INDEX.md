@@ -20,6 +20,8 @@ Ce fichier indexe les preuves disponibles et celles restant à produire. Une pre
 | E-018 | Générateur de dossier de preuves | `scripts/generate-compliance-evidence-pack.mjs` | Exécution locale réussie ; dossier non signé | Node.js |
 | E-019 | Modèle canonique de facture | `electronic_invoice_records`, `tests/electronic-invoice.html` | Génération JSON testée ; 11/11 contrôles | PostgreSQL et navigateur |
 | E-020 | Blocage des formats sans profil | `check_electronic_format_profile`, adaptateurs serveur | UBL/CII/Factur-X bloqués comme attendu | PostgreSQL et navigateur |
+| E-021 | Simulation de plateforme idempotente | `run_platform_sandbox_simulation`, test PGlite | Réussie, sans statut transmis | PostgreSQL |
+| E-022 | Préclassification e-reporting | `classifyTransactionForFrenchEInvoicing`, `e_reporting_records` | Cas B2B/B2C/paiement/incomplet testés | Navigateur et PostgreSQL |
 | E-013 | Validation UBL/CII/Factur-X | Rapports de validateurs officiels | Non exécutée | Intégration e-invoicing |
 | E-014 | Accusés de plateforme agréée | Connecteur réel | Non configurés | Plateforme retenue |
 | E-015 | Revue juridique | Avis signé et versionné | Non fourni | Conseil juridique |

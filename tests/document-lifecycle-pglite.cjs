@@ -54,8 +54,8 @@ async function bootstrap(db){
     insert into public.company_document_settings(company_id,quote_prefix,invoice_prefix,credit_prefix,default_payment_terms,default_payment_method,quote_validity_days)
       values('${company}','DEV','FAC','AV','days_30','bank_transfer',30)
       on conflict(company_id) do nothing;
-    insert into public.clients(id,company_id,kind,legal_name,email,address_line_1,postal_code,city,country_code,created_by)
-      values('${client}','${company}','company','Client Test','client@piloz.fr','2 rue Client','69001','Lyon','FR','${actor}');
+    insert into public.clients(id,company_id,kind,legal_name,email,siren,address_line_1,postal_code,city,country_code,customer_category,created_by)
+      values('${client}','${company}','company','Client Test','client@piloz.fr','987654321','2 rue Client','69001','Lyon','FR','b2b','${actor}');
     set request.jwt.claim.sub='${actor}';
     set role authenticated;
   `);
@@ -66,6 +66,7 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     company_id:company,document_type:type,version:1,client_id:client,issue_date:'2026-07-21',
     due_date:type==='quote'?null:'2026-08-20',validity_date:type==='quote'?'2026-08-20':null,
     subject:type==='quote'?'Devis de test':'Facture de test',currency:'EUR',language:'fr',
+    sale_type:'services',
     payment_terms:'days_30',payment_method:'bank_transfer',discount_rate:0,deposit_rate:0,
     pipeline_stage:'draft',metadata:{pipeline_stage:'draft'}
   };
@@ -218,6 +219,19 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     const blockedProfile=await db.query("select public.check_electronic_format_profile('ubl',null) result");
     if(blockedProfile.rows[0].result?.ready!==false||blockedProfile.rows[0].result?.code!=='official_profile_not_configured')
       throw new Error(`electronic invoice: approximate UBL generation was not blocked ${JSON.stringify(blockedProfile.rows[0].result)}`);
+    const sandbox=await db.query('select public.create_platform_sandbox($1) result',[company]);
+    if(!sandbox.rows[0].result)throw new Error('platform: sandbox connector was not created');
+    const simulation=await db.query("select public.run_platform_sandbox_simulation($1,'send_invoice','test-idempotency-1') result",[canonical.rows[0].result.record_id]);
+    const simulationReplay=await db.query("select public.run_platform_sandbox_simulation($1,'send_invoice','test-idempotency-1') result",[canonical.rows[0].result.record_id]);
+    if(simulation.rows[0].result?.display_status!=='Simulation'||simulation.rows[0].result?.sent_to_administration!==false
+      ||simulationReplay.rows[0].result?.idempotent!==true||simulationReplay.rows[0].result?.transmission_id!==simulation.rows[0].result?.transmission_id)
+      throw new Error(`platform: sandbox is not explicit or idempotent ${JSON.stringify({simulation:simulation.rows[0].result,replay:simulationReplay.rows[0].result})}`);
+    const electronicStatusAfterSimulation=await db.query('select electronic_invoice_status from public.documents where id=$1',[invoice.id]);
+    if(electronicStatusAfterSimulation.rows[0].electronic_invoice_status==='transmitted')throw new Error('platform: a simulation must never mark the invoice as transmitted');
+    const reporting=await db.query("select public.classify_transaction_for_french_einvoicing($1,'transaction',null) result",[invoice.id]);
+    if(reporting.rows[0].result?.classification!=='e_invoice'||reporting.rows[0].result?.external_validation_required!==true
+      ||reporting.rows[0].result?.transmitted!==false)
+      throw new Error(`reporting: preliminary classification is invalid ${JSON.stringify(reporting.rows[0].result)}`);
     console.log(JSON.stringify({ok:true,quote:{...quote,convertedInvoiceId:convertedInvoiceId.rows[0].result},invoice:{id:invoice.id,draftNumber:invoice.number,number:finalized.number,total:invoice.total,status:finalized.status,finalizedAt:finalized.finalized_at}}));
   }finally{
     await db.close();
