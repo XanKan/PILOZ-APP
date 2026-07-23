@@ -8,6 +8,9 @@ type SnapshotPayload = {
   document?: Record<string, unknown>;
   issuer?: Record<string, unknown>;
   client?: Record<string, unknown>;
+  recipient_contact?: Record<string, unknown>;
+  billing_address?: Record<string, unknown>;
+  delivery_address?: Record<string, unknown>;
   document_settings?: Record<string, unknown>;
   lines?: Array<Record<string, unknown>>;
   logo?: Record<string, unknown>;
@@ -206,6 +209,10 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   const doc = payload.document || {};
   const issuer = payload.issuer || {};
   const client = payload.client || {};
+  const recipientContact = record(payload.recipient_contact);
+  const billingAddress = record(payload.billing_address);
+  const deliveryAddress = record(payload.delivery_address);
+  const displayedClientAddress = Object.keys(billingAddress).length ? billingAddress : client;
   const settings = payload.document_settings || {};
   const metadata = record(doc.metadata);
   const currency = text(doc.currency || "EUR");
@@ -369,8 +376,17 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   };
 
   const clientContactLines: string[] = [];
-  if (showClientEmail && client.email) clientContactLines.push(text(client.email));
-  if (showClientPhone && (client.phone_e164 || client.phone)) clientContactLines.push(text(client.phone_e164 || client.phone));
+  const recipientName = [recipientContact.civility, recipientContact.first_name, recipientContact.last_name]
+    .filter(Boolean).join(" ");
+  if (recipientName) clientContactLines.push(text(`À l'attention de ${recipientName}`));
+  if (recipientContact.job_title) clientContactLines.push(text(recipientContact.job_title));
+  if (showClientEmail && (recipientContact.email || client.email)) clientContactLines.push(text(recipientContact.email || client.email));
+  if (showClientPhone && (recipientContact.phone_e164 || recipientContact.mobile_e164 || client.phone_e164 || client.phone)) {
+    clientContactLines.push(text(recipientContact.phone_e164 || recipientContact.mobile_e164 || client.phone_e164 || client.phone));
+  }
+  if (Object.keys(deliveryAddress).length) {
+    clientContactLines.push(text(`Livraison : ${address(deliveryAddress)}`));
+  }
   const metaBoxHeight = metrics.metaBoxHeight + clientContactLines.length * 10;
 
   addPage();
@@ -392,13 +408,15 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   }
   page.drawText(referenceLayout ? "Client facturé" : "CLIENT FACTURÉ", { x: 345, y: metaTop, size: referenceLayout ? 8 : 7, font: referenceLayout ? regular : bold, color: referenceLayout ? colors.text : colors.secondary });
   page.drawText(fit(bold, partyName(client), referenceLayout ? 9 : 10, 198), { x: 345, y: metaTop - 15, size: referenceLayout ? 9 : 10, font: bold, color: colors.heading });
-  const clientAddressLines = limitedLines(regular, address(client), 8, 198, 2);
+  const clientAddressLines = limitedLines(regular, address(displayedClientAddress), 8, 198, 3);
   const clientIdentityLines = referenceLayout
     ? [client.siret || client.siren, ...clientAddressLines, client.vat_number && `N° de TVA ${client.vat_number}`].filter(Boolean).map(text)
     : clientAddressLines;
   clientIdentityLines.forEach((line, index) => page.drawText(line, { x: 345, y: metaTop - 29 - index * 11, size: 8, font: regular, color: referenceLayout ? colors.text : colors.muted }));
   clientContactLines.forEach((line, index) => page.drawText(line, { x: 345, y: metaTop - 29 - clientIdentityLines.length * 11 - index * 10, size: 8, font: regular, color: colors.muted }));
-  y = referenceLayout ? 606 : 662 - metaBoxHeight - 10;
+  y = referenceLayout
+    ? Math.min(606, metaTop - 44 - clientIdentityLines.length * 11 - clientContactLines.length * 10)
+    : 662 - metaBoxHeight - 10;
   drawColumns();
 
   for (const line of payload.lines || []) {
@@ -553,6 +571,9 @@ type PreviewInput = {
   templateId?: unknown;
   document?: unknown;
   lines?: unknown;
+  contactId?: unknown;
+  billingAddressId?: unknown;
+  deliveryAddressId?: unknown;
 };
 
 function previewFailure(message: string, status: number) {
@@ -601,6 +622,32 @@ async function buildPreviewPayload(
     if (error || !data) throw previewFailure("Client introuvable", 404);
     client = record(data);
   }
+
+  const contextId = (explicit: unknown, documentField: string) =>
+    String(explicit || sourceDocument[documentField] || "");
+  const contactId = contextId(preview.contactId, "contact_id");
+  const billingAddressId = contextId(preview.billingAddressId, "billing_address_id");
+  const deliveryAddressId = contextId(preview.deliveryAddressId, "delivery_address_id");
+  let recipientContact: Record<string, unknown> = {};
+  let billingAddress: Record<string, unknown> = {};
+  let deliveryAddress: Record<string, unknown> = {};
+  if (contactId) {
+    if (!UUID.test(contactId) || !clientId) throw previewFailure("Contact destinataire invalide", 400);
+    const { data, error } = await userClient.from("client_contacts").select("*")
+      .eq("id", contactId).eq("client_id", clientId).eq("company_id", companyId).maybeSingle();
+    if (error || !data) throw previewFailure("Contact destinataire introuvable", 404);
+    recipientContact = record(data);
+  }
+  const loadAddress = async (addressId: string, label: string) => {
+    if (!addressId) return {};
+    if (!UUID.test(addressId) || !clientId) throw previewFailure(`${label} invalide`, 400);
+    const { data, error } = await userClient.from("client_addresses").select("*")
+      .eq("id", addressId).eq("client_id", clientId).eq("company_id", companyId).maybeSingle();
+    if (error || !data) throw previewFailure(`${label} introuvable`, 404);
+    return record(data);
+  };
+  billingAddress = await loadAddress(billingAddressId, "Adresse de facturation");
+  deliveryAddress = await loadAddress(deliveryAddressId, "Adresse de livraison");
 
   const configuredTemplateId = templateType === "quote"
     ? record(documentSettings).default_quote_template_id
@@ -699,6 +746,9 @@ async function buildPreviewPayload(
       issuer: record(issuer),
       document_settings: record(documentSettings),
       client,
+      recipient_contact: recipientContact,
+      billing_address: billingAddress,
+      delivery_address: deliveryAddress,
       logo,
       template: { template, version, footer },
     },
@@ -716,6 +766,7 @@ async function buildSavedDraftPreviewPayload(
   // ajoutée, même si le document est parfaitement visible via la RLS.
   const documentColumns = [
     "id", "company_id", "document_type", "number", "status", "client_id", "template_id",
+    "contact_id", "billing_address_id", "delivery_address_id",
     "issue_date", "due_date", "validity_date", "subject", "currency", "language",
     "payment_terms", "payment_method", "public_notes", "discount_rate",
     "total_excl_tax", "total_tax", "total_incl_tax", "metadata",
@@ -756,6 +807,9 @@ async function buildSavedDraftPreviewPayload(
     companyId,
     clientId: document.client_id,
     templateId: document.template_id,
+    contactId: document.contact_id,
+    billingAddressId: document.billing_address_id,
+    deliveryAddressId: document.delivery_address_id,
     document,
     lines,
   });
@@ -845,7 +899,9 @@ Deno.serve(async (req) => {
         : await buildPreviewPayload(userClient, user.id, body.preview || {});
       const logo = await loadFrozenLogo(userClient, payload, companyId);
       const bytes = await buildPdf(payload, logo);
-      return new Response(bytes, {
+      const responseBody = new Uint8Array(bytes.byteLength);
+      responseBody.set(bytes);
+      return new Response(responseBody.buffer, {
         status: 200,
         headers: {
           ...corsHeaders,
