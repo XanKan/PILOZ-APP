@@ -106,7 +106,7 @@
     }
     return rows;
   }
-  const restrictedReturns=new Set(['catalog_items','documents','document_lines','stock_movements']);
+  const restrictedReturns=new Set(['catalog_items','documents','document_lines','stock_movements','supplier_items','item_variants','item_price_history']);
   function insert(table,data){return request(`/rest/v1/${table}${restrictedReturns.has(table)?'?select=id':''}`,{method:'POST',headers:{Prefer:'return=representation'},body:serializeBody(data)});}
   function update(table,id,data){return request(`/rest/v1/${table}?id=eq.${encodeURIComponent(id)}${restrictedReturns.has(table)?'&select=id':''}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:serializeBody(data)});}
   function remove(table,id){return request(`/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,{method:'DELETE',headers:{Prefer:'return=minimal'}});}
