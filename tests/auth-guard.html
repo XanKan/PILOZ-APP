@@ -28,7 +28,9 @@
     await load('../index.html');
     doc=frame.contentDocument;
     checks.push(['session invalide refusée',!!doc.getElementById('auth')&&doc.getElementById('auth_status').textContent.includes('session a expiré')]);
-    checks.push(['aucune fuite avec jeton invalide',getComputedStyle(doc.getElementById('app')).display==='none'&&doc.getElementById('main').children.length===0&&doc.getElementById('tabs').children.length===0]);
+    checks.push(['application masquée avec jeton invalide',getComputedStyle(doc.getElementById('app')).display==='none']);
+    checks.push(['contenu vide avec jeton invalide',doc.getElementById('main').children.length===0]);
+    checks.push(['navigation vide avec jeton invalide',doc.getElementById('tabs').children.length===0]);
     localStorage.removeItem('piloz_ses');
   }catch(error){checks.push(['exécution',false,error.message]);}
   const failed=checks.filter(([,ok])=>!ok),node=document.getElementById('result');
