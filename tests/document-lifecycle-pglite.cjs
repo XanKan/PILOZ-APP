@@ -118,9 +118,73 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     `,[company]);
     if(Number(archivedTemplates.rows[0]?.count)!==0)throw new Error('templates: the bootstrap must not archive user-created models');
     await db.exec(`set request.jwt.claim.sub='${actor}'; set role authenticated;`);
+    // Espace Clients : contacts multiples, rôles, adresses, préférences et
+    // compte auxiliaire sont persistés par les RPC atomiques de la migration.
+    const firstContact=await db.query(
+      "select public.save_client_contact($1,$2::jsonb,array['primary','commercial']) result",
+      [client,JSON.stringify({first_name:'Paul',last_name:'Premier',email:'paul@client.test',is_primary:true,active:true})]
+    );
+    const recipient=await db.query(
+      "select public.save_client_contact($1,$2::jsonb,array['primary','billing','signatory']) result",
+      [client,JSON.stringify({first_name:'Marie',last_name:'Destinataire',job_title:'Direction financière',email:'marie@client.test',is_primary:true,active:true})]
+    );
+    const recipientId=recipient.rows[0].result.id;
+    const primaryContacts=await db.query('select id,is_primary from public.client_contacts where client_id=$1 order by created_at',[client]);
+    if(primaryContacts.rows.filter(row=>row.is_primary).length!==1||primaryContacts.rows.find(row=>row.id===firstContact.rows[0].result.id)?.is_primary)
+      throw new Error(`clients: exactly one primary contact was expected ${JSON.stringify(primaryContacts.rows)}`);
+    const contactRoles=await db.query('select role from public.client_contact_roles where contact_id=$1 order by role',[recipientId]);
+    if(!['billing','primary','signatory'].every(role=>contactRoles.rows.some(row=>row.role===role)))
+      throw new Error(`clients: contact roles are incomplete ${JSON.stringify(contactRoles.rows)}`);
+    const billingAddress=await db.query(
+      'select public.save_client_address($1,$2::jsonb) result',
+      [client,JSON.stringify({label:'Facturation Lyon',address_type:'billing',recipient_name:'Marie Destinataire',company_name:'Client Test',address_line_1:'25 rue Facture',postal_code:'69002',city:'Lyon',country_code:'FR',is_primary:true,is_default_billing:true,active:true})]
+    );
+    const serviceAddress=await db.query(
+      'select public.save_client_address($1,$2::jsonb) result',
+      [client,JSON.stringify({label:'Chantier Paris',address_type:'service',recipient_name:'Chef de chantier',address_line_1:'8 avenue du Test',postal_code:'75008',city:'Paris',country_code:'FR',is_default_service:true,is_default_shipping:true,active:true})]
+    );
+    const billingAddressId=billingAddress.rows[0].result.id,serviceAddressId=serviceAddress.rows[0].result.id;
+    await db.query('select public.save_client_preferences($1,$2::jsonb) result',[client,JSON.stringify({payment_terms:'days_45',payment_delay_days:45,payment_method:'bank_transfer',currency:'EUR',language:'fr',usual_discount_rate:2.5,document_notes:'Préférence réelle du client'})]);
+    const preferences=await db.query('select default_contact_id,billing_address_id,shipping_address_id,service_address_id,payment_delay_days from public.client_preferences where client_id=$1',[client]);
+    if(preferences.rows[0].default_contact_id!==recipientId||preferences.rows[0].billing_address_id!==billingAddressId
+      ||preferences.rows[0].shipping_address_id!==serviceAddressId||preferences.rows[0].service_address_id!==serviceAddressId
+      ||Number(preferences.rows[0].payment_delay_days)!==45)
+      throw new Error(`clients: partial preference save erased defaults ${JSON.stringify(preferences.rows[0])}`);
+    const directory=await db.query(
+      "select public.get_client_directory_v2($1,'Client',jsonb_build_object('status','active'),'name','asc',20,0) result",
+      [company]
+    );
+    if(Number(directory.rows[0].result?.total)!==1||directory.rows[0].result?.items?.[0]?.id!==client)
+      throw new Error(`clients: server-side directory filters or pagination are invalid ${JSON.stringify(directory.rows[0].result)}`);
+    const automaticAccount=await db.query("select public.assign_client_auxiliary_account($1,'automatic',null,null,current_date,'Création automatique',false) result",[client]);
+    if(!automaticAccount.rows[0].result.auxiliary_account)throw new Error('clients: automatic auxiliary account was not assigned');
+    const manualAccount=await db.query("select public.assign_client_auxiliary_account($1,'manual','CLI-TEST',null,current_date,'Validation manuelle',false) result",[client]);
+    if(manualAccount.rows[0].result.auxiliary_account!=='CLI-TEST')throw new Error('clients: manual auxiliary account was not persisted');
+    const accountHistory=await db.query('select count(*)::int count from public.client_account_history where client_id=$1',[client]);
+    if(Number(accountHistory.rows[0].count)!==2)throw new Error(`clients: account history is incomplete ${JSON.stringify(accountHistory.rows[0])}`);
+    // Une entreprise étrangère reste invisible, même si son UUID est connu.
+    const otherActor='77777777-7777-4777-8777-777777777777',otherCompany='88888888-8888-4888-8888-888888888888',otherClient='99999999-9999-4999-8999-999999999999';
+    await db.exec('reset role');
+    await db.query("insert into auth.users(id,email) values($1,'other@piloz.fr')",[otherActor]);
+    await db.query("insert into public.companies(id,owner_user_id,name) values($1,$2,'Autre entreprise')",[otherCompany,otherActor]);
+    await db.exec(`set request.jwt.claim.sub='${otherActor}';`);
+    await db.query("insert into public.company_members(company_id,user_id,role) values($1,$2,'owner')",[otherCompany,otherActor]);
+    await db.query("insert into public.clients(id,company_id,kind,legal_name,created_by) values($1,$2,'company','Client étranger',$3)",[otherClient,otherCompany,otherActor]);
+    await db.exec(`set request.jwt.claim.sub='${actor}'; set role authenticated;`);
+    const foreignClient=await db.query('select id from public.clients where id=$1',[otherClient]);
+    if(foreignClient.rows.length!==0)throw new Error('clients: RLS exposed a client from another company');
+    const foreignSummary=await db.query('select public.get_client_workspace_summary($1)',[otherClient]).then(()=>null,error=>error);
+    if(!foreignSummary||!/client_not_found/.test(foreignSummary.message))throw new Error('clients: workspace RPC exposed another company');
     // Le devis reçoit son numéro officiel et son statut "en attente" dès son
     // premier enregistrement — plus de brouillon, plus de finalisation.
     const quote=await saveDraft(db,'quote');
+    await db.query('select public.save_document_client_context($1,$2,$3,$4)',[quote.id,recipientId,billingAddressId,serviceAddressId]);
+    const quoteContext=await db.query('select contact_id,billing_address_id,delivery_address_id,snapshot_id from public.documents where id=$1',[quote.id]);
+    if(quoteContext.rows[0].contact_id!==recipientId||quoteContext.rows[0].billing_address_id!==billingAddressId||quoteContext.rows[0].delivery_address_id!==serviceAddressId)
+      throw new Error(`clients: quote context was not persisted ${JSON.stringify(quoteContext.rows[0])}`);
+    const quoteSnapshotContext=await db.query('select contact_payload,address_payload from public.document_contact_snapshots c join public.document_address_snapshots a on a.snapshot_id=c.snapshot_id and a.address_kind=\'billing\' where c.snapshot_id=$1',[quoteContext.rows[0].snapshot_id]);
+    if(quoteSnapshotContext.rows[0]?.contact_payload?.first_name!=='Marie'||quoteSnapshotContext.rows[0]?.address_payload?.city!=='Lyon')
+      throw new Error(`clients: quote snapshot context is incomplete ${JSON.stringify(quoteSnapshotContext.rows[0])}`);
     if(quote.status!=='pending')throw new Error(`quote: expected initial status pending, got ${quote.status}`);
     const quoteRow=await db.query('select snapshot_id,finalized_at from public.documents where id=$1',[quote.id]);
     if(!quoteRow.rows[0].snapshot_id)throw new Error('quote: expected a snapshot to exist right after the first save (for PDF generation)');
@@ -157,9 +221,23 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     // La facture brouillon n'a aucun numéro légal. La finalisation l'attribue
     // dans la même transaction que le verrouillage et l'instantané.
     const invoice=await saveDraft(db,'invoice');
+    await db.query('select public.save_document_client_context($1,$2,$3,$4)',[invoice.id,recipientId,billingAddressId,serviceAddressId]);
     const final=await db.query('select public.finalize_document($1) result',[invoice.id]);
     const finalized=final.rows[0].result;
     if(!finalized?.number||invoice.number!==null||finalized.status!=='finalized'||!finalized.snapshot_id)throw new Error(`invoice: invalid final result ${JSON.stringify(finalized)}`);
+    const frozenContact=await db.query('select contact_payload from public.document_contact_snapshots where snapshot_id=$1',[finalized.snapshot_id]);
+    const frozenBilling=await db.query("select address_payload from public.document_address_snapshots where snapshot_id=$1 and address_kind='billing'",[finalized.snapshot_id]);
+    if(frozenContact.rows[0]?.contact_payload?.first_name!=='Marie'||frozenBilling.rows[0]?.address_payload?.address_line_1!=='25 rue Facture')
+      throw new Error(`clients: final invoice snapshot did not freeze the selected recipient ${JSON.stringify({frozenContact:frozenContact.rows,frozenBilling:frozenBilling.rows})}`);
+    await db.query(
+      "select public.save_client_contact($1,$2::jsonb,array['primary','billing','signatory']) result",
+      [client,JSON.stringify({id:recipientId,first_name:'Marie modifiée',last_name:'Destinataire',email:'nouveau@client.test',is_primary:true,active:true})]
+    );
+    await db.query('select public.save_client_address($1,$2::jsonb) result',[client,JSON.stringify({id:billingAddressId,label:'Facturation Lyon',address_type:'billing',address_line_1:'99 rue Modifiée',postal_code:'69003',city:'Lyon',country_code:'FR',is_primary:true,is_default_billing:true,active:true})]);
+    const frozenAfterEdit=await db.query('select contact_payload from public.document_contact_snapshots where snapshot_id=$1',[finalized.snapshot_id]);
+    const addressAfterEdit=await db.query("select address_payload from public.document_address_snapshots where snapshot_id=$1 and address_kind='billing'",[finalized.snapshot_id]);
+    if(frozenAfterEdit.rows[0]?.contact_payload?.first_name!=='Marie'||addressAfterEdit.rows[0]?.address_payload?.address_line_1!=='25 rue Facture')
+      throw new Error('clients: edits to the customer record altered a finalized invoice snapshot');
     const validation=await db.query('select public.validate_invoice_for_finalization($1) result',[invoice.id]);
     if(!validation.rows[0].result?.valid)throw new Error(`invoice: central validation failed ${JSON.stringify(validation.rows[0].result)}`);
     const allocation=await db.query('select full_number,sequence_value from public.document_number_allocations where document_id=$1',[invoice.id]);
@@ -270,6 +348,16 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     await db.exec(`set request.jwt.claim.sub='${limitedUser}';`);
     const limitedPermissions=await db.query("select public.has_company_permission($1,'application_read') can_read,public.has_company_permission($1,'finalize_invoice') can_finalize",[company]);
     if(!limitedPermissions.rows[0].can_read||limitedPermissions.rows[0].can_finalize)throw new Error(`roles: read-only permissions are invalid ${JSON.stringify(limitedPermissions.rows[0])}`);
+    await db.query("update public.clients set trade_name='Interdit' where id=$1",[client]).catch(()=>null);
+    const clientAfterForbiddenUpdate=await db.query('select trade_name from public.clients where id=$1',[client]);
+    if(clientAfterForbiddenUpdate.rows[0]?.trade_name==='Interdit')
+      throw new Error('clients: read-only user was able to update a customer');
+    const forbiddenContactUpdate=await db.query(
+      "select public.save_client_contact($1,$2::jsonb,array['primary'])",
+      [client,JSON.stringify({id:recipientId,first_name:'Marie',last_name:'Interdit',is_primary:true,active:true})]
+    ).then(()=>null,error=>error);
+    if(!forbiddenContactUpdate||!/forbidden/.test(forbiddenContactUpdate.message))
+      throw new Error('clients: read-only user was able to update a contact through the RPC');
     const forbiddenSummary=await db.query('select public.get_company_compliance_summary($1)',[company]).then(()=>null,error=>error);
     if(!forbiddenSummary||!/forbidden/.test(forbiddenSummary.message))throw new Error('roles: read-only user must not access the compliance dashboard');
     await db.exec(`set request.jwt.claim.sub='${actor}';`);
