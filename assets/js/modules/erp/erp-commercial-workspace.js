@@ -16,7 +16,7 @@
   {slug:'draft',name:'Brouillon',color:'#98a2b3'},
   {slug:'to_finalize',name:'À finaliser',color:'#667085'},
   {slug:'finalized',name:'Finalisé',color:'#52606d'},
-  {slug:'sent',name:'Envoyé',color:'#2f6fed'},
+  {slug:'sent',name:'Envoyé',color:'#11bfae'},
   {slug:'pending',name:'En attente',color:'#805ad5'},
   {slug:'accepted',name:'Accepté',color:'#1e9466'},
   {slug:'rejected',name:'Refusé',color:'#d1493f'},

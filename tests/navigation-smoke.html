@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Smoke navigation PILOZ</title>
-  <link rel="stylesheet" href="../assets/css/modern-erp.css">
+<link rel="stylesheet" href="../assets/css/modern-erp.css">
+<link rel="stylesheet" href="../assets/css/piloz-brand.css">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}html,body{min-height:100%}.app{display:flex;min-height:100vh}.rail{display:flex;flex-direction:column;position:relative;height:100vh;flex:0 0 auto}.brand{display:flex;align-items:center;gap:11px}.plogo{display:grid;place-items:center}.tabs{display:flex;flex-direction:column}.main{flex:1}.plier{display:flex;border:0;background:transparent}.rail-foot{font:12px system-ui}#result{position:fixed;right:12px;bottom:12px;z-index:500;background:#fff;border:1px solid #dce3ec;border-radius:8px;padding:8px 12px;font:13px system-ui}
   </style>
@@ -12,7 +13,7 @@
 <body data-theme="light">
   <div class="app" id="app">
     <nav class="rail">
-      <div class="brand"><div class="plogo">P</div><div><div class="disp">PILOZ</div><small>Gestion commerciale</small></div></div>
+      <div class="brand"><div class="plogo"><img src="../assets/images/piloz-logo.png" alt="PILOZ"></div><div><div class="disp">PILOZ</div></div></div>
       <div class="tabs" id="tabs"></div>
       <button class="plier" style="margin-top:auto"><span class="nav-control-icon">⌕</span><span class="lbl">Rechercher</span></button>
       <button class="plier" id="plierbtn"><span class="nav-control-icon" id="plieric">‹</span><span class="lbl">Réduire le menu</span></button>
@@ -43,6 +44,10 @@
       checks.push(['aucune vue d’ensemble',!document.getElementById('tabs').textContent.includes('Vue d’ensemble')]);
       checks.push(['échéances clients présentes',secondary.textContent.includes('Échéances clients')]);
       checks.push(['rail clair',getComputedStyle(rail).backgroundColor==='rgb(255, 255, 255)']);
+      const brandLogo=document.querySelector('.plogo'),brandImage=brandLogo.querySelector('img');
+      checks.push(['logo PILOZ chargé',brandImage.complete&&brandImage.naturalWidth>0]);
+      checks.push(['logo sans fond',getComputedStyle(brandLogo).backgroundColor==='rgba(0, 0, 0, 0)']);
+      checks.push(['palette PILOZ active',getComputedStyle(document.documentElement).getPropertyValue('--primary').trim()==='#11bfae']);
       const compactWidth=innerWidth<=640?64:(innerWidth<=900?72:216),collapsedWidth=innerWidth<=900?compactWidth:72;
       checks.push(['largeur adaptée',Math.round(rail.getBoundingClientRect().width)===compactWidth]);
       checks.push(['bouton repli visible',getComputedStyle(document.getElementById('plierbtn')).display==='flex']);
@@ -52,6 +57,8 @@
       checks.push(['rail replié',Math.round(rail.getBoundingClientRect().width)===collapsedWidth]);
       checks.push(['sous-menu aligné',Math.round(secondary.getBoundingClientRect().left)===collapsedWidth]);
       checks.push(['libellés masqués',getComputedStyle(items[0].querySelector('span')).display==='none']);
+      checks.push(['logo conservé menu replié',getComputedStyle(brandLogo).display==='grid'&&brandImage.getBoundingClientRect().width>0]);
+      checks.push(['nom masqué menu replié',getComputedStyle(document.querySelector('.brand>div:not(.plogo)')).display==='none']);
       checks.push(['infobulles disponibles',items.every(x=>x.title&&x.getAttribute('aria-label'))]);
       PilozModern.openArea('stock');
       checks.push(['navigation stock',PilozApp.lastRoute==='stock/items']);

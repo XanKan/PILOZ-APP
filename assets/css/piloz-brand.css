@@ -1,0 +1,183 @@
+:root,
+html,
+body,
+body[data-theme="dark"] {
+  --brand-navy: #102c50;
+  --brand-navy-deep: #091d35;
+  --brand-turquoise: #11bfae;
+  --brand-turquoise-hover: #0b9d91;
+  --brand-turquoise-soft: #dcf7f3;
+  --page-background: #f3f9f8;
+  --bg-page: var(--page-background);
+  --papier: var(--page-background);
+  --surface: #fff;
+  --surface-secondary: #f7fbfa;
+  --surface-hover: #e8f6f4;
+  --text-primary: var(--brand-navy);
+  --text-secondary: #435b70;
+  --text-muted: #687d8d;
+  --border: #d6e7e5;
+  --border-strong: #a9cac6;
+  --primary: var(--brand-turquoise);
+  --primary-hover: var(--brand-turquoise-hover);
+  --primary-soft: var(--brand-turquoise-soft);
+  --focus: var(--brand-turquoise-hover);
+  --accent: var(--brand-turquoise);
+  --accent-soft: var(--brand-turquoise-soft);
+  --ink: var(--brand-navy);
+  --muted: var(--text-muted);
+  --encre: var(--brand-navy);
+  --encre-2: var(--brand-navy-deep);
+  --flamme: var(--brand-turquoise);
+  --flamme-2: var(--brand-turquoise-hover);
+  --carbone: var(--brand-navy);
+  --gris: var(--text-secondary);
+  --trait: var(--border);
+  --bleu-p: var(--brand-turquoise-soft);
+  --champ: #fff;
+  color-scheme: light !important;
+}
+
+::selection {
+  background: #9be7df;
+  color: var(--brand-navy-deep);
+}
+
+body,
+body[data-theme="dark"] {
+  background: var(--page-background) !important;
+  color: var(--brand-navy);
+}
+
+a {
+  color: var(--brand-turquoise-hover);
+}
+
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"] {
+  accent-color: var(--brand-turquoise);
+}
+
+.plogo,
+.auth-loading-mark {
+  display: grid !important;
+  place-items: center !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: transparent !important;
+}
+
+.plogo img,
+.auth-loading-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.brand {
+  background: #fff;
+}
+
+.brand .disp,
+.auth-brand strong,
+.topbar h1,
+.modern-page-header h1 {
+  color: var(--brand-navy) !important;
+}
+
+.app.mini .brand > .plogo {
+  display: grid !important;
+  width: 42px !important;
+  height: 46px !important;
+}
+
+.app.mini .brand > div:not(.plogo) {
+  display: none !important;
+}
+
+.auth-aside {
+  background: linear-gradient(145deg, #effbf9, #dff7f3) !important;
+}
+
+.auth-progress-fill,
+.usage-bar-fill,
+.commercial-progress i,
+.commercial-timeline article i {
+  background: var(--brand-turquoise) !important;
+}
+
+.modern-primary-item.active,
+.modern-secondary-item.active,
+.modern-view-tab.active,
+.modern-settings-menu a.active,
+.company-subnav-item.active,
+.commercial-view-switch button.active,
+.commercial-tabs.filters button.active {
+  border-color: #aee7e1 !important;
+  background: var(--brand-turquoise-soft) !important;
+  color: var(--brand-turquoise-hover) !important;
+}
+
+.modern-primary-item.active svg,
+.modern-secondary-item.active,
+.settings-overview-icon,
+.company-subnav-item.active .label b,
+.company-subnav-item.active .icon,
+.company-subnav-item.active .chevron,
+.document-v2-link-button,
+.document-v2-suggestions .create,
+.document-v2-client-results .create,
+.commercial-activity-icon,
+.commercial-detail-tabs button.active {
+  color: var(--brand-turquoise-hover) !important;
+}
+
+.commercial-detail-tabs button.active {
+  border-bottom-color: var(--brand-turquoise) !important;
+}
+
+.plan-card.highlight,
+.commercial-dashboard-block.is-drop-before,
+.commercial-dashboard-block.is-drop-after {
+  border-color: var(--brand-turquoise) !important;
+}
+
+.commercial-dashboard-block.is-drop-before {
+  box-shadow: 0 -4px 0 var(--brand-turquoise), var(--shadow-sm) !important;
+}
+
+.commercial-dashboard-block.is-drop-after {
+  box-shadow: 0 4px 0 var(--brand-turquoise), var(--shadow-sm) !important;
+}
+
+.document-v2-line.drop-target,
+.document-v2-structural.drop-target {
+  border-top-color: var(--brand-turquoise) !important;
+  background: #edfaf8 !important;
+}
+
+.catalog-workspace,
+.client-workspace {
+  --catalog-primary: var(--brand-turquoise-hover);
+  --client-accent: var(--brand-turquoise-hover);
+  --client-ink: var(--brand-navy);
+  background: var(--page-background);
+}
+
+.document-viewer-v2 {
+  --viewer-ink: var(--brand-navy);
+  --viewer-accent: var(--brand-turquoise-hover);
+  --viewer-accent-soft: var(--brand-turquoise-soft);
+  --viewer-canvas: #eef7f6;
+}
+
+.rail-foot a,
+.catalog-clear,
+.catalog-detail-nav > button {
+  color: var(--brand-turquoise-hover) !important;
+}

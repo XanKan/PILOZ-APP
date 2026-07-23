@@ -45,7 +45,7 @@ async function bootstrap(db){
     catch(error){error.message=`Migration ${file}: ${error.message}`;throw error;}
   }
   await db.exec(`
-    insert into auth.users(id,email,raw_user_meta_data) values('${actor}','test@piloz.fr',jsonb_build_object('first_name','Quentin'));
+    insert into auth.users(id,email,raw_user_meta_data) values('${actor}','test@piloz.fr',jsonb_build_object('first_name','Alex'));
     insert into public.companies(id,owner_user_id,name) values('${company}','${actor}','Société Test');
     insert into public.company_members(company_id,user_id,role) values('${company}','${actor}','owner');
     insert into public.company_settings(company_id,legal_name,siren,siret,address_line1,postal_code,city,country,email,subject_to_vat,default_vat_rate,onboarding_completed_at)

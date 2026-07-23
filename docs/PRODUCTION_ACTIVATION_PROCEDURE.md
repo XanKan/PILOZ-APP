@@ -16,7 +16,7 @@ Ne copiez aucune de ces valeurs dans Git, dans un fichier `.env` suivi ou dans l
 
 ## 2. Prévisualiser sans modifier Supabase
 
-Ouvrez PowerShell dans `C:\Users\Quentin\Documents\PILOZ\PILOZ-APP`, puis exécutez :
+Ouvrez PowerShell dans le dossier local de `PILOZ-APP`, puis exécutez :
 
 ```powershell
 $env:SUPABASE_ACCESS_TOKEN="VOTRE_TOKEN_PERSONNEL"
