@@ -24,7 +24,7 @@ Le moteur de production reste désactivé. Cette pré-release ne constitue aucun
 Cette pré-release ne constitue pas une certification NF 525/NF 203, une conformité AFNOR, une homologation ou une conformité validée à la réforme.
 ## 0.9.0-compliance.5 — 23 juillet 2026
 
-- Filtres de dates unifiés pour les devis et factures : exercices courant/précédent et calendrier de période personnalisée.
+- Filtres de dates unifiés pour les devis et factures : 7 derniers jours, mois/année courants ou précédents et calendrier personnalisé.
 - Nouvelle fiche client dédiée avec recherche, filtres, indicateurs et treize rubriques métier.
 - Contacts, rôles et adresses multiples, préférences commerciales et comptes auxiliaires historisés.
 - Onglet Comptabilité client volontairement limité à la saisie du code auxiliaire ; le paramétrage général est réservé à une version ultérieure.

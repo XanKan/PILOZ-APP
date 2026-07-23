@@ -77,7 +77,7 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   check('périodes du au regroupées',document.querySelectorAll('.document-viewer-date-range').length===2&&document.querySelectorAll('.document-viewer-filter-panel input[type="date"]').length===0);
   PilozDocumentViewerV2.toggleDateRange('issue');
   check('calendrier de période propre',document.querySelectorAll('.document-viewer-calendar-days button').length===42&&main.textContent.includes('Choisissez le premier jour'));
-  check('seulement exercices et personnalisé',['Exercice courant','Exercice précédent','Date personnalisée'].every(label=>main.textContent.includes(label))&&!['7 derniers jours','Mois dernier','Année dernière','Mois prochain'].some(label=>main.textContent.includes(label)));
+  check('préréglages demandés et personnalisé',['7 derniers jours','Mois en cours','Mois dernier','Année en cours','Année dernière','Date personnalisée'].every(label=>main.textContent.includes(label))&&!['Exercice courant','Exercice précédent'].some(label=>main.textContent.includes(label)));
   check('libellé date de validité explicite',main.textContent.includes('Date de validité'));
   PilozDocumentViewerV2.openClientSearch();
   check('filtre client avec recherche limitée',!!document.querySelector('[data-client-filter-search]')&&document.querySelectorAll('[data-client-suggestion]').length===6&&!document.querySelector('datalist'));
@@ -86,10 +86,10 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   PilozDocumentViewerV2.selectCalendarDay('issue','2026-07-10');PilozDocumentViewerV2.selectCalendarDay('issue','2026-07-21');
   check('sélection non appliquée avant validation',PilozDocumentViewerV2.filteredDocuments(state.data).length===3);
   PilozDocumentViewerV2.applyDateRange('issue');check('période personnalisée appliquée',PilozDocumentViewerV2.filteredDocuments(state.data).length===2);
-  PilozDocumentViewerV2.resetFilters();PilozDocumentViewerV2.toggleAdvancedFilters();PilozDocumentViewerV2.toggleDateRange('issue');PilozDocumentViewerV2.setDateDraftPreset('issue','current_exercise');PilozDocumentViewerV2.applyDateRange('issue');
-  check('exercice courant appliqué',PilozDocumentViewerV2.filteredDocuments(state.data).length===2);
-  PilozDocumentViewerV2.resetFilters();PilozDocumentViewerV2.toggleAdvancedFilters();PilozDocumentViewerV2.toggleDateRange('issue');PilozDocumentViewerV2.setDateDraftPreset('issue','previous_exercise');PilozDocumentViewerV2.applyDateRange('issue');
-  check('exercice précédent appliqué',PilozDocumentViewerV2.filteredDocuments(state.data).length===1&&PilozDocumentViewerV2.filteredDocuments(state.data)[0]?.id==='q3');
+  PilozDocumentViewerV2.resetFilters();PilozDocumentViewerV2.toggleAdvancedFilters();PilozDocumentViewerV2.toggleDateRange('issue');PilozDocumentViewerV2.setDateDraftPreset('issue','month');PilozDocumentViewerV2.applyDateRange('issue');
+  check('mois en cours appliqué',PilozDocumentViewerV2.filteredDocuments(state.data).length===2);
+  PilozDocumentViewerV2.resetFilters();PilozDocumentViewerV2.toggleAdvancedFilters();PilozDocumentViewerV2.toggleDateRange('issue');PilozDocumentViewerV2.setDateDraftPreset('issue','last_7_days');PilozDocumentViewerV2.applyDateRange('issue');
+  check('7 derniers jours appliqués',PilozDocumentViewerV2.filteredDocuments(state.data).length===1&&PilozDocumentViewerV2.filteredDocuments(state.data)[0]?.id==='q2');
   PilozDocumentViewerV2.resetFilters();PilozDocumentViewerV2.setFilter('client','alpha@example.fr');
   check('recherche client par email',PilozDocumentViewerV2.filteredDocuments(state.data).length===3);
   PilozDocumentViewerV2.setFilter('amountMin','1000');
