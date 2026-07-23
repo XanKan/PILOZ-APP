@@ -78,6 +78,14 @@
       check('liste de devis complète',document.querySelector('.modern-filters')&&document.querySelector('.modern-table'));
       check('filtres de statuts devis simplifiés',['Tous','Brouillon','Envoyé','En attente','Refusé','Facturés'].every(label=>document.querySelector('.modern-view-tabs')?.textContent.includes(label))&&!document.querySelector('.modern-view-tabs')?.textContent.includes('Consulté')&&!document.querySelector('.modern-view-tabs')?.textContent.includes('Acceptés'));
       check('date du au regroupée',!!document.querySelector('.modern-date-range')&&!document.querySelector('.modern-filters-row>label input[type="date"]'));
+      PilozModern.toggleDocumentDateRange('primary','dateFrom','dateTo');await wait(30);
+      check('périodes rapides dans le vrai filtre',['7 derniers jours','Mois en cours','Mois dernier','Année en cours','Année dernière','Date personnalisée'].every(label=>document.querySelector('.modern-date-range-popover')?.textContent.includes(label))&&!document.querySelector('.modern-date-range-popover')?.textContent.includes('Exercice courant'));
+      check('calendrier personnalisé visible',document.querySelectorAll('.modern-document-calendar-days button').length===42);
+      PilozModern.selectDocumentDateDay('primary','2026-06-01');PilozModern.selectDocumentDateDay('primary','2026-06-30');await wait(30);
+      check('période non filtrée avant appliquer',document.querySelector('.modern-date-range>button b')?.textContent.includes('Du'));
+      PilozModern.applyDocumentDateRange('primary');await wait(30);
+      check('période personnalisée appliquée',document.querySelector('.modern-date-range>button b')?.textContent.includes('01/06/2026')&&document.querySelector('.modern-table')?.textContent.includes('DEV-2026-0001'));
+      PilozModern.resetDocumentFilters();await wait(30);
       PilozModern.openDocumentClientSearch();await wait(30);check('client filtré par recherche',!!document.querySelector('[data-modern-client-search]')&&document.querySelectorAll('[data-modern-client-suggestion]').length<=6&&!document.querySelector('.modern-filters select option[value="'+clientId+'"]'));
       check('expiration calculée',document.getElementById('main').textContent.includes('Expiré'));
       PilozModern.closeDocumentClientSearch();await wait(160);PilozModern.setDocumentFilter('search','C');await wait(30);PilozModern.setDocumentFilter('search','Cl');await wait(30);check('recherche devis lettre par lettre',document.querySelector('.modern-filters-row>.modern-filter-field:first-child input')?.value==='Cl');PilozModern.setDocumentFilter('search','');await wait(30);
