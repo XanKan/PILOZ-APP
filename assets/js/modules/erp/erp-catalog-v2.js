@@ -96,10 +96,10 @@
     return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
   }
   function unitField(label, name, value = "unité") {
-    return `<label class="modern-field"><span>${esc(label)}</span><input name="${name}" list="catalog-unit-options" value="${esc(value || "unité")}" autocomplete="off"><small>Choisissez une unité ou saisissez-en une librement.</small></label>`;
-  }
-  function unitOptions() {
-    return `<datalist id="catalog-unit-options">${catalogUnits().map((unit) => `<option value="${esc(unit)}"></option>`).join("")}</datalist>`;
+    const selected = String(value || "unité").trim(),
+      units = catalogUnits();
+    if (selected && !units.includes(selected)) units.unshift(selected);
+    return `<label class="modern-field"><span>${esc(label)}</span><select name="${name}">${units.map((unit) => `<option value="${esc(unit)}" ${unit === selected ? "selected" : ""}>${esc(unit)}</option>`).join("")}</select><small>Unités définies dans les paramètres du catalogue.</small></label>`;
   }
   const esc = (value) =>
     global.esc
@@ -737,7 +737,7 @@
       )
       .join(
         "",
-      )}</select></label>${field("Référence interne", "reference", item.reference, "text", 'placeholder="Générée automatiquement si vide"')}${field("Désignation *", "name", item.name, "text", "required")}${field("Marque", "brand", item.brand)}${field("Référence fabricant", "manufacturer_reference", item.manufacturer_reference)}${unitField("Unité", "unit", item.unit || "unité")}${unitOptions()}<label class="modern-field"><span>Statut</span><select name="status">${Object.entries(
+      )}</select></label>${field("Référence interne", "reference", item.reference, "text", 'placeholder="Générée automatiquement si vide"')}${field("Désignation *", "name", item.name, "text", "required")}${field("Marque", "brand", item.brand)}${field("Référence fabricant", "manufacturer_reference", item.manufacturer_reference)}${unitField("Unité", "unit", item.unit || "unité")}<label class="modern-field"><span>Statut</span><select name="status">${Object.entries(
       statusLabels,
     )
       .map(
@@ -1270,7 +1270,7 @@
     const settings = state().data.catalogSettings?.[0] || {};
     modal(
       "Paramètres du catalogue",
-      `<div class="catalog-taxonomy"><section><h3>Unités</h3><p>Une unité proposée reste toujours modifiable dans un article, un devis ou une facture.</p><form id="catalog-units-form" class="catalog-form-grid" onsubmit="event.preventDefault();PilozCatalog.saveCatalogUnits()"><label class="modern-field full"><span>Unités proposées (une par ligne)</span><textarea name="units" rows="8" required>${esc(catalogUnits().join("\n"))}</textarea></label><div class="full"><button class="btn btn-p" type="submit">Enregistrer les unités</button></div></form></section><section><h3>Références automatiques</h3><form id="catalog-reference-form" class="catalog-form-grid" onsubmit="event.preventDefault();PilozCatalog.saveCatalogSettings()">${field("Préfixe article", "product_prefix", settings.product_prefix || "ART")}${field("Préfixe service", "service_prefix", settings.service_prefix || "SER")}${field("Longueur", "reference_padding", settings.reference_padding || 6, "number", 'min="2" max="12"')}${field("Format", "reference_format", settings.reference_format || "{PREFIX}-{NUMBER}")}<label class="modern-field catalog-check-field"><input name="auto_reference" type="checkbox" ${settings.auto_reference !== false ? "checked" : ""}><span>Génération automatique</span></label><label class="modern-field catalog-check-field"><input name="manual_reference_allowed" type="checkbox" ${settings.manual_reference_allowed !== false ? "checked" : ""}><span>Saisie manuelle autorisée</span></label><div class="full"><button class="btn btn-p" type="submit">Enregistrer les références</button></div></form></section></div>`,
+      `<div class="catalog-taxonomy"><section><h3>Unités</h3><p>Ces unités sont les seules disponibles dans les articles, devis et factures.</p><form id="catalog-units-form" class="catalog-form-grid" onsubmit="event.preventDefault();PilozCatalog.saveCatalogUnits()"><label class="modern-field full"><span>Unités proposées (une par ligne)</span><textarea name="units" rows="8" required>${esc(catalogUnits().join("\n"))}</textarea></label><div class="full"><button class="btn btn-p" type="submit">Enregistrer les unités</button></div></form></section><section><h3>Références automatiques</h3><form id="catalog-reference-form" class="catalog-form-grid" onsubmit="event.preventDefault();PilozCatalog.saveCatalogSettings()">${field("Préfixe article", "product_prefix", settings.product_prefix || "ART")}${field("Préfixe service", "service_prefix", settings.service_prefix || "SER")}${field("Longueur", "reference_padding", settings.reference_padding || 6, "number", 'min="2" max="12"')}${field("Format", "reference_format", settings.reference_format || "{PREFIX}-{NUMBER}")}<label class="modern-field catalog-check-field"><input name="auto_reference" type="checkbox" ${settings.auto_reference !== false ? "checked" : ""}><span>Génération automatique</span></label><label class="modern-field catalog-check-field"><input name="manual_reference_allowed" type="checkbox" ${settings.manual_reference_allowed !== false ? "checked" : ""}><span>Saisie manuelle autorisée</span></label><div class="full"><button class="btn btn-p" type="submit">Enregistrer les références</button></div></form></section></div>`,
       `<button class="btn btn-o" onclick="PilozCatalog.closeModal()">Fermer</button>`,
     );
   }
