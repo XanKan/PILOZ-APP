@@ -456,7 +456,7 @@ function clearPrivateShell(){
   document.getElementById('app')?.classList.remove('modern-subnav-open');
 }
 function invalidateAuthSession(message='Votre session a expiré. Veuillez vous reconnecter.'){
-  SES=null; LIC=null; lsSet('piloz_ses',null); clearPrivateShell();
+  SES=null; LIC=null; if(window.PilozRuntime) window.PilozRuntime.session=null; lsSet('piloz_ses',null); clearPrivateShell();
   authStatusMessage=message; authStatusKind='error'; authBusy=false;
 }
 function normaliserUrlSb(u){
