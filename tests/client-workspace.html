@@ -39,6 +39,9 @@ location.hash='sales/clients';
   check('treize rubriques client',main.querySelectorAll('.client-tabs button').length===13);
   for(const tab of ['coordinates','contacts','addresses','quotes','invoices','payments','schedules','activities','accounting','documents','notes','history']){location.hash=`sales/clients/${client}?tab=${tab}`;PilozClients.renderRoute(location.hash.slice(1),state);await wait(35);check(`rubrique ${tab}`,!!main.querySelector('.client-tab-content')&&!/undefined|null/.test(main.textContent));}
   check('contacts et rôles',main.textContent.includes('Historique complet'));
+  location.hash=`sales/clients/${client}?tab=accounting`;PilozClients.renderRoute(location.hash.slice(1),state);await wait(35);
+  const auxiliaryField=main.querySelector('[name="auxiliary_account"]'),accountingIsMinimal=auxiliaryField?.value==='CLI000042'&&main.querySelectorAll('#client-account-form input, #client-account-form select, #client-account-form textarea').length===1&&!main.textContent.includes('Compte collectif')&&!main.textContent.includes('Paramètres de génération');auxiliaryField.value='AUX0042';await PilozClients.saveAccounting(client);const auxiliaryCall=calls.find(call=>call[0]==='rpc'&&call[1]==='assign_client_auxiliary_account'&&call[2].target_auxiliary_account==='AUX0042');
+  check('comptabilité limitée au code auxiliaire',accountingIsMinimal&&auxiliaryCall?.[2].target_assignment_mode==='manual'&&auxiliaryCall?.[2].target_collective_account===null);
   location.hash=`sales/clients/${client}?tab=contacts`;PilozClients.renderRoute(location.hash.slice(1),state);await wait(35);check('fiche contact multiple',main.textContent.includes('Marie Dupont')&&main.textContent.includes('Contact facturation'));
   location.hash=`sales/clients/${client}?tab=addresses`;PilozClients.renderRoute(location.hash.slice(1),state);await wait(35);check('adresses spécialisées',main.textContent.includes('Facturation')&&main.textContent.includes('Chantier'));
   const draft={id:'88888888-8888-4888-8888-888888888888',document_type:'invoice',client_id:client};state.draft=draft;await PilozClients.applyClientDefaults(draft,client,state);
@@ -46,8 +49,6 @@ location.hash='sales/clients';
   main.innerHTML='<div class="document-v2"><aside class="document-v2-panel"><section></section></aside></div>';location.hash='document-editor';PilozClients.enhanceDocumentContext();await wait(20);
   check('sélecteurs document injectés',main.querySelectorAll('[data-client-document-context] select').length===3&&main.textContent.includes('Contact destinataire'));
   await PilozApp.saveDocument(true);check('contexte document persisté',calls.some(call=>call[0]==='rpc'&&call[1]==='save_document_client_context'&&call[2].target_contact_id===contact));
-  location.hash='settings/accounting';PilozClients.renderRoute('settings/accounting',state);main.innerHTML='<div class="modern-settings-grid"><section class="phase1-card">Fiscalité</section></div>';await PilozClients.enhanceAccountSettings();
-  check('paramètres comptes clients',main.textContent.includes('Comptes clients')&&main.querySelector('[name="prefix"]')?.value==='CLI'&&main.textContent.includes('Vérifier l’unicité')&&main.querySelector('[data-client-save]')?.type==='submit');
   check('aucune erreur JavaScript',!__errors.length);
  }catch(error){checks.push(['exécution',false,error.stack||error.message]);}
  const failed=checks.filter(row=>!row[1]),result=document.getElementById('result');result.dataset.status=failed.length?'failed':'passed';result.textContent=failed.length?`Échec ${failed.length}/${checks.length} : ${failed.map(row=>row[0]+(row[2]?' ('+row[2]+')':'')).join(', ')}`:`${checks.length}/${checks.length} contrôles espace Clients réussis`;

@@ -26,5 +26,6 @@ Cette pré-release ne constitue pas une certification NF 525/NF 203, une conform
 
 - Nouvelle fiche client dédiée avec recherche, filtres, indicateurs et treize rubriques métier.
 - Contacts, rôles et adresses multiples, préférences commerciales et comptes auxiliaires historisés.
+- Onglet Comptabilité client volontairement limité à la saisie du code auxiliaire ; le paramétrage général est réservé à une version ultérieure.
 - Sélection du destinataire et des adresses dans les devis/factures, figée dans les snapshots.
 - RLS renforcée pour les rôles en lecture seule et stockage privé des pièces client.

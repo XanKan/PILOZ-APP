@@ -804,24 +804,12 @@
           `limit=200`,
         ]);
       else if (tab === "accounting") {
-        const [profiles, history, settings] = await Promise.all([
-          queryPath("client_accounting_profiles", [
-            `select=*`,
-            `client_id=eq.${cid}`,
-          ]),
-          queryPath("client_account_history", [
-            `select=*`,
-            `client_id=eq.${cid}`,
-            `order=created_at.desc`,
-            `limit=100`,
-          ]),
-          queryPath("company_customer_account_settings", [
-            `select=*`,
-            `company_id=eq.${company}`,
-          ]),
+        const profiles = await queryPath("client_accounting_profiles", [
+          `select=client_id,auxiliary_account`,
+          `client_id=eq.${cid}`,
+          `limit=1`,
         ]);
-        rows = history;
-        extra = { profile: profiles[0] || null, settings: settings[0] || null };
+        extra = { profile: profiles[0] || null };
       } else if (tab === "documents")
         rows = await queryPath("client_documents", [
           `select=*`,
@@ -1152,10 +1140,8 @@
     return `<section class="client-section-heading"><div><h2>Activités</h2><p>Appels, e-mails, rendez-vous, tâches, relances et suivis.</p></div>${button("Ajouter une activité", `PilozClients.openActivityModal('${id}')`, "btn-p")}</section>${data.rows.length ? `<div class="client-activity-list">${data.rows.map((row) => `<article><span class="client-activity-icon">${esc((row.activity_type || "note").slice(0, 1).toUpperCase())}</span><div><b>${esc(row.subject)}</b><p>${esc(row.description || row.comment || "")}</p><small>${datetime(row.due_at || row.scheduled_at || row.created_at)} · ${esc(memberName(currentState, row.assigned_user_id))}</small></div><span class="modern-status ${row.status === "completed" ? "success" : "neutral"}">${esc(row.status || "À faire")}</span></article>`).join("")}</div>` : empty("Aucune activité", "Ajoutez un appel, une tâche ou un rendez-vous.", button("Ajouter une activité", `PilozClients.openActivityModal('${id}')`, "btn-p"))}`;
   }
   function renderAccounting(id, entry, data) {
-    const p = data.extra.profile || {},
-      settings = data.extra.settings || {},
-      c = entry.summary.client;
-    return `<div class="client-accounting-grid"><form id="client-account-form" class="client-form" onsubmit="event.preventDefault();PilozClients.saveAccounting('${id}')"><header><div><h2>Compte client</h2><p>Préparation comptable sans prétendre remplacer une comptabilité complète.</p></div>${button("Enregistrer", "", "btn-p", 'type="submit" data-client-save')}</header><div class="client-form-grid"><label><span>Compte collectif</span><input name="collective_account" value="${esc(p.collective_account || settings.default_collective_account || "411000")}"></label><label><span>Mode d’attribution</span><select name="assignment_mode"><option value="automatic" ${p.assignment_mode !== "manual" ? "selected" : ""}>Automatique</option><option value="manual" ${p.assignment_mode === "manual" ? "selected" : ""}>Manuel</option></select></label><label><span>Compte auxiliaire</span><input name="auxiliary_account" value="${esc(p.auxiliary_account || "")}" placeholder="Proposé automatiquement"></label><label><span>Libellé comptable</span><input name="accounting_label" value="${esc(p.accounting_label || clientName(c))}"></label><label><span>Date d’effet</span><input name="effective_from" type="date" value="${esc(p.effective_from || new Date().toISOString().slice(0, 10))}"></label><label><span>Régime de TVA client</span><input name="vat_regime" value="${esc(p.vat_regime || "")}"></label><label class="full"><span>Motif / commentaire interne</span><textarea name="reason">${esc(p.internal_comment || "")}</textarea></label></div><div class="client-account-preview"><span>Compte collectif de l’entreprise</span><b>${esc(settings.default_collective_account || "411000")}</b><span>Prochain compte automatique</span><b data-next-account>Calculé lors de l’enregistrement</b></div></form><section class="client-card"><header><h2>Historique des comptes</h2></header>${data.rows.length ? `<div class="client-account-history">${data.rows.map((row) => `<article><b>${esc(row.previous_auxiliary_account || "Aucun")} → ${esc(row.new_auxiliary_account || "Aucun")}</b><span>${esc(row.collective_account || "")} · ${row.assignment_mode === "manual" ? "Manuel" : "Automatique"}</span><small>${date(row.effective_from)} · ${datetime(row.created_at)} · ${esc(row.reason || "Sans motif")}</small></article>`).join("")}</div>` : '<p class="client-muted">Aucun changement de compte auxiliaire.</p>'}</section><form id="customer-account-settings-form" class="client-form" onsubmit="event.preventDefault();PilozClients.saveAccountSettings()"><header><div><h2>Paramètres de génération</h2><p>Paramètres → Comptabilité → Comptes clients.</p></div>${button("Enregistrer les paramètres", "", "btn-o", 'type="submit" data-client-save')}</header><div class="client-form-grid"><label><span>Compte collectif par défaut</span><input name="default_collective_account" value="${esc(settings.default_collective_account || "411000")}"></label><label><span>Préfixe</span><input name="prefix" value="${esc(settings.prefix || "CLI")}"></label><label><span>Longueur du numéro</span><input name="padding" type="number" min="1" max="24" value="${Number(settings.padding) || 6}"></label><label><span>Prochain numéro</span><input name="next_number" type="number" min="1" value="${Number(settings.next_number) || 1}"></label><label><span>Format</span><select name="account_format"><option value="prefix_number">Préfixe + numéro</option><option value="c_number" ${settings.account_format === "c_number" ? "selected" : ""}>C + numéro</option><option value="initial_number" ${settings.account_format === "initial_number" ? "selected" : ""}>Initiale + numéro</option><option value="siren" ${settings.account_format === "siren" ? "selected" : ""}>SIREN</option><option value="custom" ${settings.account_format === "custom" ? "selected" : ""}>Personnalisé</option></select></label><label><span>Format personnalisé</span><input name="custom_pattern" value="${esc(settings.custom_pattern || "{PREFIX}{NUMBER}")}"></label><label class="check"><input name="automatic_generation" type="checkbox" ${settings.automatic_generation !== false ? "checked" : ""}><span>Génération automatique</span></label><label class="check"><input name="allow_manual" type="checkbox" ${settings.allow_manual !== false ? "checked" : ""}><span>Autoriser la saisie manuelle</span></label><label class="check"><input name="enforce_uniqueness" type="checkbox" ${settings.enforce_uniqueness !== false ? "checked" : ""}><span>Vérifier l’unicité</span></label></div></form></div>`;
+    const profile = data.extra.profile || entry.summary.accounting || {};
+    return `<form id="client-account-form" class="client-form client-auxiliary-account-form" onsubmit="event.preventDefault();PilozClients.saveAccounting('${id}')"><header><div><h2>Code auxiliaire</h2><p>Ce code identifiera le client dans la future comptabilité. Le paramétrage général sera ajouté plus tard dans les Paramètres.</p></div>${button("Enregistrer", "", "btn-p", 'type="submit" data-client-save')}</header><label><span>Code auxiliaire</span><input name="auxiliary_account" value="${esc(profile.auxiliary_account || "")}" maxlength="64" placeholder="Ex. CLI000042" autocomplete="off" required></label></form>`;
   }
   function renderClientFiles(id, data) {
     return `<section class="client-section-heading"><div><h2>Documents</h2><p>Contrats, bons de commande, attestations et fichiers administratifs.</p></div><label class="btn btn-p client-upload">Ajouter un document<input type="file" hidden onchange="PilozClients.uploadClientFile('${id}',this.files[0])"></label></section>${data.rows.length ? `<div class="client-files">${data.rows.map((row) => `<article><span>▤</span><div><b>${esc(row.file_name)}</b><small>${esc(row.document_type)} · ${row.size_bytes ? Math.ceil(row.size_bytes / 1024) + " Ko" : "Taille inconnue"} · ${date(row.document_date || row.created_at)}</small></div>${button("Télécharger", `PilozClients.downloadClientFile('${row.id}')`, "btn-ghost")}</article>`).join("")}</div>` : empty("Aucun document", "Ajoutez un contrat, un bon de commande ou une attestation.")}`;
@@ -1549,25 +1535,27 @@
     }
   }
   async function saveAccounting(clientId, confirmed = false) {
-    const raw = formData("client-account-form");
+    const raw = formData("client-account-form"),
+      auxiliaryAccount = String(raw.auxiliary_account || "").trim();
+    if (!auxiliaryAccount) {
+      notify("Renseignez le code auxiliaire du client.", "error");
+      return;
+    }
     setBusy(true);
     try {
       await api().rpc("assign_client_auxiliary_account", {
         target_client_id: clientId,
-        target_assignment_mode: raw.assignment_mode || "automatic",
-        target_auxiliary_account:
-          raw.assignment_mode === "manual"
-            ? raw.auxiliary_account || null
-            : null,
-        target_collective_account: raw.collective_account || null,
-        target_effective_from: raw.effective_from || null,
-        target_reason: raw.reason || null,
+        target_assignment_mode: "manual",
+        target_auxiliary_account: auxiliaryAccount,
+        target_collective_account: null,
+        target_effective_from: null,
+        target_reason: null,
         target_confirm_existing_documents: confirmed,
       });
       invalidate(clientId);
       await loadSummary(clientId, currentState);
       await loadTab(clientId, "accounting", currentState, true);
-      notify("Compte auxiliaire enregistré.", "success");
+      notify("Code auxiliaire enregistré.", "success");
     } catch (error) {
       if (
         /confirmation/i.test(error.message || "") &&
@@ -1577,46 +1565,6 @@
         )
       )
         return saveAccounting(clientId, true);
-      notify(error.message, "error");
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function saveAccountSettings() {
-    const raw = formData("customer-account-settings-form"),
-      payload = {
-        company_id: currentState.companyId,
-        default_collective_account: raw.default_collective_account || "411000",
-        professional_collective_account:
-          raw.professional_collective_account || null,
-        individual_collective_account:
-          raw.individual_collective_account || null,
-        prefix: raw.prefix || "CLI",
-        padding: Number(raw.padding) || 6,
-        next_number: Number(raw.next_number) || 1,
-        account_format: raw.account_format || "prefix_number",
-        custom_pattern: raw.custom_pattern || null,
-        automatic_generation: raw.automatic_generation === "on",
-        allow_manual: raw.allow_manual === "on",
-        enforce_uniqueness: raw.enforce_uniqueness === "on",
-        manage_inactive: raw.manage_inactive === "on",
-      };
-    setBusy(true);
-    try {
-      await api().rpc("save_company_customer_account_settings", {
-        target_settings: payload,
-      });
-      for (const entry of ui.detail.values()) entry.tabs.delete("accounting");
-      const current = routeParts();
-      if (current.path === "settings/accounting") {
-        document.querySelector("[data-customer-account-settings]")?.remove();
-        await enhanceAccountSettings();
-      } else {
-        const id = current.path.split("/").pop();
-        await loadTab(id, "accounting", currentState, true);
-      }
-      notify("Paramètres comptables enregistrés.", "success");
-    } catch (error) {
       notify(error.message, "error");
     } finally {
       setBusy(false);
@@ -2044,7 +1992,6 @@
   const observer = new MutationObserver(() => {
     const path = routeParts().path;
     if (path === "document-editor") queueMicrotask(enhanceDocumentContext);
-    if (path === "settings/accounting") queueMicrotask(enhanceAccountSettings);
     if (path === "sales/clients") queueMicrotask(enhanceClientListControls);
   });
   const main = document.getElementById("main");
@@ -2089,7 +2036,6 @@
     openActivityModal,
     saveActivity,
     saveAccounting,
-    saveAccountSettings,
     changeClientStatus,
     showDuplicates,
     uploadClientFile,
@@ -2097,7 +2043,6 @@
     loadDocumentContext,
     applyClientDefaults,
     enhanceDocumentContext,
-    enhanceAccountSettings,
     enhanceClientListControls,
     setDocumentContext,
     useBillingForDelivery,
