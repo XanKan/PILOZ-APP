@@ -1,0 +1,54 @@
+<!doctype html><html lang="fr"><meta charset="utf-8"><title>Tests échéances PILOZ</title>
+<link rel="stylesheet" href="../assets/css/modern-erp.css"><body><main id="main"></main><div id="result" data-status="running">RUNNING</div>
+<script>
+window.__errors=[];addEventListener('error',event=>__errors.push(event.message));
+window.PilozRuntime={session:{user_id:'user-owner'}};
+const calls=[],state={companyId:'company-1',data:{
+ settings:[{legal_name:'PILOZ Test',trade_name:'PILOZ'}],docSettings:[{bank_name:'Banque PILOZ',iban:'FR7612345678901234567890123',bic:'PILOFRPP'}],
+ members:[{user_id:'user-owner',role:'owner',permissions:{}}],clients:[{id:'client-1',legal_name:'Client Alpha',email:'general@alpha.fr'}],
+ clientContacts:[{id:'contact-billing',client_id:'client-1',first_name:'Camille',last_name:'Compta',email:'factures@alpha.fr',active:true},{id:'contact-primary',client_id:'client-1',first_name:'Alice',last_name:'Direction',email:'alice@alpha.fr',active:true}],clientContactRoles:[{client_id:'client-1',contact_id:'contact-billing',role:'billing'},{client_id:'client-1',contact_id:'contact-primary',role:'primary'}],clientPreferences:[{client_id:'client-1',billing_contact_id:'contact-billing'}],
+ documents:[
+  {id:'invoice-1',company_id:'company-1',client_id:'client-1',document_type:'invoice',number:'FAC-2026-001',status:'partially_paid',issue_date:'2026-07-01',due_date:'2026-07-10',total_incl_tax:120,finalized_at:'2026-07-01T10:00:00Z',final_pdf_path:'company-1/documents/invoice-1/snapshot-1.pdf',final_pdf_sha256:'abc',send_count:1,last_sent_at:'2026-07-02T10:00:00Z'},
+  {id:'invoice-2',company_id:'company-1',client_id:'client-1',document_type:'invoice',number:'FAC-2026-002',status:'finalized',issue_date:'2026-07-05',due_date:'2026-08-05',total_incl_tax:240,finalized_at:'2026-07-05T10:00:00Z',final_pdf_path:'company-1/documents/invoice-2/snapshot-2.pdf'}
+ ],payments:[{id:'payment-1',document_id:'invoice-1',amount:40,status:'confirmed',paid_at:'2026-07-05T12:00:00Z'}],paymentMethods:[{code:'bank_transfer',label:'Virement bancaire',active:true,is_default:true,position:1},{code:'card',label:'Carte bancaire',active:true,is_default:false,position:2},{code:'cash',label:'Espèces',active:false,is_default:false,position:3}],emailDeliveries:[{id:'mail-1',document_id:'invoice-1',delivery_status:'sent'}],opportunities:[],activities:[],reminders:[],schedules:[]
+}};
+const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+window.PilozModern={renderRoute(){return false;},openOpportunity(){},openActivity(){}};
+window.PilozCommercialV2={esc,money:value=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(Number(value)||0),date:value=>value?new Intl.DateTimeFormat('fr-FR').format(new Date(value)):'—',datetime:value=>value?new Intl.DateTimeFormat('fr-FR',{dateStyle:'short',timeStyle:'short'}).format(new Date(value)):'—',header:(title,subtitle,actions='')=>`<header><h1>${esc(title)}</h1><p>${esc(subtitle)}</p>${actions}</header>`,button:(label,action,kind='')=>`<button class="${kind}" onclick="${action}">${esc(label)}</button>`,empty:(title,text)=>`<section><h2>${esc(title)}</h2><p>${esc(text)}</p></section>`,status:(label,tone)=>`<span class="status ${tone}">${esc(label)}</span>`,notify(){},clientName:client=>client?.legal_name||'',clientFor:(current,id)=>current.data.clients.find(row=>row.id===id),opportunityFor:()=>null,paidFor:(current,id)=>current.data.payments.filter(row=>row.document_id===id&&row.status==='confirmed').reduce((sum,row)=>sum+Number(row.amount),0)};
+window.PilozDocumentStatus={confirmed:row=>row.status==='confirmed',paidFor:(data,id)=>data.payments.filter(row=>row.document_id===id&&row.status==='confirmed').reduce((sum,row)=>sum+Number(row.amount),0),remainingFor:(data,doc)=>Math.max(0,Number(doc.total_incl_tax)-data.payments.filter(row=>row.document_id===doc.id&&row.status==='confirmed').reduce((sum,row)=>sum+Number(row.amount),0)),effective:(data,doc)=>doc.status};
+window.PilozApp={getState:()=>state,refresh:async()=>{},editDocument(){}};
+window.PilozERP={rpc:async(name,args)=>{calls.push(['rpc',name,args]);return{receipt_id:'receipt-1',payment_number:'REG-2026-000001',allocated_amount:args.payment_amount,unallocated_amount:0};},invoke:async(name,args)=>{calls.push(['invoke',name,args]);return{sent:true};},signedUrl:async()=>({signedURL:'https://example.test/facture.pdf'}),upload:async()=>({})};
+</script>
+<script src="../assets/js/modules/erp/erp-commercial-workspace.js"></script>
+<script>
+(async()=>{const checks=[],check=(name,value)=>checks.push([name,!!value]);try{
+ PilozCommercialWorkspace.renderDueDates(state);
+ check('deux actions par échéance',main.textContent.includes('Renvoyer par e-mail')&&main.textContent.includes('Saisir un règlement')&&!main.textContent.includes('Activité'));
+ state.data.members[0].role='read_only';PilozCommercialWorkspace.renderDueDates(state);check('lecture seule sans action active',[...main.querySelectorAll('.due-action')].every(button=>button.disabled));state.data.members[0].role='owner';PilozCommercialWorkspace.renderDueDates(state);
+ PilozCommercialWorkspace.openDueEmail('invoice-1');
+ const emailForm=document.getElementById('due-email-form');
+ check('popup e-mail centrée et préremplie',!!emailForm&&emailForm.elements.to.value==='factures@alpha.fr'&&emailForm.elements.subject.value.includes('FAC-2026-001'));
+ PilozCommercialWorkspace.addDueEmailContact('contact-primary');check('autre contact actif ajouté',emailForm.elements.to.value.includes('alice@alpha.fr'));
+ check('PDF final et solutions manuelles visibles',emailForm.textContent.includes('PDF définitif')&&emailForm.textContent.includes('Copier le message')&&emailForm.textContent.includes('Ouvrir la messagerie')&&emailForm.textContent.includes('Noter un envoi manuel'));
+ await PilozCommercialWorkspace.sendDueEmail({preventDefault(){}},'invoice-1');
+ const emailCall=calls.find(call=>call[0]==='invoke'&&call[1]==='send-document-email');
+ check('envoi utilise la fonction sécurisée avec destinataires multiples',emailCall?.[2].to.length===2&&Array.isArray(emailCall[2].cc)&&emailCall[2].templateKey==='invoice_resend_default');
+ PilozCommercialWorkspace.closeDueAction();
+ const automaticInvoke=PilozERP.invoke;PilozERP.invoke=async()=>{throw Object.assign(new Error('L’envoi automatique n’est pas configuré. Vous pouvez télécharger le PDF, copier le message ou ouvrir votre messagerie.'),{code:'email_provider_not_configured'});};
+ PilozCommercialWorkspace.openDueEmail('invoice-1');await PilozCommercialWorkspace.sendDueEmail({preventDefault(){}},'invoice-1');
+ check('aucun faux succès sans fournisseur e-mail',!!document.getElementById('due-email-form')&&document.getElementById('due-action-message')?.classList.contains('error')&&document.getElementById('due-action-message')?.textContent.includes('pas configuré'));
+ PilozERP.invoke=automaticInvoke;PilozCommercialWorkspace.closeDueAction();
+ PilozCommercialWorkspace.openDuePayment('invoice-1');
+ const paymentForm=document.getElementById('due-payment-form');
+ check('popup règlement dédiée',!!paymentForm&&paymentForm.textContent.includes('Factures à affecter')&&paymentForm.textContent.includes('Compte de réception'));
+ check('seuls modes actifs disponibles',paymentForm.elements.payment_method.querySelectorAll('option').length===3&&!paymentForm.textContent.includes('Espèces'));
+ paymentForm.querySelector('[data-document-check="invoice-2"]').click();paymentForm.elements.amount.value='150.00';PilozCommercialWorkspace.autoAllocateDuePayment();
+ check('allocation automatique au centime',paymentForm.querySelector('[data-document-amount="invoice-1"]').value==='80.00'&&paymentForm.querySelector('[data-document-amount="invoice-2"]').value==='70.00');
+ await PilozCommercialWorkspace.saveDuePayment({preventDefault(){},currentTarget:paymentForm});
+ const paymentCall=calls.find(call=>call[0]==='rpc'&&call[1]==='record_multi_invoice_payment');
+ check('RPC atomique multi-factures appelé',paymentCall?.[2].target_allocations.length===2&&paymentCall[2].payment_amount==='150.00'&&!!paymentCall[2].target_idempotency_key);
+ check('aucune erreur JavaScript',!__errors.length);
+ }catch(error){checks.push(['exécution',false,error.stack||error.message]);}
+ const failed=checks.filter(row=>!row[1]),node=document.getElementById('result');node.dataset.status=failed.length?'failed':'passed';node.textContent=failed.length?`Échec ${failed.length}/${checks.length} : ${failed.map(row=>row[0]+(row[2]?' ('+row[2]+')':'')).join(', ')}`:`${checks.length}/${checks.length} contrôles échéances réussis`;
+})();
+</script></body></html>

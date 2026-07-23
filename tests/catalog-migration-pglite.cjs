@@ -127,7 +127,7 @@ async function main(){
  if(archived!=='archived_used_item')throw new Error('Protection de suppression invalide');
  await db.exec('reset role');
  const policies=(await db.query(`select count(*) value from pg_policies where schemaname='public' and tablename in('item_variants','item_price_history','price_lists','item_notes')`)).rows[0].value;
- console.log(JSON.stringify({ok:true,schema_version:'202607230051',reference_sequence:[ref1,ref2,row.reference],item_id:create,relations:{suppliers:supplierCount,variants:variantCount+matrixCount,price_history:historyCount},stock:{transfer:true,reservation_release:true},resolved_price:Number(resolved.unit_price),snapshot:true,units:configuredUnits.length,tenant_rows_visible:visible,sensitive_cost_columns_restricted:true,deletion_guard:{direct_delete_blocked:directDeleteBlocked,rpc_result:archived},rls_policies:Number(policies),stage}));
+ console.log(JSON.stringify({ok:true,schema_version:'202607230052',reference_sequence:[ref1,ref2,row.reference],item_id:create,relations:{suppliers:supplierCount,variants:variantCount+matrixCount,price_history:historyCount},stock:{transfer:true,reservation_release:true},resolved_price:Number(resolved.unit_price),snapshot:true,units:configuredUnits.length,tenant_rows_visible:visible,sensitive_cost_columns_restricted:true,deletion_guard:{direct_delete_blocked:directDeleteBlocked,rpc_result:archived},rls_policies:Number(policies),stage}));
  await db.close();
 }
 main().catch(error=>{console.error(`Étape ${catalogStage}: ${error.stack||error.message}`);process.exitCode=1;});
