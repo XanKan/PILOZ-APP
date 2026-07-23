@@ -26,7 +26,7 @@ $env:SUPABASE_DB_PASSWORD="VOTRE_MOT_DE_PASSE_POSTGRES"
 
 Le script vérifie le dépôt, le CNAME, la release, synchronise `main`, lie le projet et exécute uniquement `db push --dry-run`. Il ne demande pas de saisir `y`, ce qui évite l’erreur `NonInteractiveError`.
 
-Vérifiez que la liste se termine par `202607230050_catalog_workspace.sql` et qu’aucune migration inattendue n’est annoncée.
+Vérifiez que la liste se termine par `202607230051_catalog_units.sql` et qu’aucune migration inattendue n’est annoncée.
 
 ## 3. Appliquer les migrations et déployer les Edge Functions
 
@@ -41,7 +41,7 @@ Le script applique les migrations additives avec la version épinglée `2.109.1`
 Dans Supabase > SQL Editor, ouvrez et exécutez ensuite le contenu de `scripts/post-deploy-production-checks.sql`. Le JSON rendu doit contenir :
 
 ```json
-{"ok": true, "schema_version": "202607230050"}
+{"ok": true, "schema_version": "202607230051"}
 ```
 
 Conservez ce résultat daté dans votre dossier de preuves, sans donnée client ni secret.

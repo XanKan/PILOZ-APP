@@ -5,7 +5,7 @@
   "release_date": "2026-07-23",
   "source_base_commit": "f98b027",
   "build_commit": "injected-at-deployment",
-  "schema_version": "202607230050",
+  "schema_version": "202607230051",
   "calculation_version": "financial-v1",
   "pdf_generator_version": "pdf-v2",
   "canonical_invoice_version": "1.0",

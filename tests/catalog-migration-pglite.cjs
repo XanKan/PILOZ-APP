@@ -117,6 +117,8 @@ async function main(){
  if(restrictedColumns.supplier_cost||restrictedColumns.variant_cost||restrictedColumns.history_cost)throw new Error('Une colonne de coût sensible reste lisible directement');
  const financial=(await db.query(`select public.get_company_financial_fields($1) value`,[company])).rows[0].value;
  if(!financial.supplier_items?.length||!financial.item_variants?.length||!financial.item_price_history?.length)throw new Error('Restitution financière autorisée incomplète');
+ const configuredUnits=(await db.query(`select units from public.company_catalog_settings where company_id=$1`,[company])).rows[0]?.units||[];
+ if(!configuredUnits.includes('unité')||!configuredUnits.includes('heure'))throw new Error('Unités du catalogue non initialisées');
  let directDeleteBlocked=false;
  try{await db.query(`delete from public.catalog_items where id=$1`,[create]);}catch(error){directDeleteBlocked=true;}
  directDeleteBlocked=directDeleteBlocked&&Boolean((await db.query(`select exists(select 1 from public.catalog_items where id=$1) value`,[create])).rows[0].value);
@@ -125,7 +127,7 @@ async function main(){
  if(archived!=='archived_used_item')throw new Error('Protection de suppression invalide');
  await db.exec('reset role');
  const policies=(await db.query(`select count(*) value from pg_policies where schemaname='public' and tablename in('item_variants','item_price_history','price_lists','item_notes')`)).rows[0].value;
- console.log(JSON.stringify({ok:true,schema_version:'202607230050',reference_sequence:[ref1,ref2,row.reference],item_id:create,relations:{suppliers:supplierCount,variants:variantCount+matrixCount,price_history:historyCount},stock:{transfer:true,reservation_release:true},resolved_price:Number(resolved.unit_price),snapshot:true,tenant_rows_visible:visible,sensitive_cost_columns_restricted:true,deletion_guard:{direct_delete_blocked:directDeleteBlocked,rpc_result:archived},rls_policies:Number(policies),stage}));
+ console.log(JSON.stringify({ok:true,schema_version:'202607230051',reference_sequence:[ref1,ref2,row.reference],item_id:create,relations:{suppliers:supplierCount,variants:variantCount+matrixCount,price_history:historyCount},stock:{transfer:true,reservation_release:true},resolved_price:Number(resolved.unit_price),snapshot:true,units:configuredUnits.length,tenant_rows_visible:visible,sensitive_cost_columns_restricted:true,deletion_guard:{direct_delete_blocked:directDeleteBlocked,rpc_result:archived},rls_policies:Number(policies),stage}));
  await db.close();
 }
 main().catch(error=>{console.error(`Étape ${catalogStage}: ${error.stack||error.message}`);process.exitCode=1;});

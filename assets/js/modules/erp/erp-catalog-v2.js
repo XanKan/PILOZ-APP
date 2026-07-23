@@ -77,6 +77,30 @@
     discontinued: "Arrêté",
     archived: "Archivé",
   };
+  const defaultUnits = [
+    "unité",
+    "heure",
+    "jour",
+    "forfait",
+    "mètre",
+    "m²",
+    "m³",
+    "kilogramme",
+    "litre",
+    "lot",
+    "mois",
+  ];
+  function catalogUnits() {
+    const configured = state().data.catalogSettings?.[0]?.units,
+      values = Array.isArray(configured) && configured.length ? configured : defaultUnits;
+    return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
+  }
+  function unitField(label, name, value = "unité") {
+    return `<label class="modern-field"><span>${esc(label)}</span><input name="${name}" list="catalog-unit-options" value="${esc(value || "unité")}" autocomplete="off"><small>Choisissez une unité ou saisissez-en une librement.</small></label>`;
+  }
+  function unitOptions() {
+    return `<datalist id="catalog-unit-options">${catalogUnits().map((unit) => `<option value="${esc(unit)}"></option>`).join("")}</datalist>`;
+  }
   const esc = (value) =>
     global.esc
       ? global.esc(value)
@@ -375,7 +399,7 @@
     return (location.hash || "#sales/catalog").slice(1).split("?")[0];
   }
   function top() {
-    return `<header class="catalog-top"><div><span>Ventes</span><h1>Articles & services</h1><p>Catalogue, prix, fournisseurs et stock au même endroit.</p></div><div class="catalog-top-actions"><button class="btn btn-o" onclick="PilozCatalog.openTaxonomy()">Catégories & tags</button><button class="btn btn-o" onclick="PilozCatalog.openImport()">Importer</button><button class="btn btn-o" onclick="PilozCatalog.exportCsv('filtered')">Exporter</button><button class="btn btn-p" onclick="PilozApp.go('sales/catalog/new')">Nouvel élément</button></div></header>`;
+    return `<header class="catalog-top"><div><span>Ventes</span><h1>Articles & services</h1><p>Catalogue, prix, fournisseurs et stock au même endroit.</p></div><div class="catalog-top-actions"><button class="btn btn-o" onclick="PilozCatalog.openTaxonomy()">Paramètres du catalogue</button><button class="btn btn-o" onclick="PilozCatalog.openImport()">Importer</button><button class="btn btn-o" onclick="PilozCatalog.exportCsv('filtered')">Exporter</button><button class="btn btn-p" onclick="PilozApp.go('sales/catalog/new')">Nouvel élément</button></div></header>`;
   }
   function quickCounts() {
     const s = stats(),
@@ -683,8 +707,7 @@
       .join("");
   }
   function itemForm(item = {}) {
-    const categories = state().data.categories || [],
-      rates = state().data.vatRates || [],
+    const rates = state().data.vatRates || [],
       suppliers = state().data.suppliers || [],
       warehouses = state().data.warehouses || [],
       kind = item.item_type || "product",
@@ -714,7 +737,7 @@
       )
       .join(
         "",
-      )}</select></label>${field("Référence interne", "reference", item.reference, "text", 'placeholder="Générée automatiquement si vide"')}${field("Désignation *", "name", item.name, "text", "required")}${field("Code-barres EAN", "barcode", item.barcode)}<label class="modern-field"><span>Catégorie</span><select name="category_id" onchange="PilozCatalog.applyCategoryDefaults(this.value)"><option value="">Aucune</option>${options(categories, item.category_id)}</select></label>${field("Sous-catégorie", "subcategory", item.subcategory)}${field("Marque", "brand", item.brand)}${field("Référence fabricant", "manufacturer_reference", item.manufacturer_reference)}${field("Unité", "unit", item.unit || "unité")}${field("Alias de recherche", "aliases", Array.isArray(item.aliases) ? item.aliases.join(", ") : "", "text", 'placeholder="Séparés par des virgules"')}<label class="modern-field"><span>Statut</span><select name="status">${Object.entries(
+      )}</select></label>${field("Référence interne", "reference", item.reference, "text", 'placeholder="Générée automatiquement si vide"')}${field("Désignation *", "name", item.name, "text", "required")}${field("Marque", "brand", item.brand)}${field("Référence fabricant", "manufacturer_reference", item.manufacturer_reference)}${unitField("Unité", "unit", item.unit || "unité")}${unitOptions()}<label class="modern-field"><span>Statut</span><select name="status">${Object.entries(
       statusLabels,
     )
       .map(
@@ -723,7 +746,7 @@
       )
       .join(
         "",
-      )}</select></label>${field("Disponible à partir du", "available_from", item.available_from, "date")}<label class="modern-field full"><span>Description commerciale</span><textarea name="sales_description" rows="3">${esc(item.sales_description || "")}</textarea></label><label class="modern-field full"><span>Description détaillée</span><textarea name="detailed_description" rows="4">${esc(item.detailed_description || "")}</textarea></label><label class="modern-field full"><span>Note interne</span><textarea name="internal_notes" rows="3">${esc(item.internal_notes || "")}</textarea></label></div></section><section><h2>Prix et marge</h2><div class="catalog-form-grid">${purchaseFields}${marginFields}${field("Prix de vente HT", "sale_price", item.sale_price || 0, "number", 'min="0" step="0.0001" oninput="PilozCatalog.syncPrices(\'sale\')"')}<label class="modern-field"><span>TVA</span><select name="tax_rate" onchange="PilozCatalog.syncPrices()">${(rates.length ? rates : [{ rate: 20, label: "20 %" }]).map((x) => `<option value="${Number(x.rate)}" ${Number(item.tax_rate ?? 20) === Number(x.rate) ? "selected" : ""}>${esc(x.label)}</option>`).join("")}</select></label>${field("Prix de vente TTC", "sale_price_ttc", (Number(item.sale_price || 0) * (1 + Number(item.tax_rate ?? 20) / 100)).toFixed(2), "number", "readonly")}${marginSummary}</div></section><section id="catalog-product-fields" ${kind === "service" ? "hidden" : ""}><h2>Stock et logistique</h2><div class="catalog-form-grid"><label class="modern-field catalog-check-field"><input name="stock_managed" type="checkbox" ${item.stock_managed ? "checked" : ""}><span>Gérer le stock</span></label><label class="modern-field catalog-check-field"><input name="track_lots" type="checkbox" ${item.track_lots ? "checked" : ""}><span>Suivi par lots</span></label><label class="modern-field catalog-check-field"><input name="track_serials" type="checkbox" ${item.track_serials ? "checked" : ""}><span>Suivi par numéros de série</span></label>${field("Seuil d’alerte", "reorder_point", item.reorder_point || 0, "number", 'step="0.0001"')}${field("Stock minimum", "minimum_stock", item.minimum_stock || 0, "number", 'step="0.0001"')}${field("Stock initial", "initial_stock", 0, "number", 'min="0" step="0.0001"')}<label class="modern-field"><span>Entrepôt initial</span><select name="warehouse_id"><option value="">Aucun</option>${options(warehouses, item.default_warehouse_id)}</select></label>${field("Délai d’approvisionnement (jours)", "supply_lead_days", item.supply_lead_days, "number", 'min="0"')}${field("Poids", "weight", item.weight, "number", 'min="0" step="0.0001"')}${field("Pays d’origine", "country_of_origin", item.country_of_origin)}${field("Code douanier", "customs_code", item.customs_code)}</div></section><section id="catalog-service-fields" ${kind !== "service" ? "hidden" : ""}><h2>Prestation</h2><div class="catalog-form-grid">${field("Unité de facturation", "billing_unit", item.billing_unit || item.unit || "heure")}${field("Durée estimée (minutes)", "estimated_duration_minutes", item.estimated_duration_minutes, "number", 'min="0"')}${field("Minimum facturable (minutes)", "minimum_billable_minutes", item.minimum_billable_minutes, "number", 'min="0"')}${field("Intervalle de facturation", "billing_interval", item.billing_interval)}<label class="modern-field catalog-check-field"><input name="recurring" type="checkbox" ${item.recurring ? "checked" : ""}><span>Service récurrent</span></label></div></section><section><h2>Fournisseur principal</h2><div class="catalog-form-grid"><label class="modern-field"><span>Fournisseur</span><select name="primary_supplier_id"><option value="">Aucun</option>${options(suppliers, item.primary_supplier_id, (x) => x.legal_name)}</select></label>${field("Référence fournisseur", "supplier_reference", item.supplier_reference)}</div></section><footer class="catalog-form-actions"><button type="button" class="btn btn-o" onclick="${item.id ? `PilozApp.go('sales/items/${item.id}')` : `PilozApp.go('sales/catalog')`}">Annuler</button><button type="submit" class="btn btn-p" data-catalog-save>${item.id ? "Enregistrer les modifications" : "Créer l’élément"}</button></footer></form>`;
+      )}</select></label><label class="modern-field full"><span>Description</span><textarea name="sales_description" rows="4">${esc(item.sales_description || item.short_description || item.detailed_description || "")}</textarea><small>Cette description sera reprise automatiquement dans les devis et les factures.</small></label><label class="modern-field full"><span>Note interne</span><textarea name="internal_notes" rows="3">${esc(item.internal_notes || "")}</textarea></label></div></section><section><h2>Prix et marge</h2><div class="catalog-form-grid">${purchaseFields}${marginFields}${field("Prix de vente HT", "sale_price", item.sale_price || 0, "number", 'min="0" step="0.0001" oninput="PilozCatalog.syncPrices(\'sale\')"')}<label class="modern-field"><span>TVA</span><select name="tax_rate" onchange="PilozCatalog.syncPrices()">${(rates.length ? rates : [{ rate: 20, label: "20 %" }]).map((x) => `<option value="${Number(x.rate)}" ${Number(item.tax_rate ?? 20) === Number(x.rate) ? "selected" : ""}>${esc(x.label)}</option>`).join("")}</select></label>${field("Prix de vente TTC", "sale_price_ttc", (Number(item.sale_price || 0) * (1 + Number(item.tax_rate ?? 20) / 100)).toFixed(2), "number", "readonly")}${marginSummary}</div></section><section id="catalog-product-fields" ${kind === "service" ? "hidden" : ""}><h2>Stock et logistique</h2><div class="catalog-form-grid"><label class="modern-field catalog-check-field"><input name="stock_managed" type="checkbox" ${item.stock_managed ? "checked" : ""}><span>Gérer le stock</span></label><label class="modern-field catalog-check-field"><input name="track_lots" type="checkbox" ${item.track_lots ? "checked" : ""}><span>Suivi par lots</span></label><label class="modern-field catalog-check-field"><input name="track_serials" type="checkbox" ${item.track_serials ? "checked" : ""}><span>Suivi par numéros de série</span></label>${field("Seuil d’alerte", "reorder_point", item.reorder_point || 0, "number", 'step="0.0001"')}${field("Stock minimum", "minimum_stock", item.minimum_stock || 0, "number", 'step="0.0001"')}${field("Stock initial", "initial_stock", 0, "number", 'min="0" step="0.0001"')}<label class="modern-field"><span>Entrepôt initial</span><select name="warehouse_id"><option value="">Aucun</option>${options(warehouses, item.default_warehouse_id)}</select></label>${field("Délai d’approvisionnement (jours)", "supply_lead_days", item.supply_lead_days, "number", 'min="0"')}${field("Poids", "weight", item.weight, "number", 'min="0" step="0.0001"')}${field("Pays d’origine", "country_of_origin", item.country_of_origin)}${field("Code douanier", "customs_code", item.customs_code)}</div></section><section id="catalog-service-fields" ${kind !== "service" ? "hidden" : ""}><h2>Prestation</h2><div class="catalog-form-grid">${unitField("Unité de facturation", "billing_unit", item.billing_unit || item.unit || "heure")}${field("Durée estimée (minutes)", "estimated_duration_minutes", item.estimated_duration_minutes, "number", 'min="0"')}${field("Minimum facturable (minutes)", "minimum_billable_minutes", item.minimum_billable_minutes, "number", 'min="0"')}${field("Intervalle de facturation", "billing_interval", item.billing_interval)}<label class="modern-field catalog-check-field"><input name="recurring" type="checkbox" ${item.recurring ? "checked" : ""}><span>Service récurrent</span></label></div></section><section><h2>Fournisseur principal</h2><div class="catalog-form-grid"><label class="modern-field"><span>Fournisseur</span><select name="primary_supplier_id"><option value="">Aucun</option>${options(suppliers, item.primary_supplier_id, (x) => x.legal_name)}</select></label>${field("Référence fournisseur", "supplier_reference", item.supplier_reference)}</div></section><footer class="catalog-form-actions"><button type="button" class="btn btn-o" onclick="${item.id ? `PilozApp.go('sales/items/${item.id}')` : `PilozApp.go('sales/catalog')`}">Annuler</button><button type="submit" class="btn btn-p" data-catalog-save>${item.id ? "Enregistrer les modifications" : "Créer l’élément"}</button></footer></form>`;
   }
   function renderCreate() {
     document.getElementById("main").innerHTML =
@@ -837,12 +860,16 @@
     numeric.forEach(
       (key) => (raw[key] = raw[key] === "" ? null : Number(raw[key])),
     );
-    raw.category_id = raw.category_id || null;
-    raw.available_from = raw.available_from || null;
-    raw.aliases = String(raw.aliases || "")
-      .split(",")
-      .map((x) => x.trim())
-      .filter(Boolean);
+    raw.short_description = raw.sales_description || null;
+    for (const removedField of [
+      "barcode",
+      "category_id",
+      "subcategory",
+      "available_from",
+      "aliases",
+      "detailed_description",
+    ])
+      if (!form.elements.namedItem(removedField)) delete raw[removedField];
     raw.active = !["inactive", "archived", "discontinued"].includes(raw.status);
     raw.stock_managed =
       raw.item_type !== "service" && form.elements.stock_managed?.checked;
@@ -870,6 +897,7 @@
       initialStock = Number(raw.initial_stock) || 0,
       warehouseId = raw.warehouse_id || null,
       primarySupplier = raw.primary_supplier_id || null,
+      hasTagField = !!form.elements.namedItem("tag_ids"),
       tagIds = new Set(new FormData(form).getAll("tag_ids").filter(Boolean));
     if (!id && initialStock > 0 && !warehouseId) {
       notify("Sélectionnez un entrepôt pour le stock initial.", "error");
@@ -938,25 +966,27 @@
             target_unit_cost: payload.cost_price || 0,
           });
       }
-      const existingTags = (state().data.itemTagAssignments || []).filter(
-        (row) => row.item_id === itemId,
-      );
-      for (const assignment of existingTags)
-        if (!tagIds.has(assignment.tag_id))
-          await api().remove("item_tag_assignments", assignment.id);
-      const existingTagIds = new Set(existingTags.map((row) => row.tag_id));
-      const missingTags = [...tagIds].filter(
-        (tagId) => !existingTagIds.has(tagId),
-      );
-      if (missingTags.length)
-        await api().insert(
-          "item_tag_assignments",
-          missingTags.map((tagId) => ({
-            company_id: state().companyId,
-            item_id: itemId,
-            tag_id: tagId,
-          })),
+      if (hasTagField) {
+        const existingTags = (state().data.itemTagAssignments || []).filter(
+          (row) => row.item_id === itemId,
         );
+        for (const assignment of existingTags)
+          if (!tagIds.has(assignment.tag_id))
+            await api().remove("item_tag_assignments", assignment.id);
+        const existingTagIds = new Set(existingTags.map((row) => row.tag_id));
+        const missingTags = [...tagIds].filter(
+          (tagId) => !existingTagIds.has(tagId),
+        );
+        if (missingTags.length)
+          await api().insert(
+            "item_tag_assignments",
+            missingTags.map((tagId) => ({
+              company_id: state().companyId,
+              item_id: itemId,
+              tag_id: tagId,
+            })),
+          );
+      }
       await app().refresh();
       notify(id ? "Fiche mise à jour." : "Élément créé.", "success");
       app().go(`sales/items/${itemId}`);
@@ -1002,7 +1032,7 @@
       imageUrl =
         state().data.catalogImageUrls?.[item.id] || item.image_path || "",
       safeImage = /^(https?:|data:image\/|blob:)/i.test(String(imageUrl));
-    return `<header class="catalog-detail-header"><div class="catalog-detail-title"><button onclick="PilozApp.go('sales/catalog')">← Catalogue</button><div class="catalog-item-avatar" data-catalog-avatar="${item.id}">${safeImage ? `<img src="${esc(imageUrl)}" alt="">` : esc((item.name || "?").slice(0, 2).toUpperCase())}</div><div><div><span class="catalog-type">${esc(typeLabels[item.item_type])}</span><span class="catalog-status ${statusOf(item)}">${esc(statusLabels[statusOf(item)])}</span></div><h1>${esc(item.name)}</h1><p>${esc(item.reference || "Sans référence")} · ${esc(category(item)?.name || "Sans catégorie")}</p></div></div><div class="catalog-detail-actions"><button class="btn btn-o" onclick="PilozCatalog.addToDocument('${item.id}','quote')">Ajouter à un devis</button><button class="btn btn-o" onclick="PilozCatalog.addToDocument('${item.id}','invoice')">Ajouter à une facture</button>${item.item_type !== "service" ? `<button class="btn btn-o" onclick="PilozCatalog.addToPurchase('${item.id}')">Commander</button><button class="btn btn-o" onclick="PilozCatalog.adjustStock('${item.id}')">Ajuster le stock</button>` : ""}<button class="btn btn-p" onclick="PilozCatalog.openEditor('${item.id}')">Modifier</button><button class="catalog-more" onclick="PilozCatalog.openItemActions('${item.id}')">•••</button></div><dl><div><dt>Prix de vente HT</dt><dd>${money(item.sale_price)}</dd></div>${can("view_purchase_prices") ? `<div><dt>Coût de revient</dt><dd>${money(cost(item))}</dd></div>` : ""}${can("view_margins") ? `<div><dt>Marge</dt><dd>${money(margin(item))}<small>${marginRate(item) === null ? "—" : number(marginRate(item)) + " %"}</small></dd></div>` : ""}<div><dt>TVA</dt><dd>${number(item.tax_rate)} %</dd></div>${item.item_type !== "service" ? `<div><dt>Stock disponible</dt><dd>${item.stock_managed ? number(lv.available) : "Non géré"}</dd></div>` : ""}<div><dt>Fournisseur principal</dt><dd>${esc(sup?.legal_name || "—")}</dd></div><div><dt>Dernière modification</dt><dd>${date(item.updated_at)}</dd></div></dl></header>`;
+    return `<header class="catalog-detail-header"><div class="catalog-detail-title"><button onclick="PilozApp.go('sales/catalog')">← Catalogue</button><div class="catalog-item-avatar" data-catalog-avatar="${item.id}">${safeImage ? `<img src="${esc(imageUrl)}" alt="">` : esc((item.name || "?").slice(0, 2).toUpperCase())}</div><div><div><span class="catalog-type">${esc(typeLabels[item.item_type])}</span><span class="catalog-status ${statusOf(item)}">${esc(statusLabels[statusOf(item)])}</span></div><h1>${esc(item.name)}</h1><p>${esc(item.reference || "Sans référence")}</p></div></div><div class="catalog-detail-actions"><button class="btn btn-o" onclick="PilozCatalog.addToDocument('${item.id}','quote')">Ajouter à un devis</button><button class="btn btn-o" onclick="PilozCatalog.addToDocument('${item.id}','invoice')">Ajouter à une facture</button>${item.item_type !== "service" ? `<button class="btn btn-o" onclick="PilozCatalog.addToPurchase('${item.id}')">Commander</button><button class="btn btn-o" onclick="PilozCatalog.adjustStock('${item.id}')">Ajuster le stock</button>` : ""}<button class="btn btn-p" onclick="PilozCatalog.openEditor('${item.id}')">Modifier</button><button class="catalog-more" onclick="PilozCatalog.openItemActions('${item.id}')">•••</button></div><dl><div><dt>Prix de vente HT</dt><dd>${money(item.sale_price)}</dd></div>${can("view_purchase_prices") ? `<div><dt>Coût de revient</dt><dd>${money(cost(item))}</dd></div>` : ""}${can("view_margins") ? `<div><dt>Marge</dt><dd>${money(margin(item))}<small>${marginRate(item) === null ? "—" : number(marginRate(item)) + " %"}</small></dd></div>` : ""}<div><dt>TVA</dt><dd>${number(item.tax_rate)} %</dd></div>${item.item_type !== "service" ? `<div><dt>Stock disponible</dt><dd>${item.stock_managed ? number(lv.available) : "Non géré"}</dd></div>` : ""}<div><dt>Fournisseur principal</dt><dd>${esc(sup?.legal_name || "—")}</dd></div><div><dt>Dernière modification</dt><dd>${date(item.updated_at)}</dd></div></dl></header>`;
   }
   function summaryTab(item) {
     const lv = levels(item.id),
@@ -1012,10 +1042,10 @@
       ),
       quotes = docs.filter((x) => x.document_type === "quote"),
       suppliers = itemSuppliers(item.id);
-    return `<div class="catalog-summary-grid"><section class="catalog-panel"><h2>Vue d’ensemble</h2><dl class="catalog-info-list"><div><dt>Désignation</dt><dd>${esc(item.name)}</dd></div><div><dt>Référence</dt><dd>${esc(item.reference)}</dd></div><div><dt>Catégorie</dt><dd>${esc(category(item)?.name || "—")}</dd></div><div><dt>Unité</dt><dd>${esc(item.unit)}</dd></div><div><dt>Statut</dt><dd>${esc(statusLabels[statusOf(item)])}</dd></div></dl></section><section class="catalog-panel"><h2>Activité commerciale</h2><div class="catalog-mini-kpis"><div><span>Devis</span><b>${quotes.length}</b></div><div><span>Factures</span><b>${sales.length}</b></div><div><span>CA HT</span><b>${money(sales.filter((x) => x.document.status !== "draft").reduce((n, x) => n + Number(x.line.total_excl_tax || 0), 0))}</b></div><div><span>Fournisseurs</span><b>${suppliers.length}</b></div></div></section>${item.item_type !== "service" ? `<section class="catalog-panel full"><h2>Stock</h2><div class="catalog-stock-kpis"><div><span>Physique</span><b>${number(lv.physical)}</b></div><div><span>Réservé</span><b>${number(lv.reserved)}</b></div><div><span>Disponible</span><b>${number(lv.available)}</b></div><div><span>À recevoir</span><b>${number(lv.expected)}</b></div><div><span>En transit</span><b>${number(lv.transit)}</b></div></div></section>` : ""}<section class="catalog-panel full"><h2>Description commerciale</h2><p class="catalog-copy">${esc(item.sales_description || item.short_description || "Aucune description.")}</p></section></div>`;
+    return `<div class="catalog-summary-grid"><section class="catalog-panel"><h2>Vue d’ensemble</h2><dl class="catalog-info-list"><div><dt>Désignation</dt><dd>${esc(item.name)}</dd></div><div><dt>Référence</dt><dd>${esc(item.reference)}</dd></div><div><dt>Unité</dt><dd>${esc(item.unit)}</dd></div><div><dt>Statut</dt><dd>${esc(statusLabels[statusOf(item)])}</dd></div></dl></section><section class="catalog-panel"><h2>Activité commerciale</h2><div class="catalog-mini-kpis"><div><span>Devis</span><b>${quotes.length}</b></div><div><span>Factures</span><b>${sales.length}</b></div><div><span>CA HT</span><b>${money(sales.filter((x) => x.document.status !== "draft").reduce((n, x) => n + Number(x.line.total_excl_tax || 0), 0))}</b></div><div><span>Fournisseurs</span><b>${suppliers.length}</b></div></div></section>${item.item_type !== "service" ? `<section class="catalog-panel full"><h2>Stock</h2><div class="catalog-stock-kpis"><div><span>Physique</span><b>${number(lv.physical)}</b></div><div><span>Réservé</span><b>${number(lv.reserved)}</b></div><div><span>Disponible</span><b>${number(lv.available)}</b></div><div><span>À recevoir</span><b>${number(lv.expected)}</b></div><div><span>En transit</span><b>${number(lv.transit)}</b></div></div></section>` : ""}<section class="catalog-panel full"><h2>Description</h2><p class="catalog-copy">${esc(item.sales_description || item.short_description || item.detailed_description || "Aucune description.")}</p></section></div>`;
   }
   function informationTab(item) {
-    return `<section class="catalog-panel"><div class="catalog-panel-head"><h2>Informations générales</h2><button class="btn btn-o" onclick="PilozCatalog.openEditor('${item.id}')">Modifier</button></div><dl class="catalog-info-list two"><div><dt>Type</dt><dd>${esc(typeLabels[item.item_type])}</dd></div><div><dt>Référence interne</dt><dd>${esc(item.reference)}</dd></div><div><dt>Code-barres</dt><dd>${esc(item.barcode || "—")}</dd></div><div><dt>Référence fabricant</dt><dd>${esc(item.manufacturer_reference || "—")}</dd></div><div><dt>Marque</dt><dd>${esc(item.brand || "—")}</dd></div><div><dt>Pays d’origine</dt><dd>${esc(item.country_of_origin || "—")}</dd></div><div><dt>Code douanier</dt><dd>${esc(item.customs_code || "—")}</dd></div><div><dt>Alias</dt><dd>${esc((item.aliases || []).join(", ") || "—")}</dd></div></dl><h3>Description détaillée</h3><p class="catalog-copy">${esc(item.detailed_description || "Aucune description détaillée.")}</p><h3>Note interne</h3><p class="catalog-copy muted">${esc(item.internal_notes || "Aucune note interne.")}</p></section>`;
+    return `<section class="catalog-panel"><div class="catalog-panel-head"><h2>Informations générales</h2><button class="btn btn-o" onclick="PilozCatalog.openEditor('${item.id}')">Modifier</button></div><dl class="catalog-info-list two"><div><dt>Type</dt><dd>${esc(typeLabels[item.item_type])}</dd></div><div><dt>Référence interne</dt><dd>${esc(item.reference)}</dd></div><div><dt>Référence fabricant</dt><dd>${esc(item.manufacturer_reference || "—")}</dd></div><div><dt>Marque</dt><dd>${esc(item.brand || "—")}</dd></div><div><dt>Unité</dt><dd>${esc(item.unit || "—")}</dd></div><div><dt>Statut</dt><dd>${esc(statusLabels[statusOf(item)])}</dd></div></dl><h3>Description</h3><p class="catalog-copy">${esc(item.sales_description || item.short_description || item.detailed_description || "Aucune description.")}</p><h3>Note interne</h3><p class="catalog-copy muted">${esc(item.internal_notes || "Aucune note interne.")}</p></section>`;
   }
   function pricesTab(item) {
     const histories = (state().data.itemPriceHistory || []).filter(
@@ -1237,12 +1267,10 @@
     if (match) renderDetail(match[1]);
   }
   function openTaxonomy() {
-    const categories = state().data.categories || [],
-      tags = state().data.itemTags || [],
-      settings = state().data.catalogSettings?.[0] || {};
+    const settings = state().data.catalogSettings?.[0] || {};
     modal(
-      "Catégories, tags et références",
-      `<div class="catalog-taxonomy"><section><h3>Catégories</h3><ul class="catalog-simple-list">${categories.map((row) => `<li><div><b>${esc(row.name)}</b><small>${esc(row.description || "Aucune description")} · ${row.active === false ? "Inactive" : "Active"}</small></div><span class="catalog-category" style="--tag:${esc(row.color || "#E7F5F3")}">${esc(row.parent_id ? "Sous-catégorie" : "Catégorie")}</span></li>`).join("") || "<li>Aucune catégorie.</li>"}</ul><form id="catalog-category-form" class="catalog-form-grid" onsubmit="event.preventDefault();PilozCatalog.saveCategory()">${field("Nom *", "name", "", "text", "required")}${field("Description", "description")}<label class="modern-field"><span>Catégorie parente</span><select name="parent_id"><option value="">Aucune</option>${options(categories, "")}</select></label>${field("Couleur", "color", "#E7F5F3", "color")}<label class="modern-field"><span>TVA par défaut</span><input name="default_tax_rate" type="number" min="0" max="100" step="0.01"></label>${field("Unité par défaut", "default_unit")}<div class="full"><button class="btn btn-p" type="submit">Ajouter la catégorie</button></div></form></section><section><h3>Tags libres</h3><div class="catalog-tag-cloud">${tags.map((tag) => `<span style="--tag:${esc(tag.color)}">${esc(tag.name)}</span>`).join("") || "<small>Aucun tag.</small>"}</div><form id="catalog-tag-form" class="catalog-form-grid" onsubmit="event.preventDefault();PilozCatalog.saveTag()">${field("Nom du tag *", "name", "", "text", "required")}${field("Couleur", "color", "#E7F5F3", "color")}<div><button class="btn btn-p" type="submit">Ajouter le tag</button></div></form></section><section><h3>Références automatiques</h3><form id="catalog-reference-form" class="catalog-form-grid" onsubmit="event.preventDefault();PilozCatalog.saveCatalogSettings()">${field("Préfixe article", "product_prefix", settings.product_prefix || "ART")}${field("Préfixe service", "service_prefix", settings.service_prefix || "SER")}${field("Longueur", "reference_padding", settings.reference_padding || 6, "number", 'min="2" max="12"')}${field("Format", "reference_format", settings.reference_format || "{PREFIX}-{NUMBER}")}<label class="modern-field catalog-check-field"><input name="auto_reference" type="checkbox" ${settings.auto_reference !== false ? "checked" : ""}><span>Génération automatique</span></label><label class="modern-field catalog-check-field"><input name="manual_reference_allowed" type="checkbox" ${settings.manual_reference_allowed !== false ? "checked" : ""}><span>Saisie manuelle autorisée</span></label><div class="full"><button class="btn btn-p" type="submit">Enregistrer les références</button></div></form></section></div>`,
+      "Paramètres du catalogue",
+      `<div class="catalog-taxonomy"><section><h3>Unités</h3><p>Une unité proposée reste toujours modifiable dans un article, un devis ou une facture.</p><form id="catalog-units-form" class="catalog-form-grid" onsubmit="event.preventDefault();PilozCatalog.saveCatalogUnits()"><label class="modern-field full"><span>Unités proposées (une par ligne)</span><textarea name="units" rows="8" required>${esc(catalogUnits().join("\n"))}</textarea></label><div class="full"><button class="btn btn-p" type="submit">Enregistrer les unités</button></div></form></section><section><h3>Références automatiques</h3><form id="catalog-reference-form" class="catalog-form-grid" onsubmit="event.preventDefault();PilozCatalog.saveCatalogSettings()">${field("Préfixe article", "product_prefix", settings.product_prefix || "ART")}${field("Préfixe service", "service_prefix", settings.service_prefix || "SER")}${field("Longueur", "reference_padding", settings.reference_padding || 6, "number", 'min="2" max="12"')}${field("Format", "reference_format", settings.reference_format || "{PREFIX}-{NUMBER}")}<label class="modern-field catalog-check-field"><input name="auto_reference" type="checkbox" ${settings.auto_reference !== false ? "checked" : ""}><span>Génération automatique</span></label><label class="modern-field catalog-check-field"><input name="manual_reference_allowed" type="checkbox" ${settings.manual_reference_allowed !== false ? "checked" : ""}><span>Saisie manuelle autorisée</span></label><div class="full"><button class="btn btn-p" type="submit">Enregistrer les références</button></div></form></section></div>`,
       `<button class="btn btn-o" onclick="PilozCatalog.closeModal()">Fermer</button>`,
     );
   }
@@ -1313,6 +1341,41 @@
       closeModal();
       await app().refresh();
       notify("Références du catalogue enregistrées.", "success");
+    } catch (error) {
+      notify(error.message, "error");
+    }
+  }
+  async function saveCatalogUnits() {
+    const form = document.getElementById("catalog-units-form");
+    if (!form?.reportValidity()) return;
+    const units = [
+      ...new Set(
+        String(form.elements.units.value || "")
+          .split(/[\n,;]+/)
+          .map((value) => value.trim())
+          .filter(Boolean),
+      ),
+    ];
+    if (!units.length) {
+      notify("Ajoutez au moins une unité.", "error");
+      return;
+    }
+    try {
+      await api().request(
+        "/rest/v1/company_catalog_settings?on_conflict=company_id",
+        {
+          method: "POST",
+          headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+          body: api().serializeBody({
+            company_id: state().companyId,
+            units,
+            updated_by: global.PilozRuntime.session.user_id,
+          }),
+        },
+      );
+      closeModal();
+      await app().refresh();
+      notify("Unités du catalogue enregistrées.", "success");
     } catch (error) {
       notify(error.message, "error");
     }
@@ -2362,6 +2425,7 @@
       saveCategory,
       saveTag,
       saveCatalogSettings,
+      saveCatalogUnits,
       openPrice,
       savePrice,
       openPriceList,
