@@ -57,7 +57,7 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   check('onglets devis simplifiés',['Tous','Brouillon','Envoyé','En attente','Refusé','Facturés'].every(label=>main.textContent.includes(label))&&!main.textContent.includes('Acceptés')&&!main.textContent.includes('Expirés')&&!main.textContent.includes('Consulté'));
   check('comptages réels devis',Array.from(document.querySelectorAll('.document-viewer-tabs button')).find(node=>node.textContent.includes('Facturés'))?.textContent.includes('1'));
   check('barre PDF totalement retirée',!document.querySelector('.document-viewer-pdf-controls')&&!main.textContent.includes('95 %'));
-  check('PDF ouvert automatiquement en page entière',document.querySelector('.document-viewer-stage iframe')?.getAttribute('src')?.includes('view=Fit&zoom=page-fit'));
+  check('PDF ajusté automatiquement à toute la largeur',document.querySelector('.document-viewer-stage iframe')?.getAttribute('src')?.includes('view=FitH&zoom=page-width'));
   check('aperçu PDF sans bord sombre',getComputedStyle(document.querySelector('.document-viewer-stage')).backgroundColor==='rgb(255, 255, 255)');
   check('aucun ancien bouton retour',!main.textContent.includes('Retour aux devis')&&!main.textContent.includes('Retour factures'));
   check('une fermeture accessible en haut',document.querySelectorAll('[aria-label="Fermer la consultation"]').length===1);
