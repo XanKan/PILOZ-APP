@@ -64,6 +64,18 @@
     if(value.includes('validated_document_is_locked'))return'Ce document validé est verrouillé. Créez une correction ou un avoir.';
     if(value.includes('schema cache')||value.includes('does not exist')||value.includes('pgrst204'))return'La base de données doit être synchronisée avant cette opération.';
     if(value.includes('payment_exceeds_balance'))return'Le paiement dépasse le reste à payer.';
+    if(value.includes('payment_allocations_required')||value.includes('invalid_payment_allocation'))return'Sélectionnez au moins une facture avec un montant valide.';
+    if(value.includes('payment_allocations_must_share_company_client_currency'))return'Les factures sélectionnées doivent appartenir au même client et utiliser la même devise.';
+    if(value.includes('allocations_exceed_received_amount'))return'Le total affecté dépasse le montant reçu.';
+    if(value.includes('unallocated_amount_confirmation_required'))return'Confirmez le montant non affecté avant d’enregistrer le règlement.';
+    if(value.includes('inactive_payment_method'))return'Ce mode de règlement est désactivé dans les paramètres.';
+    if(value.includes('payment_receipt_not_found'))return'Ce règlement est introuvable ou inaccessible.';
+    if(value.includes('payment_already_fully_reversed'))return'Ce règlement a déjà été entièrement corrigé.';
+    if(value.includes('payment_reversal_reason_required'))return'Indiquez le motif de la correction.';
+    if(value.includes('payment_date_in_closed_period'))return'Cette date appartient à une période comptable clôturée.';
+    if(value.includes('idempotency_payload_mismatch'))return'Cette demande a déjà été utilisée avec des informations différentes. Fermez puis rouvrez la fenêtre.';
+    if(value.includes('final_pdf_required'))return'Le PDF définitif doit être généré avant l’envoi.';
+    if(value.includes('invalid_email_recipient'))return'Une adresse e-mail n’est pas valide.';
     if(value.includes('invalid_invoice_state'))return'Cette facture ne peut pas être modifiée dans son état actuel.';
     if(value.includes('invalid_quantity'))return'La quantité doit être supérieure à zéro.';
     return message||'Une erreur est survenue.';

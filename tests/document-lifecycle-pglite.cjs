@@ -71,7 +71,7 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     pipeline_stage:'draft',metadata:{pipeline_stage:'draft'}
   };
   const targetLines=[{
-    id:type==='quote'?'44444444-4444-4444-8444-444444444444':'55555555-5555-4555-8555-555555555555',
+    id:crypto.randomUUID(),
     position:1,line_type:'free_item',name:'Prestation de test',description:'Ligne réelle',quantity:1,
     unit:'unité',unit_cost_snapshot:50,unit_price:unitPrice,discount_rate:0,tax_rate:20,optional:false,
     cumulative_progress_percent:0,line_metadata:{}
@@ -170,11 +170,21 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     await db.exec(`set request.jwt.claim.sub='${otherActor}';`);
     await db.query("insert into public.company_members(company_id,user_id,role) values($1,$2,'owner')",[otherCompany,otherActor]);
     await db.query("insert into public.clients(id,company_id,kind,legal_name,created_by) values($1,$2,'company','Client étranger',$3)",[otherClient,otherCompany,otherActor]);
+    await db.query("insert into public.company_settings(company_id,legal_name,siret,address_line1,postal_code,city,country,email,subject_to_vat,default_vat_rate,onboarding_completed_at) values($1,'Entreprise B','98765432100019','9 rue B','33000','Bordeaux','France','b@example.test',true,20,now()) on conflict(company_id) do update set legal_name=excluded.legal_name,siret=excluded.siret,address_line1=excluded.address_line1,postal_code=excluded.postal_code,city=excluded.city",[otherCompany]);
+    await db.query("update public.clients set address_line_1='10 rue Client B',postal_code='33000',city='Bordeaux',country_code='FR' where id=$1",[otherClient]);
+    const foreignDraft=(await db.query('select public.save_document_draft($1,$2::jsonb,$3::jsonb) result',[null,JSON.stringify({company_id:otherCompany,document_type:'invoice',version:1,client_id:otherClient,issue_date:'2026-07-23',due_date:'2026-08-23',subject:'Facture entreprise B',currency:'EUR',language:'fr',sale_type:'services',payment_terms:'days_30',payment_method:'bank_transfer',discount_rate:0,deposit_rate:0,pipeline_stage:'draft',metadata:{pipeline_stage:'draft'}}),JSON.stringify([{id:crypto.randomUUID(),position:1,line_type:'free_item',name:'Prestation B',description:'Donnée isolée',quantity:1,unit:'unité',unit_price:100,discount_rate:0,tax_rate:20,optional:false,line_metadata:{}}])])).rows[0].result;
+    const foreignInvoice=(await db.query('select public.finalize_document($1) result',[foreignDraft.id])).rows[0].result;
     await db.exec(`set request.jwt.claim.sub='${actor}'; set role authenticated;`);
     const foreignClient=await db.query('select id from public.clients where id=$1',[otherClient]);
     if(foreignClient.rows.length!==0)throw new Error('clients: RLS exposed a client from another company');
     const foreignSummary=await db.query('select public.get_client_workspace_summary($1)',[otherClient]).then(()=>null,error=>error);
     if(!foreignSummary||!/client_not_found/.test(foreignSummary.message))throw new Error('clients: workspace RPC exposed another company');
+    const foreignDocument=await db.query('select id from public.documents where id=$1',[foreignInvoice.id]);
+    if(foreignDocument.rows.length!==0)throw new Error('security: RLS exposed an invoice from another company');
+    const foreignPayment=await db.query("select public.record_multi_invoice_payment($1::jsonb,10,'bank_transfer',now(),null,null,null,'Paiement interdit',null,'{}'::jsonb,null,false,$2::uuid)",[JSON.stringify([{document_id:foreignInvoice.id,amount:'10.00'}]),crypto.randomUUID()]).then(()=>null,error=>error);
+    if(!foreignPayment||!/missing_permission:record_multi_invoice_payment/.test(foreignPayment.message))throw new Error('security: company A was able to reach the payment path of company B');
+    const foreignEmail=await db.query("select public.record_manual_document_email($1,array['client@example.test'],array[]::text[],'Facture','Message','manual')",[foreignInvoice.id]).then(()=>null,error=>error);
+    if(!foreignEmail||!/missing_permission:resend_invoice/.test(foreignEmail.message))throw new Error('security: company A was able to reach the email path of company B');
     // Le devis reçoit son numéro officiel et son statut "en attente" dès son
     // premier enregistrement — plus de brouillon, plus de finalisation.
     const quote=await saveDraft(db,'quote');
@@ -287,6 +297,71 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     if(overpaymentLedger.rows.length!==3||overpaymentLedger.rows.filter(row=>row.entry_type==='refund').length!==2
       ||overpaymentLedger.rows.reduce((sum,row)=>sum+Number(row.amount),0)!==0)
       throw new Error(`payments: partial refund ledger is invalid ${JSON.stringify(overpaymentLedger.rows)}`);
+    const multiDraftA=await saveDraft(db,'invoice',null,100),multiDraftB=await saveDraft(db,'invoice',null,200);
+    await db.exec('reset role');
+    await db.query("update public.company_document_settings set bank_name='Banque PILOZ',bank_account_holder='Société Test',iban='FR7612345678901234567890123',bic='PILOFRPP' where company_id=$1",[company]);
+    await db.exec(`set request.jwt.claim.sub='${actor}'; set role authenticated;`);
+    const multiInvoiceA=(await db.query('select public.finalize_document($1) result',[multiDraftA.id])).rows[0].result;
+    const multiInvoiceB=(await db.query('select public.finalize_document($1) result',[multiDraftB.id])).rows[0].result;
+    const multiKey='77777777-7777-4777-8777-777777777777',multiArgs=[
+      JSON.stringify([{document_id:multiInvoiceA.id,amount:'60.00'},{document_id:multiInvoiceB.id,amount:'90.00'}]),
+      '160.00','bank_transfer','2026-07-23T12:00:00Z','2026-07-23','MULTI-001','BANK-001','Règlement groupé','Test multi-factures',
+      JSON.stringify({bank_name:'Banque Test',iban_last4:'1234'}),null,true,multiKey
+    ];
+    const multiPayment=await db.query('select public.record_multi_invoice_payment($1::jsonb,$2::numeric,$3,$4::timestamptz,$5::date,$6,$7,$8,$9,$10::jsonb,$11,$12::boolean,$13::uuid) result',multiArgs);
+    const multiResult=multiPayment.rows[0].result;
+    if(!multiResult?.payment_number?.startsWith('REG-2026-')||Number(multiResult.received_amount)!==160
+      ||Number(multiResult.allocated_amount)!==150||Number(multiResult.unallocated_amount)!==10||multiResult.documents?.length!==2)
+      throw new Error(`multi-payment: invalid receipt ${JSON.stringify(multiResult)}`);
+    const secureReceipt=await db.query('select receiving_account,bank_reference from public.payment_receipt_read_model where id=$1',[multiResult.receipt_id]);
+    if(secureReceipt.rows[0]?.receiving_account?.bank_name!=='Banque PILOZ'||secureReceipt.rows[0]?.receiving_account?.iban_last4!=='0123'||secureReceipt.rows[0]?.bank_reference!=='BANK-001')
+      throw new Error(`multi-payment: receiving account was trusted from the browser or masked for its owner ${JSON.stringify(secureReceipt.rows[0])}`);
+    const multiLedger=await db.query('select count(*)::int count,sum(amount)::numeric total from public.payments where payment_receipt_id=$1',[multiResult.receipt_id]);
+    if(Number(multiLedger.rows[0].count)!==2||Number(multiLedger.rows[0].total)!==150)
+      throw new Error(`multi-payment: invalid allocations ${JSON.stringify(multiLedger.rows[0])}`);
+    const multiReplay=(await db.query('select public.record_multi_invoice_payment($1::jsonb,$2::numeric,$3,$4::timestamptz,$5::date,$6,$7,$8,$9,$10::jsonb,$11,$12::boolean,$13::uuid) result',multiArgs)).rows[0].result;
+    if(multiReplay?.idempotent!==true||multiReplay?.receipt_id!==multiResult.receipt_id)
+      throw new Error(`multi-payment: idempotency failed ${JSON.stringify(multiReplay)}`);
+    const mismatchedArgs=[...multiArgs];mismatchedArgs[1]='161.00';
+    const mismatchedReplay=await db.query('select public.record_multi_invoice_payment($1::jsonb,$2::numeric,$3,$4::timestamptz,$5::date,$6,$7,$8,$9,$10::jsonb,$11,$12::boolean,$13::uuid) result',mismatchedArgs).then(()=>null,error=>error);
+    if(!mismatchedReplay||!/idempotency_payload_mismatch/.test(mismatchedReplay.message))
+      throw new Error('multi-payment: an idempotency key must not accept a different payload');
+    const immutableReceipt=await db.query("update public.payment_receipts set label='Altéré' where id=$1",[multiResult.receipt_id]).then(()=>null,error=>error);
+    if(!immutableReceipt||!/(immutable_fiscal_record|permission denied)/.test(immutableReceipt.message))
+      throw new Error('multi-payment: receipt must be append-only');
+    const reversedReceipt=(await db.query("select public.reverse_payment_receipt($1,'correction','Virement saisi deux fois','2026-07-23T16:00:00Z') result",[multiResult.receipt_id])).rows[0].result;
+    if(Number(reversedReceipt?.reversed_amount)!==150||reversedReceipt?.reversals?.length!==2)
+      throw new Error(`multi-payment: grouped reversal is incomplete ${JSON.stringify(reversedReceipt)}`);
+    const reversedLedger=await db.query("select count(*)::int count,sum(amount)::numeric total from public.payments where payment_receipt_id=$1 or reverses_payment_id in(select ledger_payment_id from public.payment_allocations where payment_receipt_id=$1)",[multiResult.receipt_id]);
+    if(Number(reversedLedger.rows[0].count)!==4||Number(reversedLedger.rows[0].total)!==0)
+      throw new Error(`multi-payment: grouped reversal ledger is inconsistent ${JSON.stringify(reversedLedger.rows[0])}`);
+    const allocationAudit=await db.query('select count(*)::int count,sum(amount)::numeric total from public.payment_allocations where payment_receipt_id=$1',[multiResult.receipt_id]);
+    if(Number(allocationAudit.rows[0].count)!==2||Number(allocationAudit.rows[0].total)!==150)
+      throw new Error('multi-payment: reversal modified immutable allocations');
+    const duplicateReversal=await db.query("select public.reverse_payment_receipt($1,'correction','Nouvelle correction')",[multiResult.receipt_id]).then(()=>null,error=>error);
+    if(!duplicateReversal||!/payment_already_fully_reversed/.test(duplicateReversal.message))
+      throw new Error('multi-payment: a fully reversed receipt must reject another grouped reversal');
+    const raceDraft=await saveDraft(db,'invoice',null,50),raceInvoice=(await db.query('select public.finalize_document($1) result',[raceDraft.id])).rows[0].result,raceKey='66666666-6666-4666-8666-666666666666',raceArgs=[JSON.stringify([{document_id:raceInvoice.id,amount:'10.00'}]),'10.00','bank_transfer','2026-07-23T17:00:00Z',null,'RACE-001',null,'Paiement simultané',null,JSON.stringify({}),null,false,raceKey];
+    const raceResults=await Promise.all([1,2].map(()=>db.query('select public.record_multi_invoice_payment($1::jsonb,$2::numeric,$3,$4::timestamptz,$5::date,$6,$7,$8,$9,$10::jsonb,$11,$12::boolean,$13::uuid) result',raceArgs)));
+    if(raceResults.some(result=>result.rows[0].result?.receipt_id!==raceResults[0].rows[0].result?.receipt_id))throw new Error('multi-payment: concurrent idempotent calls returned different receipts');
+    const raceCount=await db.query('select count(*)::int count from public.payment_receipt_read_model where id=$1',[raceResults[0].rows[0].result.receipt_id]);
+    if(Number(raceCount.rows[0].count)!==1)throw new Error('multi-payment: concurrent calls created duplicate receipts');
+    await db.exec('reset role');
+    for(const finalizedMulti of [multiInvoiceA,multiInvoiceB,raceInvoice]){
+      const pdfPath=`${company}/documents/${finalizedMulti.id}/${finalizedMulti.snapshot_id}.pdf`,pdfHash='b'.repeat(64);
+      await db.query("insert into storage.objects(bucket_id,name,metadata) values('company-files',$1,'{}'::jsonb) on conflict do nothing",[pdfPath]);
+      await db.query("update public.document_snapshots set pdf_storage_path=$2,pdf_sha256=$3,pdf_status='ready',pdf_generated_at=now() where id=$1",[finalizedMulti.snapshot_id,pdfPath,pdfHash]);
+      await db.query("update public.documents set final_pdf_path=$2,final_pdf_sha256=$3,final_pdf_generated_at=now(),pdf_status='ready' where id=$1",[finalizedMulti.id,pdfPath,pdfHash]);
+    }
+    await db.exec(`set request.jwt.claim.sub='${actor}'; set role authenticated;`);
+    const manualDelivery=await db.query("select public.record_manual_document_email($1,array['factures@client.test'],array['direction@client.test'],'Facture de test','Message de test','mail_app') result",[multiInvoiceA.id]);
+    const manualDeliveryRow=await db.query('select delivery_mode,delivery_status,pdf_storage_path,template_key from public.document_email_deliveries where id=$1',[manualDelivery.rows[0].result]);
+    if(manualDeliveryRow.rows[0]?.delivery_mode!=='mail_app'||manualDeliveryRow.rows[0]?.delivery_status!=='recorded'||!manualDeliveryRow.rows[0]?.pdf_storage_path||manualDeliveryRow.rows[0]?.template_key!=='invoice-resend-default')
+      throw new Error(`email: manual delivery history is incomplete ${JSON.stringify(manualDeliveryRow.rows[0])}`);
+    const deliveryCounter=await db.query('select send_count,last_sent_at from public.documents where id=$1',[multiInvoiceA.id]);
+    if(Number(deliveryCounter.rows[0]?.send_count)!==1||!deliveryCounter.rows[0]?.last_sent_at)throw new Error('email: delivery counter trigger was not applied');
+    const invalidRecipient=await db.query("select public.record_manual_document_email($1,array['adresse-invalide'],array[]::text[],'Facture','Message','manual')",[multiInvoiceA.id]).then(()=>null,error=>error);
+    if(!invalidRecipient||!/invalid_email_recipient/.test(invalidRecipient.message))throw new Error('email: invalid recipient must be rejected');
     const closure=await db.query("select public.generate_fiscal_closure($1,'daily',date_trunc('day',now()-interval '1 day'),date_trunc('day',now())) result",[company]);
     const closureRow=await db.query('select integrity_status,signature,closure_hash from public.fiscal_closures where id=$1',[closure.rows[0].result]);
     if(closureRow.rows[0].integrity_status!=='unsigned'||closureRow.rows[0].signature!==null||!closureRow.rows[0].closure_hash)
@@ -306,7 +381,7 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     if(!archiveControl.rows[0].result?.valid||archiveControl.rows[0].result.signature_status!=='not_configured')
       throw new Error(`archive: integrity control failed ${JSON.stringify(archiveControl.rows[0].result)}`);
     const archiveItems=await db.query('select category,content_status,content_hash from public.fiscal_archive_items where archive_id=$1 order by relative_path',[archiveId]);
-    if(archiveItems.rows.length!==2||!archiveItems.rows.some(row=>row.category==='structured_data'&&row.content_status==='embedded')
+    if(archiveItems.rows.length<2||!archiveItems.rows.some(row=>row.category==='structured_data'&&row.content_status==='embedded')
       ||!archiveItems.rows.some(row=>row.category==='pdf'&&row.content_status==='storage_reference'))
       throw new Error(`archive: manifest items are incomplete ${JSON.stringify(archiveItems.rows)}`);
     const archiveMutation=await db.query("update public.fiscal_archives set integrity_status='signed' where id=$1",[archiveId]).then(()=>null,error=>error);
@@ -348,6 +423,13 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     await db.exec(`set request.jwt.claim.sub='${limitedUser}';`);
     const limitedPermissions=await db.query("select public.has_company_permission($1,'application_read') can_read,public.has_company_permission($1,'finalize_invoice') can_finalize",[company]);
     if(!limitedPermissions.rows[0].can_read||limitedPermissions.rows[0].can_finalize)throw new Error(`roles: read-only permissions are invalid ${JSON.stringify(limitedPermissions.rows[0])}`);
+    const maskedReceipt=await db.query('select bank_reference,receiving_account,proof_storage_path from public.payment_receipt_read_model where id=$1',[multiResult.receipt_id]);
+    if(maskedReceipt.rows[0]?.bank_reference!==null||Object.keys(maskedReceipt.rows[0]?.receiving_account||{}).length||maskedReceipt.rows[0]?.proof_storage_path!==null)
+      throw new Error(`roles: sensitive payment fields were exposed to read-only ${JSON.stringify(maskedReceipt.rows[0])}`);
+    const limitedPayment=await db.query("select public.record_multi_invoice_payment($1::jsonb,1,'bank_transfer',now(),null,null,null,'Interdit',null,'{}'::jsonb,null,false,$2::uuid)",[JSON.stringify([{document_id:raceInvoice.id,amount:'1.00'}]),crypto.randomUUID()]).then(()=>null,error=>error);
+    if(!limitedPayment||!/missing_permission:record_multi_invoice_payment/.test(limitedPayment.message))throw new Error('roles: read-only user was able to record a payment');
+    const limitedEmail=await db.query("select public.record_manual_document_email($1,array['client@example.test'],array[]::text[],'Facture','Message','manual')",[multiInvoiceA.id]).then(()=>null,error=>error);
+    if(!limitedEmail||!/missing_permission:resend_invoice/.test(limitedEmail.message))throw new Error('roles: read-only user was able to record an invoice email');
     await db.query("update public.clients set trade_name='Interdit' where id=$1",[client]).catch(()=>null);
     const clientAfterForbiddenUpdate=await db.query('select trade_name from public.clients where id=$1',[client]);
     if(clientAfterForbiddenUpdate.rows[0]?.trade_name==='Interdit')
