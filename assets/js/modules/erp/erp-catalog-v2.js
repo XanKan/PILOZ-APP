@@ -399,7 +399,11 @@
     return (location.hash || "#sales/catalog").slice(1).split("?")[0];
   }
   function top() {
-    return `<header class="catalog-top"><div><span>Ventes</span><h1>Articles & services</h1><p>Catalogue, prix, fournisseurs et stock au même endroit.</p></div><div class="catalog-top-actions"><button class="btn btn-o" onclick="PilozCatalog.openTaxonomy()">Paramètres du catalogue</button><button class="btn btn-o" onclick="PilozCatalog.openImport()">Importer</button><button class="btn btn-o" onclick="PilozCatalog.exportCsv('filtered')">Exporter</button><button class="btn btn-p" onclick="PilozApp.go('sales/catalog/new')">Nouvel élément</button></div></header>`;
+    return `<header class="catalog-top"><div><span>Ventes</span><h1>Articles & services</h1><p>Catalogue, prix, fournisseurs et stock au même endroit.</p></div><div class="catalog-top-actions"><button class="btn btn-p" onclick="PilozApp.go('sales/catalog/new')">Nouvel élément</button></div></header>`;
+  }
+  function renderSettings() {
+    document.getElementById("main").innerHTML =
+      `<div class="catalog-workspace catalog-settings-page"><header class="catalog-top"><div><span>Paramètres</span><h1>Paramètres du catalogue Articles & services</h1><p>Configurez les unités et les références, puis importez ou exportez votre catalogue.</p></div><div class="catalog-top-actions"><button class="btn btn-o" onclick="PilozApp.go('settings/overview')">Retour aux paramètres</button></div></header><section class="catalog-settings-actions" aria-label="Gestion du catalogue"><button type="button" class="catalog-settings-action" onclick="PilozCatalog.openTaxonomy()"><span class="catalog-settings-icon" aria-hidden="true">⚙</span><span><b>Unités et références</b><small>Choisissez les unités disponibles et la numérotation automatique des articles et services.</small></span><span aria-hidden="true">›</span></button><button type="button" class="catalog-settings-action" onclick="PilozCatalog.openImport()"><span class="catalog-settings-icon" aria-hidden="true">⇩</span><span><b>Importer le catalogue</b><small>Ajoutez ou mettez à jour des articles et services à partir d’un fichier CSV.</small></span><span aria-hidden="true">›</span></button><button type="button" class="catalog-settings-action" onclick="PilozCatalog.exportCsv('all')"><span class="catalog-settings-icon" aria-hidden="true">⇧</span><span><b>Exporter le catalogue</b><small>Téléchargez l’ensemble de vos articles et services au format CSV.</small></span><span aria-hidden="true">›</span></button></section></div>`;
   }
   function quickCounts() {
     const s = stats(),
@@ -746,7 +750,7 @@
       )
       .join(
         "",
-      )}</select></label><label class="modern-field full"><span>Description</span><textarea name="sales_description" rows="4">${esc(item.sales_description || item.short_description || item.detailed_description || "")}</textarea><small>Cette description sera reprise automatiquement dans les devis et les factures.</small></label><label class="modern-field full"><span>Note interne</span><textarea name="internal_notes" rows="3">${esc(item.internal_notes || "")}</textarea></label></div></section><section><h2>Prix et marge</h2><div class="catalog-form-grid">${purchaseFields}${marginFields}${field("Prix de vente HT", "sale_price", item.sale_price || 0, "number", 'min="0" step="0.0001" oninput="PilozCatalog.syncPrices(\'sale\')"')}<label class="modern-field"><span>TVA</span><select name="tax_rate" onchange="PilozCatalog.syncPrices()">${(rates.length ? rates : [{ rate: 20, label: "20 %" }]).map((x) => `<option value="${Number(x.rate)}" ${Number(item.tax_rate ?? 20) === Number(x.rate) ? "selected" : ""}>${esc(x.label)}</option>`).join("")}</select></label>${field("Prix de vente TTC", "sale_price_ttc", (Number(item.sale_price || 0) * (1 + Number(item.tax_rate ?? 20) / 100)).toFixed(2), "number", "readonly")}${marginSummary}</div></section><section id="catalog-product-fields" ${kind === "service" ? "hidden" : ""}><h2>Stock et logistique</h2><div class="catalog-form-grid"><label class="modern-field catalog-check-field"><input name="stock_managed" type="checkbox" ${item.stock_managed ? "checked" : ""}><span>Gérer le stock</span></label><label class="modern-field catalog-check-field"><input name="track_lots" type="checkbox" ${item.track_lots ? "checked" : ""}><span>Suivi par lots</span></label><label class="modern-field catalog-check-field"><input name="track_serials" type="checkbox" ${item.track_serials ? "checked" : ""}><span>Suivi par numéros de série</span></label>${field("Seuil d’alerte", "reorder_point", item.reorder_point || 0, "number", 'step="0.0001"')}${field("Stock minimum", "minimum_stock", item.minimum_stock || 0, "number", 'step="0.0001"')}${field("Stock initial", "initial_stock", 0, "number", 'min="0" step="0.0001"')}<label class="modern-field"><span>Entrepôt initial</span><select name="warehouse_id"><option value="">Aucun</option>${options(warehouses, item.default_warehouse_id)}</select></label>${field("Délai d’approvisionnement (jours)", "supply_lead_days", item.supply_lead_days, "number", 'min="0"')}${field("Poids", "weight", item.weight, "number", 'min="0" step="0.0001"')}${field("Pays d’origine", "country_of_origin", item.country_of_origin)}${field("Code douanier", "customs_code", item.customs_code)}</div></section><section id="catalog-service-fields" ${kind !== "service" ? "hidden" : ""}><h2>Prestation</h2><div class="catalog-form-grid">${unitField("Unité de facturation", "billing_unit", item.billing_unit || item.unit || "heure")}${field("Durée estimée (minutes)", "estimated_duration_minutes", item.estimated_duration_minutes, "number", 'min="0"')}${field("Minimum facturable (minutes)", "minimum_billable_minutes", item.minimum_billable_minutes, "number", 'min="0"')}${field("Intervalle de facturation", "billing_interval", item.billing_interval)}<label class="modern-field catalog-check-field"><input name="recurring" type="checkbox" ${item.recurring ? "checked" : ""}><span>Service récurrent</span></label></div></section><section><h2>Fournisseur principal</h2><div class="catalog-form-grid"><label class="modern-field"><span>Fournisseur</span><select name="primary_supplier_id"><option value="">Aucun</option>${options(suppliers, item.primary_supplier_id, (x) => x.legal_name)}</select></label>${field("Référence fournisseur", "supplier_reference", item.supplier_reference)}</div></section><footer class="catalog-form-actions"><button type="button" class="btn btn-o" onclick="${item.id ? `PilozApp.go('sales/items/${item.id}')` : `PilozApp.go('sales/catalog')`}">Annuler</button><button type="submit" class="btn btn-p" data-catalog-save>${item.id ? "Enregistrer les modifications" : "Créer l’élément"}</button></footer></form>`;
+      )}</select></label><label class="modern-field full"><span>Description</span><textarea name="sales_description" rows="4">${esc(item.sales_description || item.short_description || item.detailed_description || "")}</textarea><small>Cette description sera reprise automatiquement dans les devis et les factures.</small></label><label class="modern-field full"><span>Note interne</span><textarea name="internal_notes" rows="3">${esc(item.internal_notes || "")}</textarea></label></div></section><section><h2>Prix et marge</h2><div class="catalog-form-grid">${purchaseFields}${marginFields}${field("Prix de vente HT", "sale_price", item.sale_price || 0, "number", 'min="0" step="0.0001" oninput="PilozCatalog.syncPrices(\'sale\')"')}<label class="modern-field"><span>TVA</span><select name="tax_rate" onchange="PilozCatalog.syncPrices()">${(rates.length ? rates : [{ rate: 20, label: "20 %" }]).map((x) => `<option value="${Number(x.rate)}" ${Number(item.tax_rate ?? 20) === Number(x.rate) ? "selected" : ""}>${esc(x.label)}</option>`).join("")}</select></label>${field("Prix de vente TTC", "sale_price_ttc", (Number(item.sale_price || 0) * (1 + Number(item.tax_rate ?? 20) / 100)).toFixed(2), "number", "readonly")}${marginSummary}</div></section><section id="catalog-product-fields" ${kind === "service" ? "hidden" : ""}><h2>Stock et logistique</h2><div class="catalog-form-grid"><label class="modern-field catalog-check-field full"><input name="stock_managed" type="checkbox" onchange="PilozCatalog.toggleStockFields(this.checked)" ${item.stock_managed ? "checked" : ""}><span>Gérer le stock</span></label></div><div id="catalog-stock-details" class="catalog-form-grid" ${item.stock_managed ? "" : "hidden"}><label class="modern-field catalog-check-field"><input name="track_lots" type="checkbox" ${item.track_lots ? "checked" : ""}><span>Suivi par lots</span></label><label class="modern-field catalog-check-field"><input name="track_serials" type="checkbox" ${item.track_serials ? "checked" : ""}><span>Suivi par numéros de série</span></label>${field("Seuil d’alerte", "reorder_point", item.reorder_point || 0, "number", 'step="0.0001"')}${field("Stock minimum", "minimum_stock", item.minimum_stock || 0, "number", 'step="0.0001"')}${field("Stock initial", "initial_stock", 0, "number", 'min="0" step="0.0001"')}<label class="modern-field"><span>Entrepôt initial</span><select name="warehouse_id"><option value="">Aucun</option>${options(warehouses, item.default_warehouse_id)}</select></label>${field("Délai d’approvisionnement (jours)", "supply_lead_days", item.supply_lead_days, "number", 'min="0"')}${field("Poids", "weight", item.weight, "number", 'min="0" step="0.0001"')}${field("Pays d’origine", "country_of_origin", item.country_of_origin)}${field("Code douanier", "customs_code", item.customs_code)}</div></section><section id="catalog-service-fields" ${kind !== "service" ? "hidden" : ""}><h2>Prestation</h2><div class="catalog-form-grid">${unitField("Unité de facturation", "billing_unit", item.billing_unit || item.unit || "heure")}${field("Durée estimée (minutes)", "estimated_duration_minutes", item.estimated_duration_minutes, "number", 'min="0"')}${field("Minimum facturable (minutes)", "minimum_billable_minutes", item.minimum_billable_minutes, "number", 'min="0"')}${field("Intervalle de facturation", "billing_interval", item.billing_interval)}<label class="modern-field catalog-check-field"><input name="recurring" type="checkbox" ${item.recurring ? "checked" : ""}><span>Service récurrent</span></label></div></section><section><h2>Fournisseur principal</h2><div class="catalog-form-grid"><label class="modern-field"><span>Fournisseur</span><select name="primary_supplier_id"><option value="">Aucun</option>${options(suppliers, item.primary_supplier_id, (x) => x.legal_name)}</select></label>${field("Référence fournisseur", "supplier_reference", item.supplier_reference)}</div></section><footer class="catalog-form-actions"><button type="button" class="btn btn-o" onclick="${item.id ? `PilozApp.go('sales/items/${item.id}')` : `PilozApp.go('sales/catalog')`}">Annuler</button><button type="submit" class="btn btn-p" data-catalog-save>${item.id ? "Enregistrer les modifications" : "Créer l’élément"}</button></footer></form>`;
   }
   function renderCreate() {
     document.getElementById("main").innerHTML =
@@ -799,6 +803,14 @@
       type === "service";
     document.getElementById("catalog-service-fields").hidden =
       type !== "service";
+    if (type !== "service") {
+      const form = document.getElementById("catalog-item-form");
+      toggleStockFields(!!form?.elements.stock_managed?.checked);
+    }
+  }
+  function toggleStockFields(enabled) {
+    const details = document.getElementById("catalog-stock-details");
+    if (details) details.hidden = !enabled;
   }
   function applyCategoryDefaults(categoryId) {
     const form = document.getElementById("catalog-item-form"),
@@ -811,6 +823,7 @@
       form.elements.tax_rate.value = Number(category.default_tax_rate);
     if (category.default_stock_managed != null && form.elements.stock_managed)
       form.elements.stock_managed.checked = !!category.default_stock_managed;
+    toggleStockFields(!!form.elements.stock_managed?.checked);
     if (category.default_supplier_id)
       form.elements.primary_supplier_id.value = category.default_supplier_id;
     if (category.default_margin_rate != null)
@@ -873,8 +886,9 @@
     raw.active = !["inactive", "archived", "discontinued"].includes(raw.status);
     raw.stock_managed =
       raw.item_type !== "service" && form.elements.stock_managed?.checked;
-    raw.track_lots = !!form.elements.track_lots?.checked;
-    raw.track_serials = !!form.elements.track_serials?.checked;
+    raw.track_lots = raw.stock_managed && !!form.elements.track_lots?.checked;
+    raw.track_serials =
+      raw.stock_managed && !!form.elements.track_serials?.checked;
     raw.recurring = !!form.elements.recurring?.checked;
     for (const key of [
       "sale_price_ttc",
@@ -1269,7 +1283,7 @@
   function openTaxonomy() {
     const settings = state().data.catalogSettings?.[0] || {};
     modal(
-      "Paramètres du catalogue",
+      "Paramètres du catalogue Articles & services",
       `<div class="catalog-taxonomy"><section><h3>Unités</h3><p>Ces unités sont les seules disponibles dans les articles, devis et factures.</p><form id="catalog-units-form" class="catalog-form-grid" onsubmit="event.preventDefault();PilozCatalog.saveCatalogUnits()"><label class="modern-field full"><span>Unités proposées (une par ligne)</span><textarea name="units" rows="8" required>${esc(catalogUnits().join("\n"))}</textarea></label><div class="full"><button class="btn btn-p" type="submit">Enregistrer les unités</button></div></form></section><section><h3>Références automatiques</h3><form id="catalog-reference-form" class="catalog-form-grid" onsubmit="event.preventDefault();PilozCatalog.saveCatalogSettings()">${field("Préfixe article", "product_prefix", settings.product_prefix || "ART")}${field("Préfixe service", "service_prefix", settings.service_prefix || "SER")}${field("Longueur", "reference_padding", settings.reference_padding || 6, "number", 'min="2" max="12"')}${field("Format", "reference_format", settings.reference_format || "{PREFIX}-{NUMBER}")}<label class="modern-field catalog-check-field"><input name="auto_reference" type="checkbox" ${settings.auto_reference !== false ? "checked" : ""}><span>Génération automatique</span></label><label class="modern-field catalog-check-field"><input name="manual_reference_allowed" type="checkbox" ${settings.manual_reference_allowed !== false ? "checked" : ""}><span>Saisie manuelle autorisée</span></label><div class="full"><button class="btn btn-p" type="submit">Enregistrer les références</button></div></form></section></div>`,
       `<button class="btn btn-o" onclick="PilozCatalog.closeModal()">Fermer</button>`,
     );
@@ -2371,6 +2385,10 @@
   }
   function renderRoute(rawPath, currentState) {
     const path = String(rawPath || "").split("?")[0];
+    if (path === "settings/catalog") {
+      renderSettings();
+      return true;
+    }
     if (path === "sales/catalog") {
       restore();
       renderList();
@@ -2392,6 +2410,7 @@
       ui,
       renderRoute,
       renderList,
+      renderSettings,
       setSearch,
       setQuick,
       setFilter,
@@ -2412,6 +2431,7 @@
       closeModal,
       openEditor,
       syncItemType,
+      toggleStockFields,
       applyCategoryDefaults,
       syncPrices,
       saveItem,

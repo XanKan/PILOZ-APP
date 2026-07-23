@@ -24,7 +24,7 @@
   sales:{label:'Ventes',items:[['sales/overview','Vue d’ensemble'],['sales/quotes','Devis'],['sales/invoices','Factures'],['sales/clients','Clients'],['sales/catalog','Articles & services']]},
   purchases:{label:'Achats',items:[['purchases/overview','Vue d’ensemble'],['purchases/suppliers','Fournisseurs'],['purchases/orders','Commandes fournisseurs'],['purchases/receipts','Réceptions'],['purchases/invoices','Factures fournisseurs']]},
   stock:{label:'Stock',items:[['stock/overview','Vue d’ensemble'],['stock/items','Articles en stock'],['stock/movements','Mouvements'],['stock/inventories','Inventaires'],['stock/warehouses','Entrepôts']]},
-  settings:{label:'Paramètres',groups:[['Général',[['settings/overview','Vue d’ensemble']]],['Mon compte',[['settings/company','Mon entreprise'],['settings/users','Utilisateurs'],['settings/subscription','Abonnement']]],['Configuration',[['settings/sales','Ventes & TVA'],['settings/purchases','Achats'],['settings/stock','Stock'],['settings/documents','Documents'],['settings/templates','Modèles'],['settings/accounting','Comptabilité'],['settings/pipeline','Pipeline']]],['Administration',[['settings/security','Sécurité'],['settings/compliance','Conformité et fiscalité'],['settings/about-compliance','À propos et conformité'],['settings/data','Données']]]]}
+  settings:{label:'Paramètres',groups:[['Général',[['settings/overview','Vue d’ensemble']]],['Mon compte',[['settings/company','Mon entreprise'],['settings/users','Utilisateurs'],['settings/subscription','Abonnement']]],['Configuration',[['settings/sales','Ventes & TVA'],['settings/purchases','Achats'],['settings/stock','Stock'],['settings/catalog','Catalogue Articles & services'],['settings/documents','Documents'],['settings/templates','Modèles'],['settings/accounting','Comptabilité'],['settings/pipeline','Pipeline']]],['Administration',[['settings/security','Sécurité'],['settings/compliance','Conformité et fiscalité'],['settings/about-compliance','À propos et conformité'],['settings/data','Données']]]]}
  };
  const ui={
   secondaryOpen:storage.get('piloz_modern_secondary',true),
@@ -231,6 +231,7 @@
    ['settings/sales','Ventes & TVA','Numérotation, conditions de paiement, devise et taux de TVA.','€'],
    ['settings/purchases','Achats','Réglages par défaut des fournisseurs et commandes.','↙'],
    ['settings/stock','Stock','Valorisation, réception et réapprovisionnement.','□'],
+   ['settings/catalog','Paramètres du catalogue Articles & services','Unités, références, import et export de vos articles et services.','▦'],
    ['settings/accounting','Comptabilité','Exercice comptable et régime déclaratif.','∑'],
    ['settings/pipeline','Pipeline','Étapes et automatisations du suivi commercial.','⇢']
   ]],

@@ -31,7 +31,7 @@ location.hash='settings/company';
  PilozApp.go('settings/overview');
  await new Promise(resolve=>setTimeout(resolve,30));
  const overviewCards=[...document.querySelectorAll('.settings-overview-card')];
- const overviewReady=overviewCards.length===14&&document.getElementById('main').textContent.includes('Mon entreprise')&&document.getElementById('main').textContent.includes('Modèles de documents')&&document.getElementById('main').textContent.includes('Conformité et fiscalité');
+ const overviewReady=overviewCards.length===15&&document.getElementById('main').textContent.includes('Mon entreprise')&&document.getElementById('main').textContent.includes('Paramètres du catalogue Articles & services')&&document.getElementById('main').textContent.includes('Modèles de documents')&&document.getElementById('main').textContent.includes('Conformité et fiscalité');
  const routes=['profile','contacts','addresses','legal','tax','logo','bank'];
  let rendered=0;
  for(const route of routes){
@@ -46,7 +46,7 @@ location.hash='settings/company';
  const ok=overviewReady&&rendered===routes.length&&logoReady&&!window.__errors.length;
  const node=document.getElementById('result');
  node.dataset.status=ok?'passed':'failed';
- node.textContent=ok?`14 réglages généraux et ${rendered}/${routes.length} sous-catégories entreprise rendus sans erreur`:`Échec : accueil ${overviewReady?'OK':'KO'}, ${rendered}/${routes.length} — ${window.__errors.join(' | ')}`;
+ node.textContent=ok?`15 réglages généraux et ${rendered}/${routes.length} sous-catégories entreprise rendus sans erreur`:`Échec : accueil ${overviewReady?'OK':'KO'}, ${rendered}/${routes.length} — ${window.__errors.join(' | ')}`;
 })();
 </script>
 </body>

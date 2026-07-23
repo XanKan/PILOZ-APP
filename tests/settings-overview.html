@@ -35,10 +35,10 @@
       PilozModern.renderNavigation(document.getElementById('tabs'),state,'settings/overview');
       checks.push(['route rendue',PilozModern.renderRoute('settings',state)===true]);
       const cards=[...document.querySelectorAll('.settings-overview-card')],paths=cards.map(card=>card.getAttribute('onclick'));
-      checks.push(['14 réglages visibles',cards.length===14]);
+      checks.push(['15 réglages visibles',cards.length===15]);
       checks.push(['4 groupes visibles',document.querySelectorAll('.settings-overview-section').length===4]);
       checks.push(['liens uniques',new Set(paths).size===cards.length]);
-      checks.push(['rubriques essentielles',document.getElementById('main').textContent.includes('Mon entreprise')&&document.getElementById('main').textContent.includes('Ventes & TVA')&&document.getElementById('main').textContent.includes('Modèles de documents')&&document.getElementById('main').textContent.includes('Utilisateurs')&&document.getElementById('main').textContent.includes('Données')]);
+      checks.push(['rubriques essentielles',document.getElementById('main').textContent.includes('Mon entreprise')&&document.getElementById('main').textContent.includes('Ventes & TVA')&&document.getElementById('main').textContent.includes('Paramètres du catalogue Articles & services')&&document.getElementById('main').textContent.includes('Modèles de documents')&&document.getElementById('main').textContent.includes('Utilisateurs')&&document.getElementById('main').textContent.includes('Données')]);
       checks.push(['aucune valeur vide technique',!/undefined|null/.test(document.getElementById('main').textContent)]);
       cards[0].click();
       checks.push(['navigation carte',PilozApp.lastRoute==='settings/company']);
