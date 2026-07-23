@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607230048' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607230049' ok
   union all
   select 'payment_reversal_rpc',coalesce(to_regprocedure('public.record_document_payment_reversal(uuid,text,numeric,text,timestamptz)')::text,'missing'),
     to_regprocedure('public.record_document_payment_reversal(uuid,text,numeric,text,timestamptz)') is not null
@@ -18,6 +18,18 @@ with controls as(
   union all
   select 'fiscal_events_rls',coalesce((select relrowsecurity::text from pg_class where oid='public.fiscal_events'::regclass),'missing'),
     coalesce((select relrowsecurity from pg_class where oid='public.fiscal_events'::regclass),false)
+  union all
+  select 'client_addresses_rls',coalesce((select relrowsecurity::text from pg_class where oid='public.client_addresses'::regclass),'missing'),
+    coalesce((select relrowsecurity from pg_class where oid='public.client_addresses'::regclass),false)
+  union all
+  select 'client_directory_rpc',coalesce(to_regprocedure('public.get_client_directory_v2(uuid,text,jsonb,text,text,integer,integer)')::text,'missing'),
+    to_regprocedure('public.get_client_directory_v2(uuid,text,jsonb,text,text,integer,integer)') is not null
+  union all
+  select 'client_snapshot_trigger',count(*)::text,count(*)=1
+  from pg_trigger
+  where tgrelid='public.document_snapshots'::regclass
+    and tgname='document_snapshots_client_context'
+    and not tgisinternal
   union all
   select 'anonymous_scheduled_job_blocked',has_function_privilege('anon','public.run_due_fiscal_maintenance(timestamptz)','EXECUTE')::text,
     not has_function_privilege('anon','public.run_due_fiscal_maintenance(timestamptz)','EXECUTE')
@@ -46,7 +58,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607230048',
+  'schema_version','202607230049',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;

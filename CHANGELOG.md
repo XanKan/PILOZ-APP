@@ -22,3 +22,9 @@ Le moteur de production reste désactivé. Cette pré-release ne constitue aucun
 - système qualité, CI et manifeste de release.
 
 Cette pré-release ne constitue pas une certification NF 525/NF 203, une conformité AFNOR, une homologation ou une conformité validée à la réforme.
+## 0.9.0-compliance.5 — 23 juillet 2026
+
+- Nouvelle fiche client dédiée avec recherche, filtres, indicateurs et treize rubriques métier.
+- Contacts, rôles et adresses multiples, préférences commerciales et comptes auxiliaires historisés.
+- Sélection du destinataire et des adresses dans les devis/factures, figée dans les snapshots.
+- RLS renforcée pour les rôles en lecture seule et stockage privé des pièces client.
