@@ -544,7 +544,7 @@
     return `${listRows(pageRows)}<footer class="catalog-pagination"><span>${rows.length ? start + 1 : 0}–${Math.min(start + ui.pageSize, rows.length)} sur ${rows.length}</span><label>Par page <select onchange="PilozCatalog.setPageSize(this.value)">${[25, 50, 100].map((n) => `<option ${ui.pageSize === n ? "selected" : ""}>${n}</option>`).join("")}</select></label><div><button ${ui.page <= 1 ? "disabled" : ""} onclick="PilozCatalog.page(${ui.page - 1})">‹</button><b>${ui.page} / ${pages}</b><button ${ui.page >= pages ? "disabled" : ""} onclick="PilozCatalog.page(${ui.page + 1})">›</button></div></footer>${ui.selected.size ? bulkBar() : ""}`;
   }
   function bulkBar() {
-    return `<div class="catalog-bulk"><b>${ui.selected.size} sélectionné${ui.selected.size > 1 ? "s" : ""}</b><button onclick="PilozCatalog.bulkStatus('active')">Activer</button><button onclick="PilozCatalog.bulkStatus('inactive')">Désactiver</button><button onclick="PilozCatalog.openBulkPrice()">Modifier les prix</button><button onclick="PilozCatalog.exportCsv('selected')">Exporter</button><button onclick="PilozCatalog.bulkStatus('archived')">Archiver</button><button class="close" onclick="PilozCatalog.clearSelection()">×</button></div>`;
+    return `<div class="catalog-bulk"><b>${ui.selected.size} sélectionné${ui.selected.size > 1 ? "s" : ""}</b><button onclick="PilozCatalog.bulkStatus('active')">Activer</button><button onclick="PilozCatalog.bulkStatus('inactive')">Désactiver</button><button onclick="PilozCatalog.openBulkPrice()">Modifier les prix</button><button onclick="PilozCatalog.bulkStatus('archived')">Archiver</button><button class="close" onclick="PilozCatalog.clearSelection()">×</button></div>`;
   }
   function renderList() {
     const s = stats();

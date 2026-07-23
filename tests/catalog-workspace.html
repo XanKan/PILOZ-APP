@@ -28,7 +28,7 @@ location.hash='sales/catalog';
  PilozCatalog.setSearch('FP-PERF-18');await wait(160);check('recherche référence fournisseur',main.textContent.includes('Perceuse professionnelle'));
  PilozCatalog.setSearch('outilxsecret');await wait(160);check('recherche alias',main.textContent.includes('Perceuse professionnelle'));
  PilozCatalog.setSearch('');await wait(160);PilozCatalog.setQuick('products');check('vue rapide articles',main.querySelector('.catalog-quick-tabs .active')?.textContent.includes('Articles'));
- PilozCatalog.select(itemId,true);check('sélection multiple',main.textContent.includes('sélectionné'));
+ PilozCatalog.select(itemId,true);check('sélection multiple',main.textContent.includes('sélectionné'));check('export absent des actions groupées',!main.querySelector('.catalog-bulk button[onclick*="exportCsv"]'));
  PilozCatalog.setView('cards');check('affichage cartes',!!main.querySelector('.catalog-card-grid'));PilozCatalog.setView('list');
  location.hash=`sales/items/${itemId}`;PilozCatalog.renderRoute(`sales/items/${itemId}`,state);check('route dédiée',main.textContent.includes('Perceuse professionnelle')&&main.textContent.includes('Ajouter à un devis'));
  check('onglets adaptés',main.querySelectorAll('.catalog-detail-tabs button').length===12);
