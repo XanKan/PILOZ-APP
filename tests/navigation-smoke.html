@@ -28,7 +28,7 @@
     window.PilozRuntime={session:{user_id:'test-user'}};
     window.PilozERP={};
     const state={data:{documents:[],reminders:[],opportunities:[],levels:[],catalog:[]}};
-    window.PilozApp={go(path){this.lastRoute=path;},render(){},getState(){return state;}};
+    window.PilozApp={go(path){this.lastRoute=path;},render(){this.renderCount=(this.renderCount||0)+1;},getState(){return state;}};
   </script>
   <script src="../assets/js/modules/erp/erp-modern.js"></script>
   <script src="../assets/js/modules/erp/erp-commercial-v2.js"></script>
@@ -66,9 +66,15 @@
       checks.push(['navigation suivi commercial',PilozApp.lastRoute==='crm/pipeline']);
       PilozModern.openArea('settings');
       checks.push(['navigation paramètres complète',PilozApp.lastRoute==='settings/overview']);
+      location.hash='settings/overview';
+      PilozModern.toggleSecondary();
+      const renderCountAfterCollapse=PilozApp.renderCount;
+      PilozModern.openArea('settings');
+      checks.push(['sous-menu réouvert sur la rubrique active',PilozApp.renderCount===renderCountAfterCollapse+1]);
       PilozModern.renderNavigation(document.getElementById('tabs'),state,'settings/overview');
       const settingsItems=[...document.querySelectorAll('.modern-secondary-item')].map(x=>x.textContent.trim());
       checks.push(['toutes les familles de paramètres visibles',settingsItems.includes('Vue d’ensemble')&&settingsItems.includes('Mon entreprise')&&settingsItems.includes('Ventes & TVA')&&settingsItems.includes('Modèles')&&settingsItems.includes('Utilisateurs')&&settingsItems.includes('Sécurité')&&settingsItems.includes('Données')]);
+      checks.push(['conformité retirée de la navigation client',!settingsItems.includes('Conformité et fiscalité')&&!settingsItems.includes('À propos et conformité')]);
       PilozModern.renderNavigation(document.getElementById('tabs'),state,'crm/pipeline');
       const crmItems=[...document.querySelectorAll('.modern-secondary-item')].map(x=>x.textContent.trim());
       checks.push(['sous-menu commercial simplifié',crmItems.join('|')==='Pipeline|Activités|Prospects']);
