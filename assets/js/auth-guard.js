@@ -35,6 +35,7 @@
         return;
       }
       global.PilozCurrentUser=user;
+      global.PilozSiteOffer?.captureUser(user);
       await global.charger?.();
     }catch(error){
       console.error('Échec du démarrage sécurisé de Piloz',error);

@@ -423,7 +423,8 @@ async function deletePaymentSetting(kind,id){if(!id)return;const state=app().get
   const labels=global.PilozSubscription?.FEATURE_LABELS||{};
   const trialExpired=global.PilozSubscription?.getSubscriptionStatus?.()==='expired';
   const statusKey=trialExpired?'expired':sub.status;
-  const status=SUBSCRIPTION_STATUS_META[statusKey]||{label:sub.status,tone:'info'};
+  const status=SUBSCRIPTION_STATUS_META[statusKey]||{label:sub.status,tone:'info'},requestedOffer=global.PilozSiteOffer?.current?.()||null;
+  if(requestedOffer?.billing_interval)ui.subscriptionBilling=requestedOffer.billing_interval;
   const billing=ui.subscriptionBilling||'monthly',stripeResult=new URLSearchParams((location.hash.split('?')[1]||'')).get('stripe');
   const usersUsed=members.length,usersMax=plan.max_users||1,userPct=Math.min(100,Math.round(usersUsed/usersMax*100)),userTone=userPct>=100?'danger':userPct>=80?'warn':'';
   let primaryActions='';
@@ -434,7 +435,8 @@ async function deletePaymentSetting(kind,id){if(!id)return;const state=app().get
   else if(sub.status==='canceled'){primaryActions=(sub.subscription_ends_at&&new Date(sub.subscription_ends_at)>new Date())?button('Réactiver l’abonnement','PilozModern.reactivateSubscription()','btn-p'):button('Choisir une offre',scrollToPlans,'btn-p');}
   if(sub.cancellation_at_period_end&&sub.status==='active')primaryActions+=button('Réactiver l’abonnement','PilozModern.reactivateSubscription()','btn-o');
   const checkoutAlert=stripeResult==='success'?`<div class="modern-status success" style="display:block;padding:10px 12px;margin-bottom:14px">Paiement confirmé par Stripe. La mise à jour de l’abonnement peut prendre quelques secondes.</div>`:stripeResult==='cancelled'?`<div class="modern-status warning" style="display:block;padding:10px 12px;margin-bottom:14px">Paiement annulé. Votre offre actuelle n’a pas été modifiée.</div>`:'';
-  const alertBlock=checkoutAlert||(statusKey==='expired'?`<div class="modern-status danger" style="display:block;padding:10px 12px;margin-bottom:14px">Votre essai gratuit est terminé. Choisissez une offre pour continuer à utiliser Piloz.</div>`
+  const requestedPlan=plans.find(item=>item.key===requestedOffer?.plan_key),offerAlert=requestedPlan?`<div class="modern-status info" style="display:block;padding:10px 12px;margin-bottom:14px">Offre Piloz ${esc(requestedPlan.name)} ${requestedOffer.billing_interval==='annual'?'annuelle':'mensuelle'} sélectionnée depuis piloz.fr. Vérifiez-la ci-dessous puis continuez vers le paiement sécurisé Stripe.</div>`:'';
+  const alertBlock=checkoutAlert||offerAlert||(statusKey==='expired'?`<div class="modern-status danger" style="display:block;padding:10px 12px;margin-bottom:14px">Votre essai gratuit est terminé. Choisissez une offre pour continuer à utiliser Piloz.</div>`
    :sub.status==='suspended'?`<div class="modern-status danger" style="display:block;padding:10px 12px;margin-bottom:14px">Votre abonnement est suspendu. Mettez à jour votre moyen de paiement pour réactiver votre compte.</div>`
    :sub.status==='past_due'?`<div class="modern-status warning" style="display:block;padding:10px 12px;margin-bottom:14px">Le dernier paiement n’a pas pu être prélevé. Vérifiez votre moyen de paiement.</div>`:'');
   document.getElementById('main').innerHTML=header('Abonnement et facturation','Gérez votre offre Piloz, vos limites d’utilisation et vos informations de facturation.')+
@@ -463,7 +465,7 @@ async function deletePaymentSetting(kind,id){if(!id)return;const state=app().get
     <h2>Comparer les offres</h2>
     <div class="plan-toggle"><button type="button" class="${billing==='monthly'?'active':''}" onclick="PilozModern.setSubscriptionBilling('monthly')">Mensuel</button><button type="button" class="${billing==='annual'?'active':''}" onclick="PilozModern.setSubscriptionBilling('annual')">Annuel</button></div>
    </div>
-   <div class="plan-cards">${plans.map(p=>{const planFeatures=global.PilozSubscription?.PLAN_FEATURES?.[p.key]||[],price=billing==='annual'?p.price_annual_cents:p.price_monthly_cents;return`<div class="plan-card ${p.key==='pro'?'highlight':''}"><h3>Piloz ${esc(p.name)}</h3><div class="plan-card-price">${money(price/100)}<span> HT ${billing==='annual'?'/ an':'/ mois'}</span></div><p class="modern-card-desc">${p.max_users} utilisateur${p.max_users>1?'s':''} inclus</p><ul>${planFeatures.slice(0,5).map(k=>`<li>✓ ${esc(labels[k]||k)}</li>`).join('')}</ul><div class="actions">${planCardAction(p,sub,billing)}</div></div>`;}).join('')}</div>
+   <div class="plan-cards">${plans.map(p=>{const planFeatures=global.PilozSubscription?.PLAN_FEATURES?.[p.key]||[],price=billing==='annual'?p.price_annual_cents:p.price_monthly_cents,requested=p.key===requestedOffer?.plan_key;return`<div class="plan-card ${p.key==='pro'?'highlight':''} ${requested?'requested':''}">${requested?'<span class="modern-status info">Votre sélection</span>':''}<h3>Piloz ${esc(p.name)}</h3><div class="plan-card-price">${money(price/100)}<span> HT ${billing==='annual'?'/ an':'/ mois'}</span></div><p class="modern-card-desc">${p.max_users} utilisateur${p.max_users>1?'s':''} inclus</p><ul>${planFeatures.slice(0,5).map(k=>`<li>✓ ${esc(labels[k]||k)}</li>`).join('')}</ul><div class="actions">${planCardAction(p,sub,billing)}</div></div>`;}).join('')}</div>
    <p class="modern-card-desc">Plus de 15 utilisateurs ou besoins spécifiques ? ${button('Contacter Piloz',`location.href='mailto:${esc(ADMIN_EMAIL)}?subject=${encodeURIComponent('Offre personnalisée Piloz')}'`,'btn-ghost','type="button"')}</p>
   </section>
   ${renderCompareTable()}
@@ -482,7 +484,7 @@ async function deletePaymentSetting(kind,id){if(!id)return;const state=app().get
  function setSubscriptionBilling(interval){ui.subscriptionBilling=interval;app().render();}
  async function openStripe(action,planKey='',interval=''){
   if(ui.subscriptionBusy)return;ui.subscriptionBusy=true;app().render();const state=app().getState();
-  try{const result=await api().invoke('stripe-billing',{action,companyId:state.companyId,planKey,billingInterval:interval});if(!result?.url)throw new Error('Le service de paiement n’a pas renvoyé de lien sécurisé.');location.assign(result.url);}
+  try{const result=await api().invoke('stripe-billing',{action,companyId:state.companyId,planKey,billingInterval:interval});if(!result?.url)throw new Error('Le service de paiement n’a pas renvoyé de lien sécurisé.');if(action==='checkout')global.PilozSiteOffer?.clear?.();location.assign(result.url);}
   catch(error){ui.subscriptionBusy=false;app().render();notify(error.message,'error');}
  }
  async function switchToAnnual(){const sub=app().getState().data.subscription?.[0];if(sub)await openStripe(sub.provider==='stripe'?'portal':'checkout',sub.plan_key,'annual');}

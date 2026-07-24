@@ -13,8 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
       - name: Verify release metadata and static safety
@@ -48,7 +48,9 @@ jobs:
       - name: Verify archive tamper detection
         run: node tests/fiscal-archive-verifier.mjs
       - name: Verify Stripe billing security contract
-        run: node tests/stripe-billing-static.cjs
+        run: |
+          node tests/stripe-billing-static.cjs
+          node tests/site-offer-static.cjs
       - name: Run browser suites
         run: |
           tests=(browser-tests.html api-response.html fiscal-domain.html electronic-invoice.html erp-smoke.html production-regression.html)
@@ -66,5 +68,7 @@ jobs:
           test -x "$PILOZ_CHROME_PATH"
           node tests/run-html-tests.cjs tests/dashboard-cockpit.html
           node tests/run-html-tests.cjs tests/subscription-billing.html
+          node tests/run-html-tests.cjs tests/site-offer-selection.html
           PILOZ_VIEWPORT_WIDTH=390 PILOZ_VIEWPORT_HEIGHT=844 node tests/run-html-tests.cjs tests/dashboard-cockpit.html
           PILOZ_VIEWPORT_WIDTH=390 PILOZ_VIEWPORT_HEIGHT=844 node tests/run-html-tests.cjs tests/subscription-billing.html
+          PILOZ_VIEWPORT_WIDTH=390 PILOZ_VIEWPORT_HEIGHT=844 node tests/run-html-tests.cjs tests/site-offer-selection.html

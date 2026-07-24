@@ -2,6 +2,8 @@
 
 ## Ce qui est automatisé
 
+- Les boutons tarifaires de `piloz.fr` transmettent l'offre et la périodicité choisies à `app.piloz.fr`.
+- Le choix est conservé pendant l'inscription et restauré après la confirmation ou la connexion.
 - Piloz crée les produits et tarifs Stripe à partir des offres versionnées en base.
 - Un premier abonnement passe par Stripe Checkout.
 - Un abonnement Stripe existant ouvre le Customer Portal, sans créer de doublon.

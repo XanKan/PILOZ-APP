@@ -269,6 +269,8 @@ button:disabled,.btn:disabled,input:disabled,select:disabled,textarea:disabled{o
 .plan-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:16px 0}
 .plan-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:12px}
 .plan-card.highlight{border-color:#11bfae;box-shadow:0 0 0 1px #11bfae}
+.plan-card.requested{border-color:var(--primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 24%,transparent)}
+.plan-card.requested>.modern-status{align-self:flex-start}
 .plan-card h3{margin:0;font:740 1.05rem 'Albert Sans'}
 .plan-card .plan-card-price{font-size:1.6rem;font-weight:740}
 .plan-card .plan-card-price span{font-size:.8rem;font-weight:600;color:var(--text-muted)}

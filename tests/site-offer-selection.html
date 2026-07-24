@@ -1,0 +1,24 @@
+<!doctype html><html lang="fr"><meta charset="utf-8"><title>Test offre venant du site Piloz</title>
+<link rel="stylesheet" href="../assets/css/modern-erp.css"><body><main id="main"></main><div id="result" data-status="running">RUNNING</div>
+<script>
+window.__errors=[];addEventListener('error',event=>{__errors.push(event.message);const result=document.getElementById('result');if(result){result.dataset.status='failed';result.textContent='Échec JavaScript : '+event.message;}});
+localStorage.removeItem('piloz_requested_offer_v1');window.toast=()=>{};window.ADMIN_EMAIL='erp-piloz@outlook.com';window.PilozRuntime={session:{user_id:'user-1',email:'owner@example.test'}};
+const state={companyId:'44444444-4444-4444-8444-444444444444',data:{subscription:[{company_id:'44444444-4444-4444-8444-444444444444',plan_key:'essential',billing_interval:'monthly',status:'trialing',provider:'manual'}],plans:[{key:'essential',name:'Essentiel',price_monthly_cents:2900,price_annual_cents:29000,max_users:1},{key:'pro',name:'Pro',price_monthly_cents:5900,price_annual_cents:59000,max_users:5},{key:'business',name:'Business',price_monthly_cents:9900,price_annual_cents:99000,max_users:15}],members:[{user_id:'user-1',role:'owner'}],clients:[],documents:[],settings:[{}],billingInvoices:[],billingPayments:[]}};
+window.PilozERP={invoke:async()=>({url:'https://checkout.stripe.com/test'})};window.PilozApp={getState:()=>state,go(){},render(){},refresh:async()=>{}};window.PilozSubscription={getSubscriptionStatus:()=>state.data.subscription[0].status,PLAN_FEATURES:{essential:[],pro:[],business:[]},FEATURE_LABELS:{}};location.hash='settings/subscription';
+</script>
+<script src="../assets/js/modules/subscription/site-offer.js"></script><script src="../assets/js/modules/erp/erp-modern.js"></script>
+<script>
+const checks=[];try{
+ PilozSiteOffer.set({plan:'business',billing:'annual',source:'pricing'});PilozModern.renderRoute('settings',state);
+ checks.push(['sélection persistée',PilozSiteOffer.current().plan_key==='business'&&PilozSiteOffer.current().billing_interval==='annual']);
+ checks.push(['offre du site visible',main.textContent.includes('Offre Piloz Business annuelle sélectionnée depuis piloz.fr')]);
+ checks.push(['carte Business identifiée',document.querySelector('.plan-card.requested')?.textContent.includes('Piloz Business')]);
+ checks.push(['périodicité annuelle présélectionnée',document.querySelector('.plan-toggle button.active')?.textContent==='Annuel']);
+ checks.push(['prix annuel cohérent',document.querySelector('.plan-card.requested')?.textContent.includes('990,00')]);
+ checks.push(['validation stricte',PilozSiteOffer.normalize({plan:'pirate',billing:'annual'})===null]);
+ checks.push(['route abonnement produite',PilozSiteOffer.routeAfterAuth()&&location.hash.includes('settings/subscription')&&location.hash.includes('offer=business')&&location.hash.includes('billing=annual')]);
+ PilozSiteOffer.clear();checks.push(['sélection effaçable après Checkout',PilozSiteOffer.current()===null]);
+ checks.push(['aucune erreur javascript',!__errors.length]);
+}catch(error){checks.push(['exécution',false,error.stack||error.message]);}
+const failed=checks.filter(row=>!row[1]),result=document.getElementById('result');result.dataset.status=failed.length?'failed':'passed';result.textContent=failed.length?`Échec : ${failed.map(row=>row[0]+(row[2]?` (${row[2]})`:'')).join(', ')}`:`${checks.length}/${checks.length} contrôles offre réussis`;
+</script></body></html>

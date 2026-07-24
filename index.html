@@ -312,7 +312,7 @@ body.auth-checking #auth-loading{display:flex}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <link rel="stylesheet" href="assets/css/phase1-foundation.css?v=20260721.11">
-<link rel="stylesheet" href="assets/css/modern-erp.css?v=20260724.2">
+<link rel="stylesheet" href="assets/css/modern-erp.css?v=20260724.3">
 <link rel="stylesheet" href="assets/css/dashboard-cockpit.css?v=20260724.4">
 <link rel="stylesheet" href="assets/css/document-viewer-v2.css?v=20260723.4">
 <link rel="stylesheet" href="assets/css/clients-workspace.css?v=20260723.1">
@@ -2549,6 +2549,7 @@ function authSubmit(event){
   return authSignupFinish();
 }
 function authBuildOnboarding(){
+  const requestedOffer = window.PilozSiteOffer?.current?.() || null;
   return {
     createdAt: new Date().toISOString(),
     fullName: `${signupDraft.firstName} ${signupDraft.lastName}`.trim(),
@@ -2556,6 +2557,7 @@ function authBuildOnboarding(){
     company: {name: signupDraft.companyName.trim(), sector: signupDraft.sector.trim(), status: signupDraft.status, teamSize: signupDraft.teamSize, siret: (signupDraft.siret||'').replace(/\s+/g,'')},
     needs: {primaryNeed: signupDraft.primaryNeed, currentTool: signupDraft.currentTool, contactsVolume: signupDraft.contactsVolume, heardAbout: signupDraft.heardAbout.trim()},
     labels: {status: authLabel(AUTH_STATUS_OPTIONS, signupDraft.status), teamSize: authLabel(AUTH_TEAM_OPTIONS, signupDraft.teamSize), primaryNeed: authLabel(AUTH_NEED_OPTIONS, signupDraft.primaryNeed), currentTool: authLabel(AUTH_TOOL_OPTIONS, signupDraft.currentTool), contactsVolume: authLabel(AUTH_VOLUME_OPTIONS, signupDraft.contactsVolume)},
+    requestedOffer,
     acceptedTermsAt: new Date().toISOString()
   };
 }
@@ -2584,6 +2586,7 @@ async function authSyncSession(opts={}){
   authBusy = false;
   authRecovery = false;
   applyAuthModeToUrl('');
+  window.PilozSiteOffer?.routeAfterAuth?.();
   await chargerLicence();
   fermerAuth();
   render();
@@ -2617,6 +2620,7 @@ async function authLogin(){
     const j = await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(j.msg || j.error_description || j.message || 'Identifiants refusés.');
     SES = {access_token:j.access_token, refresh_token:j.refresh_token, user_id:j.user.id, email:j.user.email};
+    window.PilozSiteOffer?.captureUser?.(j.user);
     await authSyncSession({remember:loginDraft.remember});
     loginDraft.password = '';
     toast('Connecté ☁️');
@@ -2639,7 +2643,8 @@ async function authSignupFinish(){
   authStatusKind = 'info';
   pageAuth();
   try{
-    const r = await fetch(CFG.url.replace(/\/$/,'') + '/auth/v1/signup', {method:'POST', headers:{'apikey':CFG.key,'Content-Type':'application/json'}, body:JSON.stringify({email: signupDraft.email.trim(), password: signupDraft.password, data: {first_name: signupDraft.firstName.trim(), last_name: signupDraft.lastName.trim(), full_name: onboarding.fullName, company_name: signupDraft.companyName.trim(), onboarding}})});
+    const requestedOffer = window.PilozSiteOffer?.current?.() || null;
+    const r = await fetch(CFG.url.replace(/\/$/,'') + '/auth/v1/signup', {method:'POST', headers:{'apikey':CFG.key,'Content-Type':'application/json'}, body:JSON.stringify({email: signupDraft.email.trim(), password: signupDraft.password, data: {first_name: signupDraft.firstName.trim(), last_name: signupDraft.lastName.trim(), full_name: onboarding.fullName, company_name: signupDraft.companyName.trim(), requested_plan:requestedOffer?.plan_key||null, requested_billing_interval:requestedOffer?.billing_interval||null, onboarding}})});
     const j = await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(j.msg || j.error_description || j.message || 'Création refusée.');
     loginDraft.email = signupDraft.email.trim();
@@ -2655,6 +2660,7 @@ async function authSignupFinish(){
       return false;
     }
     SES = {access_token:j.access_token, refresh_token:j.refresh_token, user_id:(j.user&&j.user.id)||'', email:(j.user&&j.user.email)||signupDraft.email.trim()};
+    window.PilozSiteOffer?.captureUser?.(j.user);
     clearSignupDraft();
     await authSyncSession({remember:true, onboarding});
     toast('Bienvenue dans Piloz ✨');
@@ -2839,11 +2845,12 @@ function adminCreerCompte(){
 <script src="assets/js/domain/fiscal-domain.js?v=20260722.1"></script>
 <script src="assets/js/domain/electronic-invoice.js?v=20260722.1"></script>
 <script src="assets/js/utils/document-statuses.js?v=20260722.3"></script>
+<script src="assets/js/modules/subscription/site-offer.js?v=20260724.1"></script>
 <script src="assets/js/modules/subscription/entitlements.js?v=20260721.10"></script>
 <script src="assets/js/modules/onboarding/company-search.js?v=20260721.10"></script>
 <script src="assets/js/modules/onboarding/professional-onboarding.js?v=20260721.10"></script>
 <script src="assets/js/modules/erp/erp-app.js?v=20260724.2"></script>
-<script src="assets/js/modules/erp/erp-modern.js?v=20260724.3"></script>
+<script src="assets/js/modules/erp/erp-modern.js?v=20260724.4"></script>
 <script src="assets/js/modules/erp/erp-compliance.js?v=20260722.2"></script>
 <script src="assets/js/modules/erp/erp-commercial-v2.js?v=20260723.1"></script>
 <script src="assets/js/modules/erp/erp-dashboard-cockpit.js?v=20260724.4"></script>
