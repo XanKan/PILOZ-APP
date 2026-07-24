@@ -7,6 +7,8 @@ Le module `Ventes > Échéances clients` propose deux actions par facture finali
 
 Dans la popup de règlement, trois factures sont affichées au maximum avant l’action `Voir plus`. La recherche couvre le numéro, le client, l’e-mail, l’objet, les dates et le montant, tout en conservant la facture d’origine visible.
 
+La sélection de plusieurs factures recalcule immédiatement le total perçu. La date de valeur et la confirmation de trop-perçu ne sont pas demandées : le montant doit être intégralement affecté aux factures sélectionnées avant l’enregistrement.
+
 Dans le filtre `Payées`, le crayon en fin de ligne permet de corriger un règlement. Le paiement original n’est jamais supprimé : PILOZ crée une ou plusieurs écritures inverses, actualise les soldes puis rouvre la saisie afin de permettre un nouvel enregistrement correct.
 
 ## Données et sécurité
