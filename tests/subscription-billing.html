@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<title>Tests abonnement Stripe PILOZ</title>
+<link rel="stylesheet" href="../assets/css/modern-erp.css">
+<body><main id="main"></main><div id="result" data-status="running">RUNNING</div>
+<script>
+window.__errors=[];addEventListener('error',event=>{__errors.push(event.message);const result=document.getElementById('result');if(result){result.dataset.status='failed';result.textContent='Échec JavaScript : '+event.message;}});
+window.toast=()=>{};window.ADMIN_EMAIL='erp-piloz@outlook.com';window.PilozRuntime={session:{user_id:'user-1',email:'owner@example.test'}};
+const state={companyId:'44444444-4444-4444-8444-444444444444',data:{
+ subscription:[{company_id:'44444444-4444-4444-8444-444444444444',plan_key:'pro',billing_interval:'monthly',status:'active',provider:'stripe',external_customer_id:'cus_test',external_subscription_id:'sub_test',subscription_started_at:'2026-07-01T00:00:00Z',subscription_ends_at:'2026-08-01T00:00:00Z',payment_method_brand:'visa',payment_method_last4:'4242'}],
+ plans:[{key:'essential',name:'Essentiel',price_monthly_cents:2900,price_annual_cents:29000,max_users:1},{key:'pro',name:'Pro',price_monthly_cents:5900,price_annual_cents:59000,max_users:5},{key:'business',name:'Business',price_monthly_cents:9900,price_annual_cents:99000,max_users:15}],
+ members:[{user_id:'user-1',role:'owner'}],clients:[],documents:[],settings:[{legal_name:'Atelier Test',email:'facturation@example.test',vat_number:'FR00123456789'}],
+ billingInvoices:[{id:'bill-1',number:'PILOZ-2026-0001',period_start:'2026-07-01',period_end:'2026-07-31',amount_incl_tax_cents:7080,status:'paid',issued_at:'2026-07-01T09:00:00Z'}],
+ billingPayments:[{id:'pay-1',invoice_id:'bill-1',amount_cents:7080,currency:'EUR',status:'succeeded',payment_method:'visa',paid_at:'2026-07-01T09:01:00Z'}]
+}};
+window.PilozERP={invoke:async()=>({url:'https://checkout.stripe.com/test'})};
+window.PilozApp={getState:()=>state,go(){},render(){},refresh:async()=>{}};
+window.PilozSubscription={getSubscriptionStatus:()=>state.data.subscription[0].status,PLAN_FEATURES:{essential:[],pro:[],business:[]},FEATURE_LABELS:{}};
+location.hash='settings/subscription';
+</script>
+<script src="../assets/js/modules/erp/erp-modern.js"></script>
+<script>
+const checks=[];try{
+ checks.push(['route abonnement rendue',PilozModern.renderRoute('settings',state)===true]);
+ checks.push(['offre réelle affichée',main.textContent.includes('Piloz Pro')&&main.textContent.includes('Actif')]);
+ checks.push(['carte masquée',main.textContent.includes('VISA ···· 4242')&&!main.textContent.includes('4242424242424242')]);
+ checks.push(['Stripe clairement annoncé',main.textContent.includes('sécurisés par Stripe')]);
+ checks.push(['facture réelle affichée',main.textContent.includes('PILOZ-2026-0001')&&main.textContent.includes('70,80')]);
+ checks.push(['paiement réel affiché',main.textContent.includes('Payée')&&main.textContent.includes('visa')]);
+ checks.push(['portail disponible',main.textContent.includes('Ouvrir le portail Stripe')&&typeof PilozModern.manageBilling==='function']);
+ checks.push(['actions abonnement disponibles',typeof PilozModern.choosePlanFromCard==='function'&&typeof PilozModern.cancelSubscription==='function']);
+ checks.push(['aucun état technique visible',!/undefined|null/.test(main.textContent)]);
+ checks.push(['aucune erreur javascript',!__errors.length]);
+}catch(error){checks.push(['exécution',false,error.stack||error.message]);}
+const failed=checks.filter(row=>!row[1]),result=document.getElementById('result');result.dataset.status=failed.length?'failed':'passed';result.textContent=failed.length?`Échec : ${failed.map(row=>row[0]+(row[2]?` (${row[2]})`:'')).join(', ')}`:`${checks.length}/${checks.length} contrôles abonnement réussis`;
+</script></body></html>

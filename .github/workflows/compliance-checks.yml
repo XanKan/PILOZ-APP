@@ -47,6 +47,8 @@ jobs:
         run: node tests/platform-admin-performance-pglite.cjs
       - name: Verify archive tamper detection
         run: node tests/fiscal-archive-verifier.mjs
+      - name: Verify Stripe billing security contract
+        run: node tests/stripe-billing-static.cjs
       - name: Run browser suites
         run: |
           tests=(browser-tests.html api-response.html fiscal-domain.html electronic-invoice.html erp-smoke.html production-regression.html)
@@ -63,4 +65,6 @@ jobs:
           export PILOZ_CHROME_PATH="$(command -v google-chrome)"
           test -x "$PILOZ_CHROME_PATH"
           node tests/run-html-tests.cjs tests/dashboard-cockpit.html
+          node tests/run-html-tests.cjs tests/subscription-billing.html
           PILOZ_VIEWPORT_WIDTH=390 PILOZ_VIEWPORT_HEIGHT=844 node tests/run-html-tests.cjs tests/dashboard-cockpit.html
+          PILOZ_VIEWPORT_WIDTH=390 PILOZ_VIEWPORT_HEIGHT=844 node tests/run-html-tests.cjs tests/subscription-billing.html

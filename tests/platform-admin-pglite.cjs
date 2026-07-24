@@ -98,6 +98,10 @@ async function bootstrap(db){
       from public.company_fiscal_configurations limit 0;
       select id,anomaly_type,severity,source,detected_at
       from public.compliance_anomalies limit 0;
+      insert into public.platform_billing_invoices(company_id,number,amount_excl_tax_cents,tax_cents,amount_incl_tax_cents,status,provider,external_invoice_id)
+      values('${company}','PILOZ-TEST-0001',5900,1180,7080,'paid','stripe','in_test_1');
+      insert into public.stripe_webhook_events(event_id,event_type,object_id,company_id,livemode,event_created_at,status,processed_at)
+      values('evt_test_1','invoice.paid','in_test_1','${company}',false,now(),'processed',now());
     `);
 
     await setIdentity(db,customer,'aal2');
@@ -105,6 +109,10 @@ async function bootstrap(db){
     if(customerAdmin.rows[0].allowed)throw new Error('security: a customer was accepted as platform administrator');
     const customerDashboard=await db.query('select public.platform_admin_dashboard()').then(()=>null,error=>error);
     if(!customerDashboard||!/platform_admin_access_denied/.test(customerDashboard.message))throw new Error('security: customer dashboard access was not denied');
+    const ownBilling=await db.query('select number from public.platform_billing_invoices');
+    if(ownBilling.rows.length!==1||ownBilling.rows[0].number!=='PILOZ-TEST-0001')throw new Error('billing: owner cannot read own Stripe invoice');
+    const hiddenWebhook=await db.query('select event_id from public.stripe_webhook_events');
+    if(hiddenWebhook.rows.length)throw new Error('billing: customer can read private Stripe webhook journal');
 
     await setIdentity(db,superAdmin,'aal1');
     const aal1=await db.query("select public.is_platform_admin('companies.read',true) allowed");

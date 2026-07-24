@@ -12,3 +12,8 @@ schema_paths = []
 [db.seed]
 enabled = false
 sql_paths = []
+
+# Stripe signe lui-même chaque webhook. Cette route publique ne dépend donc
+# pas d'un JWT Supabase ; la signature HMAC Stripe reste obligatoire.
+[functions.stripe-webhook]
+verify_jwt = false

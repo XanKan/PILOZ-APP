@@ -30,7 +30,7 @@
   secondaryOpen:storage.get('piloz_modern_secondary',true),
    document:{kind:'quote',view:'all',layout:storage.get('piloz_sales_document_layout','list'),search:'',client:'',clientQuery:'',clientSearchOpen:false,dateRangeOpen:'',dateDrafts:{},datePresets:{},type:'',status:'',owner:'',opportunity:'',dateFrom:'',dateTo:'',sentFrom:'',sentTo:'',dueFrom:'',dueTo:'',validityFrom:'',validityTo:'',reminderFrom:'',reminderTo:'',paymentMethod:'',min:'',max:'',sort:'created_at',direction:'desc',page:1,size:20,selected:new Set(),columnsOpen:false,advancedOpen:false},
   dashboard:{period:storage.get('piloz_dashboard_period','month'),customFrom:'',customTo:'',configOpen:false},
-  crmSearch:'',crmView:storage.get('piloz_crm_view','list'),settingsSearch:'',busy:false
+  crmSearch:'',crmView:storage.get('piloz_crm_view','list'),settingsSearch:'',busy:false,subscriptionBusy:false
  };
   const defaultColumns={quote:['status','issue_date','validity_date','client','number','ht','actions'],invoice:['status','issue_date','due_date','client','number','ht','payment']};
   const availableColumns={quote:['status','issue_date','validity_date','client','number','ht','subject','vat','ttc','cost','margin','opportunity','owner','last_reminder','created_at','actions'],invoice:['status','issue_date','due_date','client','number','ht','payment','type','sent_at','ttc','paid','remaining','owner','last_reminder']};
@@ -400,9 +400,16 @@ async function deletePaymentSetting(kind,id){if(!id)return;const state=app().get
  ];
  function renderCompareTable(){return`<details class="phase1-card"><summary style="cursor:pointer;font:730 1rem 'Albert Sans';list-style:none">Comparer toutes les fonctionnalités</summary><div class="compare-table-wrap" style="margin-top:14px"><table class="modern-table"><thead><tr><th>Fonctionnalité</th><th>Essentiel</th><th>Pro</th><th>Business</th></tr></thead><tbody>${COMPARE_TABLE.map(([cat,rows])=>`<tr><td colspan="4" style="background:var(--surface-secondary);font-weight:700">${esc(cat)}</td></tr>${rows.map(([label,vals])=>`<tr><td>${esc(label)}</td>${['essential','pro','business'].map(k=>`<td>${typeof vals[k]==='string'?esc(vals[k]):vals[k]?'✓':'—'}</td>`).join('')}</tr>`).join('')}`).join('')}</tbody></table></div></details>`;}
  function planCardAction(plan,sub,billing){
-  if(plan.key===sub.plan_key)return button('Offre actuelle','','btn-ghost','disabled');
-  if(sub.status==='trialing'||sub.status==='canceled'||sub.status==='expired')return button(`Choisir ${plan.name}`,`PilozModern.choosePlanFromCard('${plan.key}','${billing}')`,'btn-p');
+  if(plan.key===sub.plan_key&&sub.provider==='stripe'&&['active','past_due','suspended'].includes(sub.status))return button('Offre actuelle','','btn-ghost','disabled');
+  if(sub.status==='trialing'||sub.status==='canceled'||sub.status==='expired'||sub.provider!=='stripe')return button(`Choisir ${plan.name}`,`PilozModern.choosePlanFromCard('${plan.key}','${billing}')`,'btn-p',ui.subscriptionBusy?'disabled':'');
   return button(`Passer à ${plan.name}`,`PilozModern.requestPlanChange('${plan.key}')`,'btn-o');
+ }
+ function renderBillingHistory(state){
+  const invoices=state.data.billingInvoices||[],payments=state.data.billingPayments||[];
+  if(!invoices.length)return empty('Aucune facture pour le moment','Vos factures d’abonnement apparaîtront ici après le premier paiement Stripe.');
+  const paymentByInvoice=new Map(payments.map(row=>[row.invoice_id,row]));
+  const labels={paid:'Payée',open:'À payer',past_due:'En retard',draft:'Brouillon',void:'Annulée',uncollectible:'Irrécouvrable'};
+  return`<div class="modern-table-shell"><table class="modern-table"><thead><tr><th>Numéro</th><th>Période</th><th>Date</th><th>Montant TTC</th><th>Paiement</th><th>Statut</th></tr></thead><tbody>${invoices.map(invoice=>{const payment=paymentByInvoice.get(invoice.id),tone=invoice.status==='paid'?'success':invoice.status==='past_due'?'danger':invoice.status==='open'?'warning':'info';return`<tr><td><b>${esc(invoice.number)}</b></td><td>${date(invoice.period_start)} – ${date(invoice.period_end)}</td><td>${date(invoice.issued_at)}</td><td>${money(Number(invoice.amount_incl_tax_cents||0)/100)}</td><td>${payment?`${date(payment.paid_at)} · ${esc(payment.payment_method||'Carte')}`:'—'}</td><td><span class="modern-status ${tone}">${esc(labels[invoice.status]||invoice.status)}</span></td></tr>`;}).join('')}</tbody></table></div>`;
  }
  function renderSubscriptionSettings(state){
   const sub=state.data.subscription?.[0]||null,plans=state.data.plans?.[0]?.key?state.data.plans:DEFAULT_PLANS;
@@ -417,7 +424,7 @@ async function deletePaymentSetting(kind,id){if(!id)return;const state=app().get
   const trialExpired=global.PilozSubscription?.getSubscriptionStatus?.()==='expired';
   const statusKey=trialExpired?'expired':sub.status;
   const status=SUBSCRIPTION_STATUS_META[statusKey]||{label:sub.status,tone:'info'};
-  const billing=ui.subscriptionBilling||'monthly';
+  const billing=ui.subscriptionBilling||'monthly',stripeResult=new URLSearchParams((location.hash.split('?')[1]||'')).get('stripe');
   const usersUsed=members.length,usersMax=plan.max_users||1,userPct=Math.min(100,Math.round(usersUsed/usersMax*100)),userTone=userPct>=100?'danger':userPct>=80?'warn':'';
   let primaryActions='';
   const scrollToPlans=`document.getElementById('subscription-plans')?.scrollIntoView({behavior:'smooth'})`;
@@ -426,9 +433,10 @@ async function deletePaymentSetting(kind,id){if(!id)return;const state=app().get
   else if(sub.status==='past_due'||sub.status==='suspended'){primaryActions=button('Gérer le moyen de paiement','PilozModern.manageBilling()','btn-p');}
   else if(sub.status==='canceled'){primaryActions=(sub.subscription_ends_at&&new Date(sub.subscription_ends_at)>new Date())?button('Réactiver l’abonnement','PilozModern.reactivateSubscription()','btn-p'):button('Choisir une offre',scrollToPlans,'btn-p');}
   if(sub.cancellation_at_period_end&&sub.status==='active')primaryActions+=button('Réactiver l’abonnement','PilozModern.reactivateSubscription()','btn-o');
-  const alertBlock=statusKey==='expired'?`<div class="modern-status danger" style="display:block;padding:10px 12px;margin-bottom:14px">Votre essai gratuit est terminé. Choisissez une offre pour continuer à utiliser Piloz.</div>`
+  const checkoutAlert=stripeResult==='success'?`<div class="modern-status success" style="display:block;padding:10px 12px;margin-bottom:14px">Paiement confirmé par Stripe. La mise à jour de l’abonnement peut prendre quelques secondes.</div>`:stripeResult==='cancelled'?`<div class="modern-status warning" style="display:block;padding:10px 12px;margin-bottom:14px">Paiement annulé. Votre offre actuelle n’a pas été modifiée.</div>`:'';
+  const alertBlock=checkoutAlert||(statusKey==='expired'?`<div class="modern-status danger" style="display:block;padding:10px 12px;margin-bottom:14px">Votre essai gratuit est terminé. Choisissez une offre pour continuer à utiliser Piloz.</div>`
    :sub.status==='suspended'?`<div class="modern-status danger" style="display:block;padding:10px 12px;margin-bottom:14px">Votre abonnement est suspendu. Mettez à jour votre moyen de paiement pour réactiver votre compte.</div>`
-   :sub.status==='past_due'?`<div class="modern-status warning" style="display:block;padding:10px 12px;margin-bottom:14px">Le dernier paiement n’a pas pu être prélevé. Vérifiez votre moyen de paiement.</div>`:'';
+   :sub.status==='past_due'?`<div class="modern-status warning" style="display:block;padding:10px 12px;margin-bottom:14px">Le dernier paiement n’a pas pu être prélevé. Vérifiez votre moyen de paiement.</div>`:'');
   document.getElementById('main').innerHTML=header('Abonnement et facturation','Gérez votre offre Piloz, vos limites d’utilisation et vos informations de facturation.')+
   `${alertBlock}
   <section class="phase1-card">
@@ -460,24 +468,29 @@ async function deletePaymentSetting(kind,id){if(!id)return;const state=app().get
   </section>
   ${renderCompareTable()}
   <section class="phase1-card"><h2>Informations de facturation</h2>
-   <p class="modern-card-desc">Aucun moyen de paiement en ligne n’est encore connecté (intégration Stripe à finaliser). Les informations ci-dessous reprennent votre profil entreprise.</p>
+   <p class="modern-card-desc">Les paiements et changements d’offre sont sécurisés par Stripe. Piloz ne stocke jamais votre numéro de carte complet.</p>
    <dl style="display:grid;gap:6px;margin:12px 0">
     <div style="display:flex;justify-content:space-between"><dt>Raison sociale</dt><dd>${dash(state.data.settings?.[0]?.legal_name)}</dd></div>
     <div style="display:flex;justify-content:space-between"><dt>E-mail de facturation</dt><dd>${dash(state.data.settings?.[0]?.email)}</dd></div>
     <div style="display:flex;justify-content:space-between"><dt>N° TVA</dt><dd>${dash(state.data.settings?.[0]?.vat_number)}</dd></div>
-    <div style="display:flex;justify-content:space-between"><dt>Moyen de paiement</dt><dd>Non configuré</dd></div>
+    <div style="display:flex;justify-content:space-between"><dt>Moyen de paiement</dt><dd>${sub.payment_method_last4?`${esc(String(sub.payment_method_brand||'Carte').toUpperCase())} ···· ${esc(sub.payment_method_last4)}`:'Non configuré'}</dd></div>
    </dl>
    <div class="modern-form-actions" style="border:0;justify-content:flex-start;padding-top:0">${button('Modifier les informations',`PilozApp.go('settings/company/legal')`,'btn-o')}${button('Modifier le moyen de paiement','PilozModern.manageBilling()','btn-ghost')}</div>
   </section>
-  <section class="phase1-card"><h2>Historique des factures</h2>${empty('Aucune facture pour le moment','L’historique de facturation apparaîtra ici une fois Stripe connecté.')}</section>`;
+  <section class="phase1-card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h2>Historique des factures</h2>${sub.external_customer_id?button('Ouvrir le portail Stripe','PilozModern.manageBilling()','btn-ghost'):''}</div>${renderBillingHistory(state)}</section>`;
  }
  function setSubscriptionBilling(interval){ui.subscriptionBilling=interval;app().render();}
- async function switchToAnnual(){const state=app().getState(),sub=state.data.subscription?.[0];if(!sub)return;try{await api().rpc('choose_plan',{target_company_id:state.companyId,target_plan_key:sub.plan_key,target_billing_interval:'annual'});await app().refresh();notify('Facturation annuelle sélectionnée.','success');}catch(error){notify(error.message,'error');}}
- async function choosePlanFromCard(planKey,interval){const state=app().getState();try{await api().rpc('choose_plan',{target_company_id:state.companyId,target_plan_key:planKey,target_billing_interval:interval});await app().refresh();notify('Offre mise à jour pour la période d’essai.','success');}catch(error){notify(error.message,'error');}}
- function requestPlanChange(planKey){const names={essential:'Essentiel',pro:'Pro',business:'Business'};location.href=`mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent('Changer mon offre Piloz vers '+(names[planKey]||planKey))}`;}
- function manageBilling(){notify('La gestion du moyen de paiement en ligne sera disponible une fois l’intégration Stripe finalisée.','info');}
- async function cancelSubscription(){if(!confirm('Résilier l’abonnement en fin de période ?'))return;const state=app().getState();try{await api().rpc('cancel_subscription',{target_company_id:state.companyId});await app().refresh();notify('Résiliation programmée.','success');}catch(error){notify(error.message,'error');}}
- async function reactivateSubscription(){const state=app().getState();try{await api().rpc('reactivate_subscription',{target_company_id:state.companyId});await app().refresh();notify('Abonnement réactivé.','success');}catch(error){notify(error.message,'error');}}
+ async function openStripe(action,planKey='',interval=''){
+  if(ui.subscriptionBusy)return;ui.subscriptionBusy=true;app().render();const state=app().getState();
+  try{const result=await api().invoke('stripe-billing',{action,companyId:state.companyId,planKey,billingInterval:interval});if(!result?.url)throw new Error('Le service de paiement n’a pas renvoyé de lien sécurisé.');location.assign(result.url);}
+  catch(error){ui.subscriptionBusy=false;app().render();notify(error.message,'error');}
+ }
+ async function switchToAnnual(){const sub=app().getState().data.subscription?.[0];if(sub)await openStripe(sub.provider==='stripe'?'portal':'checkout',sub.plan_key,'annual');}
+ async function choosePlanFromCard(planKey,interval){await openStripe('checkout',planKey,interval);}
+ async function requestPlanChange(planKey){const sub=app().getState().data.subscription?.[0];await openStripe(sub?.provider==='stripe'?'portal':'checkout',planKey,ui.subscriptionBilling||'monthly');}
+ async function manageBilling(){const sub=app().getState().data.subscription?.[0];await openStripe(sub?.external_customer_id?'portal':'checkout',sub?.plan_key||'essential',sub?.billing_interval||'monthly');}
+ async function cancelSubscription(){const sub=app().getState().data.subscription?.[0];if(sub?.provider==='stripe'){await openStripe('portal');return;}if(!confirm('Résilier l’abonnement en fin de période ?'))return;const state=app().getState();try{await api().rpc('cancel_subscription',{target_company_id:state.companyId});await app().refresh();notify('Résiliation programmée.','success');}catch(error){notify(error.message,'error');}}
+ async function reactivateSubscription(){const sub=app().getState().data.subscription?.[0];if(sub?.provider==='stripe'){await openStripe('portal');return;}const state=app().getState();try{await api().rpc('reactivate_subscription',{target_company_id:state.companyId});await app().refresh();notify('Abonnement réactivé.','success');}catch(error){notify(error.message,'error');}}
 
  function renderDataSettings(state){const logs=state.data.activityLogs||[];document.getElementById('main').innerHTML=header('Données','Export, journal d’activité et gestion de votre compte.')+`<div class="modern-settings-grid"><section class="phase1-card"><h2>Export</h2><p class="modern-card-desc">Exportez vos données depuis les pages dédiées.</p>${button('Devis (CSV)',`PilozApp.go('sales/quotes')`,'btn-o')}${button('Factures (CSV)',`PilozApp.go('sales/invoices')`,'btn-o')}</section><section class="phase1-card" style="grid-column:span 2"><h2>Journal d’activité</h2><div class="modern-table-shell">${logs.length?`<table class="modern-table"><thead><tr><th>Date</th><th>Action</th><th>Élément</th></tr></thead><tbody>${logs.slice(0,50).map(log=>`<tr><td>${datetime(log.created_at)}</td><td>${esc(log.action)}</td><td>${esc(log.entity_type)}</td></tr>`).join('')}</tbody></table>`:empty('Aucune activité récente','Les actions importantes (validation de facture, paiement…) apparaîtront ici.')}</div></section><section class="phase1-card"><h2>Suppression du compte</h2><p class="modern-card-desc">La suppression définitive de votre compte et de vos données est irréversible. Contactez le support pour la déclencher en toute sécurité.</p>${button('Contacter le support',`location.href='mailto:${esc(ADMIN_EMAIL)}?subject=${encodeURIComponent('Suppression de mon compte Piloz')}'`,'btn-ghost')}</section></div>`;}
  const renderDocumentsWithAdvancedFilters=renderDocuments;

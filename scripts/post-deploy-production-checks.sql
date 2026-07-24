@@ -2,7 +2,21 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607240055' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607240057' ok
+  union all
+  select 'stripe_price_mapping_rls',coalesce((select relrowsecurity::text from pg_class where oid='public.subscription_provider_prices'::regclass),'missing'),
+    coalesce((select relrowsecurity from pg_class where oid='public.subscription_provider_prices'::regclass),false)
+  union all
+  select 'stripe_webhook_events_rls',coalesce((select relrowsecurity::text from pg_class where oid='public.stripe_webhook_events'::regclass),'missing'),
+    coalesce((select relrowsecurity from pg_class where oid='public.stripe_webhook_events'::regclass),false)
+  union all
+  select 'stripe_webhook_event_primary_key',count(*)::text,count(*)=1
+  from pg_constraint
+  where conrelid='public.stripe_webhook_events'::regclass and contype='p'
+  union all
+  select 'company_billing_invoice_policy',count(*)::text,count(*)=1
+  from pg_policies
+  where schemaname='public' and tablename='platform_billing_invoices' and policyname='platform_billing_invoices_company_select'
   union all
   select 'platform_admin_context_rpc',coalesce(to_regprocedure('public.platform_admin_context()')::text,'missing'),
     to_regprocedure('public.platform_admin_context()') is not null
@@ -107,7 +121,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607240055',
+  'schema_version','202607240057',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;
