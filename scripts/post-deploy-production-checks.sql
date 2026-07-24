@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607240057' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607240058' ok
   union all
   select 'stripe_price_mapping_rls',coalesce((select relrowsecurity::text from pg_class where oid='public.subscription_provider_prices'::regclass),'missing'),
     coalesce((select relrowsecurity from pg_class where oid='public.subscription_provider_prices'::regclass),false)
@@ -13,6 +13,17 @@ with controls as(
   select 'stripe_webhook_event_primary_key',count(*)::text,count(*)=1
   from pg_constraint
   where conrelid='public.stripe_webhook_events'::regclass and contype='p'
+  union all
+  select 'stripe_checkout_claims_rls',coalesce((select relrowsecurity::text from pg_class where oid='public.stripe_checkout_claims'::regclass),'missing'),
+    coalesce((select relrowsecurity from pg_class where oid='public.stripe_checkout_claims'::regclass),false)
+  union all
+  select 'browser_plan_change_blocked',has_function_privilege('authenticated','public.choose_plan(uuid,text,text)','EXECUTE')::text,
+    not has_function_privilege('authenticated','public.choose_plan(uuid,text,text)','EXECUTE')
+  union all
+  select 'subscription_billing_profile',count(*)::text,count(*)=9
+  from information_schema.columns
+  where table_schema='public' and table_name='subscriptions'
+    and column_name in('billing_name','billing_email','billing_address_line1','billing_address_line2','billing_postal_code','billing_city','billing_country','billing_tax_id','billing_profile_updated_at')
   union all
   select 'company_billing_invoice_policy',count(*)::text,count(*)=1
   from pg_policies
@@ -121,7 +132,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607240057',
+  'schema_version','202607240058',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;

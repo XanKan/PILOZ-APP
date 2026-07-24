@@ -7,7 +7,9 @@ const checks={
  login_restores_choice:index.includes('PilozSiteOffer?.captureUser?.(j.user)'),
  session_restores_choice:guard.includes('PilozSiteOffer?.captureUser(user)'),
  route_after_auth:index.includes('PilozSiteOffer?.routeAfterAuth?.()'),
- checkout_clears_choice:modern.includes("if(action==='checkout')global.PilozSiteOffer?.clear?.()"),
+ checkout_claim_captured:offer.includes("CLAIM_KEY='piloz_stripe_checkout_claim_v1'")&&offer.includes('history.replaceState')&&offer.includes("action:'claim'"),
+ checkout_choice_kept_until_confirmation:!modern.includes("if(action==='checkout')global.PilozSiteOffer?.clear?.()"),
+ direct_signup_requires_checkout:index.includes('href="https://piloz.fr/#tarifs"')&&index.includes('Moyen de paiement requis'),
  stripe_secret_absent:!offer.includes('STRIPE_SECRET_KEY')&&!index.includes('STRIPE_SECRET_KEY')
 };
 const failed=Object.entries(checks).filter(([,ok])=>!ok).map(([name])=>name);console.log(JSON.stringify({ok:!failed.length,checks,failed}));if(failed.length)process.exitCode=1;

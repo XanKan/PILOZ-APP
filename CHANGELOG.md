@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0-compliance.10 — 24 juillet 2026
+
+- carte bancaire collectée par Stripe avant la création du compte, sans débit pendant les 14 jours d’essai ;
+- rattachement sécurisé du Checkout au compte créé, avec jeton à usage unique conservé uniquement sous forme d’empreinte SHA-256 ;
+- changement d’offre confirmé dans Stripe avant toute modification de l’abonnement Piloz ;
+- portail Stripe configuré automatiquement pour les moyens de paiement, coordonnées de facturation, factures et résiliation ;
+- synchronisation du nom, de l’adresse, du numéro de TVA, de la carte masquée et des PDF de factures dans Paramètres > Abonnement.
+
 ## 0.9.0-compliance.9 — 24 juillet 2026
 
 - nouveau cockpit de pilotage connecté aux données Supabase réelles, avec quatre indicateurs principaux, analyse temporelle, trésorerie, priorités et blocs métier ;

@@ -17,3 +17,8 @@ sql_paths = []
 # pas d'un JWT Supabase ; la signature HMAC Stripe reste obligatoire.
 [functions.stripe-webhook]
 verify_jwt = false
+
+# La page tarifs appelle ce point d'entrée avant la création du compte.
+# Les offres, l'origine, le débit et le nombre de tentatives sont validés côté serveur.
+[functions.stripe-public-checkout]
+verify_jwt = false

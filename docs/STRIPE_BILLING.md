@@ -2,12 +2,13 @@
 
 ## Ce qui est automatisé
 
-- Les boutons tarifaires de `piloz.fr` transmettent l'offre et la périodicité choisies à `app.piloz.fr`.
-- Le choix est conservé pendant l'inscription et restauré après la confirmation ou la connexion.
+- Les boutons tarifaires de `piloz.fr` ouvrent Stripe Checkout avant la création du compte.
+- Stripe exige une carte, crée l'abonnement avec 14 jours d'essai et ne débite rien le jour de l'inscription.
+- Après Checkout, un jeton à usage unique rattache l'abonnement au compte créé. Seule son empreinte SHA-256 est stockée en base.
 - Piloz crée les produits et tarifs Stripe à partir des offres versionnées en base.
 - Un premier abonnement passe par Stripe Checkout.
-- Un abonnement Stripe existant ouvre le Customer Portal, sans créer de doublon.
-- Le webhook signé synchronise l'abonnement, les factures, paiements et remboursements.
+- Un changement d'offre Stripe existant ouvre un écran de confirmation ciblé du Customer Portal. Piloz ne change l'offre qu'après l'événement Stripe.
+- Le webhook signé synchronise l'abonnement, le profil de facturation, les factures PDF, paiements et remboursements.
 - Le navigateur ne reçoit jamais la clé secrète Stripe ni un numéro de carte complet.
 
 ## Configuration initiale (une seule fois)
@@ -20,6 +21,7 @@
    ```powershell
    npx.cmd --yes supabase@2.109.1 functions deploy stripe-billing --project-ref hpxcbemezvynofxiffzs
    npx.cmd --yes supabase@2.109.1 functions deploy stripe-webhook --project-ref hpxcbemezvynofxiffzs --no-verify-jwt
+   npx.cmd --yes supabase@2.109.1 functions deploy stripe-public-checkout --project-ref hpxcbemezvynofxiffzs --no-verify-jwt
    ```
 
 5. Dans Stripe, ouvrir **Développeurs > Webhooks > Ajouter une destination** et saisir :
@@ -34,24 +36,26 @@
    - `customer.subscription.created`
    - `customer.subscription.updated`
    - `customer.subscription.deleted`
+   - `customer.subscription.trial_will_end`
+   - `customer.updated`
    - `invoice.finalized`
    - `invoice.paid`
    - `invoice.payment_failed`
    - `charge.refunded`
 
 7. Copier le secret de signature du webhook (`whsec_...`) dans un secret Supabase nommé `STRIPE_WEBHOOK_SECRET`.
-8. Dans Stripe, ouvrir **Paramètres > Facturation > Portail client** et activer les fonctions souhaitées : changement de carte, factures, résiliation et changement d'offre.
-9. Appliquer la migration `202607240057_stripe_billing.sql` avec le script de déploiement Supabase du dépôt.
-10. Exécuter `scripts/post-deploy-production-checks.sql` dans le SQL Editor. Le résultat doit contenir `"ok": true` et `"schema_version": "202607240057"`.
+8. Dans Stripe, configurer les e-mails de rappel de fin d'essai, les coordonnées de support et les liens CGU/confidentialité. La fonction configure elle-même le portail client géré par Piloz.
+9. Appliquer les migrations jusqu'à `202607240058_stripe_trial_checkout_and_billing_profile.sql` avec le script de déploiement Supabase du dépôt.
+10. Exécuter `scripts/post-deploy-production-checks.sql` dans le SQL Editor. Le résultat doit contenir `"ok": true` et `"schema_version": "202607240058"`.
 
 Ne jamais coller une clé `sk_...` ou `whsec_...` dans Git, dans le navigateur, dans une capture d'écran ou dans une conversation. Si une clé a été exposée, la révoquer immédiatement dans Stripe puis la remplacer dans Supabase.
 
 ## Recette avant passage en production
 
 1. Conserver les clés `sk_test_...` et le webhook en mode test.
-2. Depuis **Paramètres > Abonnement**, choisir une offre.
+2. Depuis `piloz.fr`, choisir une offre : Stripe doit s'ouvrir avant l'inscription.
 3. Utiliser la carte de test Stripe `4242 4242 4242 4242`, une date future et un CVC quelconque.
-4. Vérifier le retour dans Piloz, le statut actif, les quatre derniers chiffres et la facture dans l'historique.
+4. Vérifier le retour vers l'onboarding Piloz, créer le compte puis contrôler le statut **Essai**, sa date de fin, les quatre derniers chiffres et les coordonnées de facturation.
 5. Ouvrir le portail Stripe depuis Piloz et vérifier le changement de carte et la résiliation.
 6. Tester un échec de paiement avec une carte de test prévue à cet effet dans la documentation Stripe.
 7. Contrôler dans Stripe que les événements du webhook ont reçu une réponse HTTP 200.
@@ -61,7 +65,9 @@ Le passage en production consiste ensuite à remplacer les deux secrets par leur
 ## Références officielles
 
 - Stripe Checkout : https://docs.stripe.com/api/checkout/sessions/create
+- Essais gratuits avec moyen de paiement : https://docs.stripe.com/payments/checkout/free-trials?locale=fr-FR
 - Portail client Stripe : https://docs.stripe.com/customer-management/integrate-customer-portal
+- Liens ciblés du portail client : https://docs.stripe.com/customer-management/portal-deep-links
 - Signature des webhooks : https://docs.stripe.com/webhooks/signature
 - Événements d'abonnement : https://docs.stripe.com/billing/subscriptions/webhooks
 - Secrets des Edge Functions Supabase : https://supabase.com/docs/guides/functions/secrets

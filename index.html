@@ -2435,13 +2435,13 @@ function authValidateSignupStep(step){
 function authSetErrors(errors){ authFieldErrors = errors; authStatusMessage = ''; authStatusKind = 'error'; authFocusTarget = Object.keys(errors)[0] || ''; }
 function authIntro(){
   if(authRecovery) return {title:'Choisissez un nouveau mot de passe', text:'Le lien de réinitialisation est bien reconnu. Définissez un nouveau mot de passe pour reprendre votre activité.'};
-  if(authMode==='signup') return {title:'Créez votre compte Piloz', text:'Configurez votre essai gratuit en 4 étapes rapides. Aucun formulaire de connexion ne s’affiche ici.'};
+  if(authMode==='signup') return {title:'Créez votre compte Piloz', text:'Votre carte a été enregistrée par Stripe. Terminez maintenant la création de votre compte et votre onboarding.'};
   return {title:'Bon retour parmi nous', text:'Connectez-vous pour retrouver votre tableau de bord, vos relances, vos devis et vos factures.'};
 }
 function authAside(){
   const intro = authIntro();
   const points = authMode==='signup' && !authRecovery
-    ? [['Essai gratuit', `${ESSAI_JOURS} jours pour tester Piloz sans carte bancaire.`], ['Onboarding guidé', 'Quelques questions pour adapter votre tableau de bord dès la création du compte.'], ['Parcours séparés', 'Connexion et inscription ne s’affichent jamais en même temps.']]
+    ? [['Essai gratuit', `${ESSAI_JOURS} jours sans débit, avec un moyen de paiement obligatoire.`], ['Paiement sécurisé', 'Votre carte est enregistrée par Stripe et ne sera débitée qu’à la fin de l’essai.'], ['Onboarding guidé', 'Quelques questions pour adapter Piloz dès la création du compte.']]
     : [['Vos données', 'Retrouvez vos dossiers, clients, devis et factures sur tous vos appareils.'], ['Connexion sécurisée', 'Supabase et les sessions actuelles restent inchangés pour les comptes existants.'], ['Accès direct', 'Après connexion, Piloz ouvre immédiatement votre tableau de bord.']];
   return `<aside class="auth-aside"><div class="auth-brand"><div class="plogo"><img src="assets/images/piloz-logo.png" alt="Logo PILOZ"></div><div><strong>PILOZ</strong><span>ERP de gestion commerciale</span></div></div><div><h1>${esc(intro.title)}</h1><p>${esc(intro.text)}</p></div><div class="auth-points">${points.map(([title,text])=>`<div class="auth-point"><b>${esc(title)}</b><span>${esc(text)}</span></div>`).join('')}</div></aside>`;
 }
@@ -2507,6 +2507,10 @@ function authPanelContent(){
       ${authStatusMarkup()}
       <div class="auth-actions"><span class="auth-minor">La connexion ouvre directement votre tableau de bord.</span><button class="btn btn-p" ${authBusy?'disabled':''}>${authBusy?'Connexion…':'Se connecter'}</button></div>
     </form>`;
+  if(!window.PilozCheckoutClaim?.hasPending?.()) return `
+    <div class="auth-panel-head"><div><div class="auth-badge">Moyen de paiement requis</div><h2>Choisissez d’abord votre offre</h2><p>Pour démarrer l’essai gratuit, choisissez une offre sur piloz.fr puis enregistrez votre carte sur la page Stripe sécurisée.</p></div><p class="auth-switch">${authSwitchMarkup()}</p></div>
+    <div class="auth-summary-card"><h3>Aucun débit aujourd’hui</h3><p>Votre carte est obligatoire, mais le premier prélèvement intervient uniquement après les ${ESSAI_JOURS} jours d’essai si vous ne résiliez pas avant.</p></div>
+    <div class="auth-actions"><span class="auth-minor">Le compte Piloz sera créé après la confirmation Stripe.</span><a class="btn btn-p" href="https://piloz.fr/#tarifs">Choisir mon offre</a></div>`;
   const progress = Math.round((authStep / AUTH_SIGNUP_STEPS) * 100);
   return `
     <div class="auth-panel-head"><div><div class="auth-badge">Essai gratuit ${ESSAI_JOURS} jours</div><h2>${esc(intro.title)}</h2><p>${esc(intro.text)}</p></div><p class="auth-switch">${authSwitchMarkup()}</p></div>
@@ -2586,12 +2590,16 @@ async function authSyncSession(opts={}){
   authBusy = false;
   authRecovery = false;
   applyAuthModeToUrl('');
-  window.PilozSiteOffer?.routeAfterAuth?.();
+  let checkoutClaimed=false;
+  try{checkoutClaimed=!!(await window.PilozCheckoutClaim?.claimAfterAuth?.());}
+  catch(error){console.error('[PILOZ Stripe] Rattachement du Checkout impossible',{code:error?.code||'',message:error?.message||String(error)});toast(authErrorMessage(error,'Le paiement Stripe n’a pas encore pu être rattaché. Réessayez depuis la page Abonnement.'));}
+  if(!checkoutClaimed)window.PilozSiteOffer?.routeAfterAuth?.();
   await chargerLicence();
   fermerAuth();
   render();
   notifierRelances();
   controlerLicence();
+  if(checkoutClaimed)toast(`Carte enregistrée. Votre essai gratuit de ${ESSAI_JOURS} jours est actif.`);
   return true;
 }
 function authErrorMessage(error, fallback='Une erreur est survenue. Réessayez dans quelques instants.'){
@@ -2845,12 +2853,12 @@ function adminCreerCompte(){
 <script src="assets/js/domain/fiscal-domain.js?v=20260722.1"></script>
 <script src="assets/js/domain/electronic-invoice.js?v=20260722.1"></script>
 <script src="assets/js/utils/document-statuses.js?v=20260722.3"></script>
-<script src="assets/js/modules/subscription/site-offer.js?v=20260724.1"></script>
+<script src="assets/js/modules/subscription/site-offer.js?v=20260724.2"></script>
 <script src="assets/js/modules/subscription/entitlements.js?v=20260721.10"></script>
 <script src="assets/js/modules/onboarding/company-search.js?v=20260721.10"></script>
 <script src="assets/js/modules/onboarding/professional-onboarding.js?v=20260721.10"></script>
-<script src="assets/js/modules/erp/erp-app.js?v=20260724.2"></script>
-<script src="assets/js/modules/erp/erp-modern.js?v=20260724.4"></script>
+<script src="assets/js/modules/erp/erp-app.js?v=20260724.3"></script>
+<script src="assets/js/modules/erp/erp-modern.js?v=20260724.5"></script>
 <script src="assets/js/modules/erp/erp-compliance.js?v=20260722.2"></script>
 <script src="assets/js/modules/erp/erp-commercial-v2.js?v=20260723.1"></script>
 <script src="assets/js/modules/erp/erp-dashboard-cockpit.js?v=20260724.4"></script>
