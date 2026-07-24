@@ -39,7 +39,7 @@ location.hash='settings/company';
   PilozApp.go('settings/company/'+route);
   await new Promise(resolve=>setTimeout(resolve,30));
   const text=document.getElementById('main').textContent;
-  if(text.trim()&&!/undefined|null/.test(text))rendered++;
+  if(text.trim()&&!/undefined|null/.test(text)&&[...document.querySelectorAll('.modern-page-header button')].some(node=>node.textContent.trim()==='Retour aux paramètres'))rendered++;
  }
  PilozApp.go('settings/company/logo');
  await new Promise(resolve=>setTimeout(resolve,30));

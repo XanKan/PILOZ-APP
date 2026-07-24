@@ -34,6 +34,7 @@
     const checks=[];
     try{
       PilozModern.renderNavigation(document.getElementById('tabs'),state,'settings/overview');
+      checks.push(['bandeau paramètres supprimé',!document.querySelector('.modern-secondary-panel')&&!document.getElementById('app').classList.contains('modern-subnav-open')]);
       checks.push(['route rendue',PilozModern.renderRoute('settings',state)===true]);
       const cards=[...document.querySelectorAll('.settings-overview-card')],paths=cards.map(card=>card.getAttribute('onclick'));
       checks.push(['13 réglages visibles',cards.length===13]);
@@ -44,6 +45,12 @@
       checks.push(['aucune valeur vide technique',!/undefined|null/.test(document.getElementById('main').textContent)]);
       cards[0].click();
       checks.push(['navigation carte',PilozApp.lastRoute==='settings/company']);
+      location.hash='settings/sales';
+      checks.push(['sous-page rendue',PilozModern.renderRoute('settings',state)===true]);
+      const backButton=[...document.querySelectorAll('.modern-page-header .actions button')].find(node=>node.textContent.trim()==='Retour aux paramètres');
+      checks.push(['retour présent dans une sous-page',!!backButton]);
+      backButton?.click();
+      checks.push(['retour vers la vue d’ensemble',PilozApp.lastRoute==='settings/overview']);
     }catch(error){checks.push(['exécution',false,error.message]);}
     const failed=checks.filter(([,ok])=>!ok),result=document.getElementById('result');
     result.dataset.status=failed.length?'failed':'passed';

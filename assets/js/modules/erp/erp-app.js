@@ -27,7 +27,7 @@
  function managedPath(path=hash()){return!!routes[path]||path.startsWith('sales/clients/')||path.startsWith('sales/items/')||path==='sales/catalog/new'||['document-editor','template-editor'].includes(path);}
  function go(path){location.hash=path;}
  function notice(message,kind='info'){global.toast?.(message);const node=document.getElementById('erp-live');if(node){node.textContent=message;node.dataset.kind=kind;}}
- function top(title,actions=''){return`<div class="topbar erp-top"><div><h1>${e(title)}</h1><p class="erp-subtitle">Données de l’entreprise connectée</p></div><div class="actions">${actions}</div></div><div id="erp-live" class="sr-only" aria-live="polite"></div>`;}
+ function top(title,actions=''){const path=hash(),back=path.startsWith('settings/')&&path!=='settings/overview'?button('Retour aux paramètres',"PilozApp.go('settings/overview')",'btn-o'):'';return`<div class="topbar erp-top"><div><h1>${e(title)}</h1><p class="erp-subtitle">Données de l’entreprise connectée</p></div><div class="actions">${back}${actions}</div></div><div id="erp-live" class="sr-only" aria-live="polite"></div>`;}
  function empty(title,text,action=''){return`<div class="phase1-empty"><b>${e(title)}</b><span>${e(text)}</span>${action}</div>`;}
  function status(value){const key=String(value||'draft').toLowerCase(),cls=['validated','confirmed','active','paid','received'].includes(key)?'ok':['cancelled','archived','rejected','overdue'].includes(key)?'danger':['sent','partial','counted','pending'].includes(key)?'warn':'info';return`<span class="phase1-status ${cls}">${e(key.replaceAll('_',' '))}</span>`;}
  function button(label,handler,kind='btn-o',attrs=''){return`<button class="btn ${kind}" onclick="${handler}" ${attrs}>${e(label)}</button>`;}
