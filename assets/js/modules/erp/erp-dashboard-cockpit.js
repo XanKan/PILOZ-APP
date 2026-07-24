@@ -34,7 +34,11 @@
     ['previous_month','Mois précédent'],['current_quarter','Trimestre en cours'],
     ['current_year','Année en cours'],['previous_year','Année précédente'],['custom','Personnalisé']
   ];
-  const comparisons=[['previous','Période précédente'],['year','Même période N-1'],['none','Sans comparaison']];
+  const comparisons=[
+    ['previous','Juste avant (ex. juillet → juin)'],
+    ['year','Mêmes dates l’année dernière'],
+    ['none','Ne pas comparer']
+  ];
   const blockDefinitions={
     receivables:{label:'Échéances clients',description:'Balance âgée et factures à traiter'},
     commercial:{label:'Activité commerciale',description:'Parcours et conversion des devis'},
@@ -79,6 +83,7 @@
     cache:new Map(),cacheTtl:120000,period:'current_month',comparison:'previous',
     customStart:'',customEnd:'',preferences:null,preferencesReady:false,
     edit:false,draft:null,dragged:'',dropTarget:'',dropSide:'before',
+    customDragType:'',customDragKey:'',customDropSide:'before',
     chartMode:'performance',documentTab:'quote',customerMode:'revenue',saving:false,persistTimer:null
   };
 
@@ -89,6 +94,7 @@
     ui.context=key;ui.data=null;ui.error='';ui.loading=false;ui.requestId+=1;
     ui.controller?.abort();ui.controller=null;ui.preferences=null;ui.preferencesReady=false;
     ui.edit=false;ui.draft=null;ui.period='current_month';ui.comparison='previous';ui.customStart='';ui.customEnd='';
+    ui.customDragType='';ui.customDragKey='';ui.customDropSide='before';
   }
   function cacheKey(state){return[contextKey(state),ui.period,ui.customStart,ui.customEnd,ui.comparison].join('|');}
   function rpcArgs(){return{period_key:ui.period,custom_start:ui.period==='custom'?ui.customStart||null:null,custom_end:ui.period==='custom'?ui.customEnd||null:null,comparison_mode:ui.comparison};}
@@ -151,8 +157,14 @@
 
   function periodLabel(summary){
     const period=summary?.period;if(!period)return periods.find(row=>row[0]===ui.period)?.[1]||'Période';
-    const comparison=ui.comparison==='year'?'même période de l’année précédente':ui.comparison==='previous'?'période précédente':'';
-    return`Du ${date(period.start)} au ${date(period.end)}${comparison?` — comparé à la ${comparison}`:''}`;
+    const compared=ui.comparison!=='none'&&period.comparison_start&&period.comparison_end;
+    return`Du ${date(period.start)} au ${date(period.end)}${compared?` — comparé avec les résultats du ${date(period.comparison_start)} au ${date(period.comparison_end)}`:''}`;
+  }
+  function comparisonHelp(summary){
+    const period=summary?.period||{};
+    if(ui.comparison==='none')return'Aucune autre période ne sera affichée.';
+    if(period.comparison_start&&period.comparison_end)return`Référence utilisée : du ${date(period.comparison_start)} au ${date(period.comparison_end)}.`;
+    return ui.comparison==='year'?'Les mêmes jours, un an plus tôt.':'La plage de même durée située juste avant.';
   }
   function variation(value){
     if(value===null||value===undefined||!Number.isFinite(Number(value)))return'';
@@ -325,7 +337,11 @@
     const preference=ui.draft,stockEnabled=payload.stock?.enabled!==false,purchasesEnabled=payload.purchases?.enabled!==false;
     const selectableBlocks=allBlocks.filter(key=>(key!=='stock'||stockEnabled)&&(key!=='purchases'||purchasesEnabled));
     const selectableMetrics=Object.entries(metricDefinitions).filter(([key])=>(!['gross_margin','gross_result'].includes(key)||payload.summary?.permissions?.margin)&&(key!=='stock_value'||stockEnabled&&payload.stock?.value!==null&&payload.stock?.value!==undefined)&&(key!=='purchases_ht'||purchasesEnabled));
-    return`<section class="cockpit-customizer" aria-label="Personnalisation du tableau de bord"><header><div><span>Personnalisation</span><h2>Organisez votre espace de pilotage</h2><p>Les indicateurs, le graphique et les actions prioritaires restent structurés. Déplacez les blocs secondaires avec leur poignée.</p></div><div><button onclick="PilozDashboardCockpit.cancelCustomize()">Annuler</button><button onclick="PilozDashboardCockpit.resetCustomize()">Disposition par défaut</button><button class="primary" ${ui.saving?'disabled':''} onclick="PilozDashboardCockpit.saveCustomize()">${ui.saving?'Enregistrement…':'Enregistrer'}</button></div></header><div class="cockpit-customizer-grid"><fieldset><legend>Indicateurs principaux · 4 maximum</legend>${selectableMetrics.map(([key,item])=>`<label><input type="checkbox" ${preference.selected_metrics.includes(key)?'checked':''} onchange="PilozDashboardCockpit.toggleMetric('${key}')"><span>${esc(item.label)}</span></label>`).join('')}</fieldset><fieldset><legend>Blocs secondaires</legend>${selectableBlocks.map(key=>`<label><input type="checkbox" ${preference.visible_blocks.includes(key)?'checked':''} onchange="PilozDashboardCockpit.toggleBlock('${key}')"><span>${esc(blockDefinitions[key].label)}</span></label>`).join('')}</fieldset><fieldset class="cockpit-density-options"><legend>Densité d’affichage</legend>${[['comfortable','Confortable'],['compact','Compacte']].map(([key,label])=>`<label><input type="radio" name="cockpit-density" ${preference.period_config?.density===key?'checked':''} onchange="PilozDashboardCockpit.setDensity('${key}')"><span>${label}</span></label>`).join('')}</fieldset></div></section>`;
+    const metricMap=Object.fromEntries(selectableMetrics),selectedMetrics=preference.selected_metrics.filter(key=>metricMap[key]),availableMetrics=selectableMetrics.filter(([key])=>!selectedMetrics.includes(key));
+    const selectedBlocks=preference.block_order.filter(key=>selectableBlocks.includes(key)&&preference.visible_blocks.includes(key)),availableBlocks=selectableBlocks.filter(key=>!preference.visible_blocks.includes(key));
+    const sortable=(type,keys,labelFor)=>`<div class="cockpit-customizer-sort-list">${keys.map((key,index)=>`<div class="cockpit-customizer-sortable" data-customizer-type="${type}" data-customizer-key="${key}" ondragover="PilozDashboardCockpit.customizerDragOver(event,'${type}','${key}')" ondragleave="PilozDashboardCockpit.customizerDragLeave(event)" ondrop="PilozDashboardCockpit.customizerDrop(event,'${type}','${key}')"><span class="cockpit-customizer-grip" tabindex="0" draggable="true" title="Maintenir puis glisser" aria-label="Déplacer ${esc(labelFor(key))}" ondragstart="PilozDashboardCockpit.customizerDrag(event,'${type}','${key}')" ondragend="PilozDashboardCockpit.customizerEndDrag()">⠿</span><label><input type="checkbox" checked onchange="PilozDashboardCockpit.${type==='metric'?'toggleMetric':'toggleBlock'}('${key}')"><span>${esc(labelFor(key))}</span></label><span class="cockpit-customizer-position">${index+1}</span><div class="cockpit-customizer-order"><button type="button" ${index===0?'disabled':''} aria-label="Monter ${esc(labelFor(key))}" onclick="PilozDashboardCockpit.moveCustomizerItem('${type}','${key}',-1)">↑</button><button type="button" ${index===keys.length-1?'disabled':''} aria-label="Descendre ${esc(labelFor(key))}" onclick="PilozDashboardCockpit.moveCustomizerItem('${type}','${key}',1)">↓</button></div></div>`).join('')||'<p class="cockpit-customizer-empty">Aucun élément affiché.</p>'}</div>`;
+    const available=(type,rows,labelFor)=>rows.length?`<div class="cockpit-customizer-available"><b>Disponibles</b>${rows.map(row=>{const key=Array.isArray(row)?row[0]:row;return`<label><input type="checkbox" onchange="PilozDashboardCockpit.${type==='metric'?'toggleMetric':'toggleBlock'}('${key}')"><span>${esc(labelFor(key))}</span></label>`;}).join('')}</div>`:'';
+    return`<section class="cockpit-customizer" aria-label="Personnalisation du tableau de bord"><header><div><span>Personnalisation</span><h2>Organisez votre espace de pilotage</h2><p>Maintenez la poignée ⠿ puis déposez chaque élément à la place souhaitée. Les flèches restent disponibles sur mobile.</p></div><div><button onclick="PilozDashboardCockpit.cancelCustomize()">Annuler</button><button onclick="PilozDashboardCockpit.resetCustomize()">Disposition par défaut</button><button class="primary" ${ui.saving?'disabled':''} onclick="PilozDashboardCockpit.saveCustomize()">${ui.saving?'Enregistrement…':'Enregistrer'}</button></div></header><div class="cockpit-customizer-grid"><fieldset class="cockpit-customizer-section"><legend>Indicateurs principaux · 4 maximum</legend><p>Glissez les indicateurs pour choisir leur ordre d’affichage.</p>${sortable('metric',selectedMetrics,key=>metricMap[key]?.label||key)}${available('metric',availableMetrics,key=>metricMap[key]?.label||key)}</fieldset><fieldset class="cockpit-customizer-section"><legend>Blocs secondaires</legend><p>Glissez les blocs pour les placer facilement sur le tableau de bord.</p>${sortable('block',selectedBlocks,key=>blockDefinitions[key]?.label||key)}${available('block',availableBlocks,key=>blockDefinitions[key]?.label||key)}</fieldset><fieldset class="cockpit-density-options"><legend>Densité d’affichage</legend>${[['comfortable','Confortable'],['compact','Compacte']].map(([key,label])=>`<label><input type="radio" name="cockpit-density" ${preference.period_config?.density===key?'checked':''} onchange="PilozDashboardCockpit.setDensity('${key}')"><span>${label}</span></label>`).join('')}</fieldset></div></section>`;
   }
   function quickActions(summary){
     const permission=summary.permissions||{},primary=[] ,secondary=[];
@@ -340,7 +356,7 @@
   }
   function renderHeader(payload){
     const first=String(payload.first_name||'').trim(),title=first?`Bonjour ${first}, voici où en est votre activité.`:'Bonjour, voici où en est votre activité.';
-    return`<header class="cockpit-header"><div class="cockpit-welcome"><span>${esc(todayLabel())}</span><h1>${esc(title)}</h1><p>${esc(periodLabel(payload.summary))}</p></div><div class="cockpit-header-actions"><div class="cockpit-period"><label><span>Période analysée</span><select onchange="PilozDashboardCockpit.setPeriod(this.value)">${periods.map(([key,label])=>`<option value="${key}" ${ui.period===key?'selected':''}>${esc(label)}</option>`).join('')}</select></label><label><span>Comparer à</span><select onchange="PilozDashboardCockpit.setComparison(this.value)">${comparisons.map(([key,label])=>`<option value="${key}" ${ui.comparison===key?'selected':''}>${esc(label)}</option>`).join('')}</select></label></div>${ui.period==='custom'?`<div class="cockpit-custom-dates"><label>Du<input type="date" value="${esc(ui.customStart)}" max="${esc(ui.customEnd||'')}" onchange="PilozDashboardCockpit.setCustomDate('start',this.value)"></label><label>Au<input type="date" value="${esc(ui.customEnd)}" min="${esc(ui.customStart||'')}" onchange="PilozDashboardCockpit.setCustomDate('end',this.value)"></label></div>`:''}<div class="cockpit-header-buttons"><button onclick="PilozDashboardCockpit.refresh()" aria-label="Actualiser le tableau de bord">↻ Actualiser</button><button onclick="PilozDashboardCockpit.startCustomize()">Personnaliser</button></div></div>${quickActions(payload.summary)}</header>`;
+    return`<header class="cockpit-header"><div class="cockpit-welcome"><span>${esc(todayLabel())}</span><h1>${esc(title)}</h1><p>${esc(periodLabel(payload.summary))}</p></div><div class="cockpit-header-actions"><div class="cockpit-period"><label><span>Période analysée</span><select onchange="PilozDashboardCockpit.setPeriod(this.value)">${periods.map(([key,label])=>`<option value="${key}" ${ui.period===key?'selected':''}>${esc(label)}</option>`).join('')}</select></label><label><span>Comparer les résultats avec</span><select onchange="PilozDashboardCockpit.setComparison(this.value)">${comparisons.map(([key,label])=>`<option value="${key}" ${ui.comparison===key?'selected':''}>${esc(label)}</option>`).join('')}</select></label></div><p class="cockpit-comparison-help">${esc(comparisonHelp(payload.summary))}</p>${ui.period==='custom'?`<div class="cockpit-custom-dates"><label>Du<input type="date" value="${esc(ui.customStart)}" max="${esc(ui.customEnd||'')}" onchange="PilozDashboardCockpit.setCustomDate('start',this.value)"></label><label>Au<input type="date" value="${esc(ui.customEnd)}" min="${esc(ui.customStart||'')}" onchange="PilozDashboardCockpit.setCustomDate('end',this.value)"></label></div>`:''}<div class="cockpit-header-buttons"><button onclick="PilozDashboardCockpit.refresh()" aria-label="Actualiser le tableau de bord">↻ Actualiser</button><button onclick="PilozDashboardCockpit.startCustomize()">Personnaliser</button></div></div>${quickActions(payload.summary)}</header>`;
   }
   function isNewCompany(payload,state){return number(payload.summary?.invoice_count)===0&&number(payload.summary?.quote_count)===0&&number(payload.activity?.today)===0&&number(payload.activity?.upcoming)===0&&(state.data.clients||[]).length===0;}
   function renderOnboarding(){
@@ -381,7 +397,7 @@
   function setCustomerMode(value){if(!['revenue','margin','outstanding','overdue'].includes(value))return;ui.customerMode=value;render(currentState());}
 
   function startCustomize(){if(!ui.preferences)return;ui.edit=true;ui.draft=clonePreference(ui.preferences);render(currentState());}
-  function cancelCustomize(){ui.edit=false;ui.draft=null;endDrag();render(currentState());}
+  function cancelCustomize(){ui.edit=false;ui.draft=null;endDrag();customizerEndDrag();render(currentState());}
   function resetCustomize(){if(!ui.draft)return;ui.draft=defaultPreference(ui.data?.role||'member');if(ui.data?.stock?.enabled===false)ui.draft.visible_blocks=ui.draft.visible_blocks.filter(key=>key!=='stock');if(ui.data?.purchases?.enabled===false)ui.draft.visible_blocks=ui.draft.visible_blocks.filter(key=>key!=='purchases');ui.draft.block_order=ui.draft.visible_blocks.slice();render(currentState());}
   function toggleMetric(key){
     if(!ui.draft||!metricDefinitions[key])return;
@@ -409,6 +425,41 @@
     if(!ui.draft||!event.altKey||!['ArrowUp','ArrowDown'].includes(event.key))return;
     event.preventDefault();const order=ui.draft.block_order,index=order.indexOf(key),target=index+(event.key==='ArrowUp'?-1:1);
     if(target<0||target>=order.length)return;[order[index],order[target]]=[order[target],order[index]];render(currentState());requestAnimationFrame(()=>document.querySelector(`[data-cockpit-block="${key}"] .cockpit-drag-handle`)?.focus());
+  }
+  function customizerDrag(event,type,key){
+    if(!ui.draft||!['metric','block'].includes(type))return;
+    ui.customDragType=type;ui.customDragKey=key;ui.customDropSide='before';
+    if(event.dataTransfer){event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',`${type}:${key}`);}
+    event.currentTarget.closest('.cockpit-customizer-sortable')?.classList.add('dragging');
+  }
+  function customizerDragOver(event,type,key){
+    if(!ui.customDragKey||ui.customDragType!==type||ui.customDragKey===key)return;
+    event.preventDefault();
+    if(event.dataTransfer)event.dataTransfer.dropEffect='move';
+    const rect=event.currentTarget.getBoundingClientRect();ui.customDropSide=event.clientY<rect.top+rect.height/2?'before':'after';
+    document.querySelectorAll('.cockpit-customizer-sortable.drop-before,.cockpit-customizer-sortable.drop-after').forEach(node=>node.classList.remove('drop-before','drop-after'));
+    event.currentTarget.classList.add(ui.customDropSide==='before'?'drop-before':'drop-after');
+  }
+  function customizerDragLeave(event){if(event.currentTarget.contains(event.relatedTarget))return;event.currentTarget.classList.remove('drop-before','drop-after');}
+  function customizerDrop(event,type,key){
+    event.preventDefault();
+    if(!ui.draft||ui.customDragType!==type){customizerEndDrag();return;}
+    const order=type==='metric'?ui.draft.selected_metrics:ui.draft.block_order,dragged=ui.customDragKey;
+    if(!order||dragged===key){customizerEndDrag();return;}
+    const from=order.indexOf(dragged);if(from<0){customizerEndDrag();return;}
+    order.splice(from,1);const target=order.indexOf(key);order.splice(target+(ui.customDropSide==='after'?1:0),0,dragged);
+    customizerEndDrag();render(currentState());
+  }
+  function customizerEndDrag(){
+    ui.customDragType='';ui.customDragKey='';ui.customDropSide='before';
+    document.querySelectorAll('.cockpit-customizer-sortable.dragging,.cockpit-customizer-sortable.drop-before,.cockpit-customizer-sortable.drop-after').forEach(node=>node.classList.remove('dragging','drop-before','drop-after'));
+  }
+  function moveCustomizerItem(type,key,direction){
+    if(!ui.draft||!['metric','block'].includes(type)||![1,-1].includes(Number(direction)))return;
+    const order=type==='metric'?ui.draft.selected_metrics:ui.draft.block_order,index=order.indexOf(key),target=index+Number(direction);
+    if(index<0||target<0||target>=order.length)return;
+    [order[index],order[target]]=[order[target],order[index]];render(currentState());
+    requestAnimationFrame(()=>document.querySelector(`[data-customizer-type="${type}"][data-customizer-key="${key}"] .cockpit-customizer-grip`)?.focus());
   }
   async function persistPreference(preference,quiet=false){
     const config={...(preference.period_config||{}),preset:ui.period,comparison:ui.comparison,custom_start:ui.customStart||null,custom_end:ui.customEnd||null};
@@ -473,7 +524,7 @@
   global.PilozDashboardCockpit={
     ui,render,load,refresh,invalidate,markStale,setPeriod,setComparison,setCustomDate,setChartMode,setDocumentTab,setCustomerMode,
     startCustomize,cancelCustomize,resetCustomize,toggleMetric,toggleBlock,toggleSize,setDensity,saveCustomize,
-    drag,dragOver,dragLeave,drop,endDrag,dragKey,navigate,openDocument,openDueEmail,openDuePayment,openDocumentList,openClient,
+    drag,dragOver,dragLeave,drop,endDrag,dragKey,customizerDrag,customizerDragOver,customizerDragLeave,customizerDrop,customizerEndDrag,moveCustomizerItem,navigate,openDocument,openDueEmail,openDuePayment,openDocumentList,openClient,
     openItem,openActivity,completeActivity,showNotifications,openPriority,quick
   };
 })(window);

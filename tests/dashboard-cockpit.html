@@ -48,6 +48,8 @@ window.PilozCommercialWorkspace={openClient:id=>calls.push({name:'openClient',id
   check('prénom réel affiché',main.textContent.includes('Bonjour Alex'));
   check('sélecteur avec toutes les périodes',document.querySelectorAll('.cockpit-period select')[0]?.options.length===10);
   check('comparaison disponible',document.querySelectorAll('.cockpit-period select')[1]?.options.length===3);
+  check('comparaisons expliquées sans jargon N-1',main.textContent.includes('Juste avant (ex. juillet → juin)')&&main.textContent.includes('Mêmes dates l’année dernière')&&!main.textContent.includes('N-1'));
+  check('dates de comparaison exactes affichées',main.textContent.includes('Référence utilisée : du 1 juin 2026 au 30 juin 2026'));
   check('quatre indicateurs maximum',document.querySelectorAll('.cockpit-kpi').length===4);
   check('valeurs financières serveur affichées',main.textContent.includes('42 000')&&main.textContent.includes('31 200')&&main.textContent.includes('8 450'));
   check('aucun undefined ou null visible',!main.textContent.includes('undefined')&&!main.textContent.includes('null'));
@@ -68,6 +70,11 @@ window.PilozCommercialWorkspace={openClient:id=>calls.push({name:'openClient',id
   check('comparaison graphique limitée à deux séries',document.querySelectorAll('.cockpit-chart-line').length===2&&main.textContent.includes('Période comparée'));
   PilozDashboardCockpit.startCustomize();
   check('mode personnaliser explicite',!!document.querySelector('.cockpit-customizer')&&document.querySelectorAll('.cockpit-drag-handle').length===9);
+  check('indicateurs et blocs triables dans le panneau',document.querySelectorAll('[data-customizer-type="metric"]').length===4&&document.querySelectorAll('[data-customizer-type="block"]').length===9);
+  PilozDashboardCockpit.moveCustomizerItem('metric','collected',-1);
+  check('ordre des indicateurs modifiable dans le panneau',PilozDashboardCockpit.ui.draft.selected_metrics[0]==='collected'&&document.querySelector('[data-customizer-type="metric"]')?.dataset.customizerKey==='collected');
+  PilozDashboardCockpit.ui.customDragType='block';PilozDashboardCockpit.ui.customDragKey='commercial';PilozDashboardCockpit.ui.customDropSide='before';PilozDashboardCockpit.customizerDrop({preventDefault(){}},'block','receivables');
+  check('glisser-déposer des blocs disponible dans le panneau',PilozDashboardCockpit.ui.draft.block_order[0]==='commercial');
   check('aucun bouton flèche de déplacement',![...document.querySelectorAll('.cockpit-block-tools button')].some(button=>['←','→','↑','↓'].includes(button.textContent.trim())));
   PilozDashboardCockpit.toggleSize('receivables');
   check('redimensionnement borné',document.querySelector('[data-cockpit-block="receivables"]').classList.contains('size-wide'));
@@ -90,6 +97,7 @@ window.PilozCommercialWorkspace={openClient:id=>calls.push({name:'openClient',id
   PilozDashboardCockpit.setPeriod('today');await wait(0);PilozDashboardCockpit.setPeriod('current_week');await wait(30);check('requête obsolète annulée',calls.some(call=>call.name==='get_dashboard_cockpit'&&call.signal?.aborted));
   const companyCalls=calls.filter(call=>call.name==='get_dashboard_cockpit').length;state.companyId='company-2';PilozModern.renderRoute('dashboard',state);await wait(40);check('cache isolé par entreprise',calls.filter(call=>call.name==='get_dashboard_cockpit').length>companyCalls);
   const cssText=[...document.styleSheets].flatMap(sheet=>{try{return[...sheet.cssRules].map(rule=>rule.cssText)}catch{return[]}}).join(' ');check('responsive mobile et tablette présent',cssText.includes('max-width: 620px')&&cssText.includes('max-width: 860px'));
+  check('barres latérales vertes retirées des widgets',!cssText.includes('.cockpit-kpi::before'));
   check(`aucun débordement horizontal sur petit écran (${document.documentElement.scrollWidth}/${innerWidth})`,innerWidth>620||document.documentElement.scrollWidth<=innerWidth+1);
   check('aucune erreur javascript',!__errors.length);
  }catch(error){checks.push(['exécution',false,error.stack||error.message]);}
