@@ -160,6 +160,8 @@ async function bootstrap(db){
     await db.query("select public.platform_admin_manage_company_user($1,$2,'member','reactivate','Contrôle terminé')",[created.id,secondMember]);
     const feature=(await db.query("select * from public.platform_admin_set_feature_override($1,'advanced_dashboard',true,now()+interval '30 days','Essai encadré')",[created.id])).rows[0];
     if(!feature.enabled)throw new Error('features: company override failed');
+    const resolvedFeature=(await db.query("select public.has_feature($1,'advanced_dashboard') enabled",[created.id])).rows[0];
+    if(!resolvedFeature.enabled)throw new Error('features: has_feature did not resolve its parameter safely');
     const activated=(await db.query("select * from public.platform_admin_manage_subscription($1,'activate_manual','{}'::jsonb,'Contrat manuel signé')",[created.id])).rows[0];
     if(activated.status!=='active'||activated.provider!=='manual')throw new Error('subscriptions: manual activation failed');
     const exported=(await db.query("select public.platform_admin_export_company($1,'Demande de contrôle') payload",[created.id])).rows[0].payload;

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0-compliance.8 — 24 juillet 2026
+
+- correction additive de `public.has_feature` : le paramètre de fonctionnalité est désormais référencé sans ambiguïté avec la colonne SQL homonyme ;
+- le contrôle SQL de production peut de nouveau terminer le déploiement.
+
 ## 0.9.0-compliance.7 — 24 juillet 2026
 
 - autorisation des actions du back-office pendant toute la session MFA active ;
