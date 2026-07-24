@@ -93,6 +93,12 @@ async function bootstrap(db){
   const db=new PGlite({extensions:{pgcrypto}});
   try{
     await bootstrap(db);
+    await db.exec(`
+      select mode,activation_status,application_version,schema_version,signing_status,updated_at
+      from public.company_fiscal_configurations limit 0;
+      select id,anomaly_type,severity,source,detected_at
+      from public.compliance_anomalies limit 0;
+    `);
 
     await setIdentity(db,customer,'aal2');
     const customerAdmin=await db.query("select public.is_platform_admin('companies.read',true) allowed");
@@ -196,7 +202,7 @@ async function bootstrap(db){
     await db.exec('reset role');
     const audit=await db.query('select count(*)::int count,count(event_hash)::int hashed from public.platform_admin_audit_events');
     if(Number(audit.rows[0].count)<15||audit.rows[0].count!==audit.rows[0].hashed)throw new Error(`audit: incomplete platform trail ${JSON.stringify(audit.rows[0])}`);
-    console.log(JSON.stringify({ok:true,roleIsolation:true,mfaRequired:true,adminSuspension:true,sessionExpiry:true,mrrCents:Number(afterChange.mrr_cents),auditEvents:Number(audit.rows[0].count),companyCrud:true,userLifecycle:true,subscriptionLifecycle:true,planVersioning:true,export:true,supportClosed:true,suspensionEnforced:true}));
+    console.log(JSON.stringify({ok:true,roleIsolation:true,mfaRequired:true,adminSuspension:true,sessionExpiry:true,mrrCents:Number(afterChange.mrr_cents),auditEvents:Number(audit.rows[0].count),companyCrud:true,userLifecycle:true,subscriptionLifecycle:true,planVersioning:true,export:true,supportClosed:true,suspensionEnforced:true,companyDetailSchema:true}));
   }finally{
     await db.close();
   }
