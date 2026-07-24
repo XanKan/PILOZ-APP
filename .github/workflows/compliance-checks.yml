@@ -59,7 +59,8 @@ jobs:
       - name: Verify dashboard in desktop and mobile viewports
         env:
           PILOZ_PLAYWRIGHT_ROOT: ${{ runner.temp }}/piloz-playwright/node_modules/playwright-core
-          PILOZ_CHROME_PATH: /usr/bin/google-chrome
         run: |
+          export PILOZ_CHROME_PATH="$(command -v google-chrome)"
+          test -x "$PILOZ_CHROME_PATH"
           node tests/run-html-tests.cjs tests/dashboard-cockpit.html
           PILOZ_VIEWPORT_WIDTH=390 PILOZ_VIEWPORT_HEIGHT=844 node tests/run-html-tests.cjs tests/dashboard-cockpit.html

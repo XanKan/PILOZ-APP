@@ -22,7 +22,11 @@ if (!files.length) {
   const browser = await chromium.launch({
     executablePath,
     headless: true,
-    args: ["--allow-file-access-from-files"],
+    args: [
+      "--allow-file-access-from-files",
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
+    ],
   });
   let failed = false;
   try {
@@ -72,6 +76,9 @@ if (!files.length) {
   }
   if (failed) process.exitCode = 1;
 })().catch((error) => {
+  if (process.env.GITHUB_ACTIONS === "true") {
+    console.error(`::error title=Tests navigateur cockpit::${String(error.message || error).replace(/\r?\n/g, "%0A")}`);
+  }
   console.error(error.stack || error.message);
   process.exitCode = 1;
 });
