@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<title>Tests cockpit PILOZ</title>
+<link rel="stylesheet" href="../assets/css/modern-erp.css">
+<link rel="stylesheet" href="../assets/css/dashboard-cockpit.css">
+<body><main id="main"></main><div id="result" data-status="running">RUNNING</div>
+<script>
+window.__errors=[];addEventListener('error',event=>__errors.push(event.message));
+window.toast=()=>{};
+window.PilozRuntime={session:{user_id:'user-1',access_token:'test'}};
+const state={companyId:'company-1',data:{clients:[{id:'client-1',legal_name:'Atelier Alpha'}]}};
+const calls=[];
+const preference={layout_version:2,visible_blocks:['receivables','commercial','recent_documents','customers','catalog','stock','agenda','purchases','notifications'],block_order:['receivables','commercial','recent_documents','customers','catalog','stock','agenda','purchases','notifications'],block_sizes:{},selected_metrics:['revenue_ht','collected','outstanding','gross_margin'],period_config:{preset:'current_month',comparison:'previous'}};
+const payload={
+ schema_version:'202607240056',first_name:'Alex',role:'owner',generated_at:'2026-07-24T10:00:00Z',preferences:preference,
+ summary:{currency:'EUR',period:{start:'2026-07-01',end:'2026-07-31',comparison_start:'2026-06-01',comparison_end:'2026-06-30',granularity:'day',timezone:'Europe/Paris'},permissions:{revenue:true,margin:true,stock:true,purchase_prices:true,purchases:true,write:true,sales_documents:true,customers:true,payments:true,activities:true,catalog_write:true,reminders:true},revenue_ht:42000,revenue_ttc:50400,collected:31200,outstanding:8450,gross_margin:14800,margin_rate:35.2,previous_revenue_ht:38000,previous_collected:28000,revenue_change_percent:10.5,collected_change_percent:11.4,outstanding_count:7,overdue_count:3,overdue_amount:3180,invoice_count:24,average_invoice_ht:1750,quote_count:9,accepted_quote_count:5,conversion_rate:62.5,average_payment_days:18.2},
+ timeseries:[
+  {date:'2026-07-01',comparison_date:'2026-06-01',invoiced:7000,collected:4000,margin:2500,comparison:6000},
+  {date:'2026-07-08',comparison_date:'2026-06-08',invoiced:9000,collected:7500,margin:3200,comparison:8000},
+  {date:'2026-07-15',comparison_date:'2026-06-15',invoiced:11000,collected:9800,margin:3900,comparison:10000},
+  {date:'2026-07-22',comparison_date:'2026-06-22',invoiced:15000,collected:9900,margin:5200,comparison:14000}
+ ],
+ forecast:{total:15600,source_label:'Échéances contractuelles',highlights:{this_week:4850,next_week:7200,this_month:12050,next_month:3550},buckets:[{key:'overdue',amount:3180,count:3},{key:'days_7',amount:4850,count:4},{key:'days_30',amount:7570,count:5}]},
+ priority_actions:[{kind:'overdue_invoice',id:'invoice-1',title:'FAC-2026-0042',detail:'Échéance dépassée de 8 jours',impact:1450,date:'2026-07-16',tone:'danger',can_write:true},{kind:'expiring_quote',id:'quote-1',title:'DEV-2026-0051',detail:'Expire cette semaine',impact:3200,date:'2026-07-27',tone:'warning',can_write:true}],
+ receivables:{total:8450,count:7,average_delay:8,oldest_delay:21,buckets:[{key:'not_due',label:'À échoir',count:4,amount:5270},{key:'days_1_15',label:'1 à 15 jours',count:2,amount:2180},{key:'days_16_30',label:'16 à 30 jours',count:1,amount:1000},{key:'days_31_60',label:'31 à 60 jours',count:0,amount:0},{key:'days_60_plus',label:'Plus de 60 jours',count:0,amount:0}],oldest:[{id:'invoice-1',number:'FAC-2026-0042',client_id:'client-1',due_date:'2026-07-16',remaining:1450,days:8}]},
+ funnel:{quote_count:9,amount:23100,conversion_rate:62.5,pending_amount:9000,accepted_amount:10500,expiring_soon:2,stages:[{key:'draft',count:2,amount:2000},{key:'sent',count:1,amount:3000},{key:'pending',count:2,amount:6000},{key:'accepted',count:3,amount:10500},{key:'rejected',count:1,amount:1600}]},
+ recent_documents:[{id:'quote-1',type:'quote',number:'DEV-2026-0051',status:'pending',issue_date:'2026-07-22',total_ht:2666,total_ttc:3200,client_id:'client-1',client_name:'Atelier Alpha',updated_at:'2026-07-22T11:00:00Z'},{id:'invoice-1',type:'invoice',number:'FAC-2026-0042',status:'overdue',issue_date:'2026-07-01',total_ht:1208,total_ttc:1450,client_id:'client-1',client_name:'Atelier Alpha',updated_at:'2026-07-21T11:00:00Z'}],
+ customers:{new_clients:3,active_clients:8,overdue_clients:2,can_view_margin:true,top_clients:[{id:'client-1',name:'Atelier Alpha',revenue:12000,margin:7000,collected:9500,outstanding:2500,overdue:1450,share:28.6}]},
+ catalog:{can_view_margin:true,best_seller:{id:'item-1',name:'Conseil premium',quantity:42},never_sold:2,missing_price:1,items:[{id:'item-1',name:'Conseil premium',type:'service',quantity:42,revenue:15000,margin:8000}]},
+ stock:{enabled:true,count:1,out_of_stock:0,value:9200,alerts:[{id:'item-2',name:'Kit chantier',reference:'KIT-1',unit:'unité',available:2,threshold:5,to_receive:4}]},
+ activity:{today:2,overdue:1,upcoming:4,agenda:[{id:'activity-1',subject:'Appeler Atelier Alpha',type:'call',client_id:'client-1',assigned_user_id:'user-1',due_at:'2026-07-24T14:00:00Z',priority:'high'}],notifications:[{id:'notification-1',title:'Paiement rejeté',body:'Facture FAC-2026-0040',severity:'critical',created_at:'2026-07-24T08:00:00Z'}]},
+ purchases:{enabled:true,open_orders:2,open_amount:5400,period_amount:4200,expected_receipts:3,overdue_receipts:1}
+};
+window.PilozERP={rpc:async(name,args,options)=>{calls.push({name,args,signal:options?.signal});await new Promise(resolve=>setTimeout(resolve,5));if(name==='save_dashboard_preferences')return{layout_version:2,visible_blocks:args.target_visible_blocks,block_order:args.target_block_order,block_sizes:args.target_block_sizes,selected_metrics:args.target_selected_metrics,period_config:args.target_period_config,role:'owner'};return structuredClone(payload);}};
+window.PilozApp={getState:()=>state,go:path=>calls.push({name:'go',path}),newDocument:type=>calls.push({name:'newDocument',type}),openPartnerForm:()=>calls.push({name:'clientForm'}),newPurchaseOrder:()=>calls.push({name:'purchase'})};
+window.PilozModern={renderRoute:()=>false};
+window.PilozDocumentViewerV2={open:id=>calls.push({name:'openDocument',id})};
+window.PilozCommercialWorkspace={openClient:id=>calls.push({name:'openClient',id}),openActivity:(opportunity,type,id)=>calls.push({name:'openActivity',id,type}),openDueEmail:id=>calls.push({name:'dueEmail',id}),openDuePayment:id=>calls.push({name:'duePayment',id}),quickActivity:(id,action)=>calls.push({name:'quickActivity',id,action}),showNotifications:()=>calls.push({name:'notifications'})};
+</script>
+<script src="../assets/js/modules/erp/erp-dashboard-cockpit.js"></script>
+<script>
+(async()=>{
+ const checks=[],check=(label,value)=>checks.push([label,!!value]);
+ const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+ try{
+  PilozModern.renderRoute('dashboard',state);check('skeleton prioritaire sans blocage global',!!document.querySelector('.cockpit-shell.is-loading[aria-busy="true"]'));await wait(40);
+  check('prénom réel affiché',main.textContent.includes('Bonjour Alex'));
+  check('sélecteur avec toutes les périodes',document.querySelectorAll('.cockpit-period select')[0]?.options.length===10);
+  check('comparaison disponible',document.querySelectorAll('.cockpit-period select')[1]?.options.length===3);
+  check('quatre indicateurs maximum',document.querySelectorAll('.cockpit-kpi').length===4);
+  check('valeurs financières serveur affichées',main.textContent.includes('42 000')&&main.textContent.includes('31 200')&&main.textContent.includes('8 450'));
+  check('aucun undefined ou null visible',!main.textContent.includes('undefined')&&!main.textContent.includes('null'));
+  check('graphique analytique et alternative accessible',document.querySelectorAll('.cockpit-chart-line').length===2&&!!document.querySelector('.cockpit-chart-panel table.sr-only'));
+  check('prévision non garantie explicitée',main.textContent.includes('Montants attendus, non garantis'));
+  check('prévisions semaine et mois affichées',main.textContent.includes('Semaine prochaine')&&main.textContent.includes('Mois prochain'));
+  check('actions prioritaires concrètes',main.textContent.includes('FAC-2026-0042')&&main.textContent.includes('Relancer'));
+  check('notifications limitées et blocs métier',document.querySelectorAll('.cockpit-notifications article').length===1&&main.textContent.includes('Stock et approvisionnement'));
+  check('échéances avec actions directes',document.querySelectorAll('.cockpit-due-list article>div button').length===2&&main.textContent.includes('Retard moyen'));
+  check('catalogue et stock enrichis',main.textContent.includes('Meilleure vente')&&main.textContent.includes('Valeur du stock'));
+  PilozDashboardCockpit.openDueEmail('invoice-1');PilozDashboardCockpit.openDuePayment('invoice-1');
+  check('relance et règlement contextuels',calls.some(call=>call.name==='dueEmail')&&calls.some(call=>call.name==='duePayment'));
+  PilozDashboardCockpit.completeActivity('activity-1');PilozDashboardCockpit.showNotifications();
+  check('agenda et notifications actionnables',calls.some(call=>call.name==='quickActivity'&&call.action==='complete')&&calls.some(call=>call.name==='notifications'));
+  check('appel analytique unique coordonné',calls.filter(call=>call.name==='get_dashboard_cockpit').length===1);
+
+  PilozDashboardCockpit.setChartMode('comparison');
+  check('comparaison graphique limitée à deux séries',document.querySelectorAll('.cockpit-chart-line').length===2&&main.textContent.includes('Période comparée'));
+  PilozDashboardCockpit.startCustomize();
+  check('mode personnaliser explicite',!!document.querySelector('.cockpit-customizer')&&document.querySelectorAll('.cockpit-drag-handle').length===9);
+  check('aucun bouton flèche de déplacement',![...document.querySelectorAll('.cockpit-block-tools button')].some(button=>['←','→','↑','↓'].includes(button.textContent.trim())));
+  PilozDashboardCockpit.toggleSize('receivables');
+  check('redimensionnement borné',document.querySelector('[data-cockpit-block="receivables"]').classList.contains('size-wide'));
+  PilozDashboardCockpit.ui.dragged='receivables';PilozDashboardCockpit.ui.dropSide='after';PilozDashboardCockpit.drop({preventDefault(){},dataTransfer:{getData(){return'receivables';}}},'commercial');
+  check('glisser-déposer réordonne vraiment',document.querySelectorAll('[data-cockpit-block]')[1]?.dataset.cockpitBlock==='receivables');
+  PilozDashboardCockpit.toggleBlock('notifications');
+  check('bloc masqué en brouillon',!document.querySelector('[data-cockpit-block="notifications"]'));
+  await PilozDashboardCockpit.saveCustomize();
+  check('préférences persistées côté serveur',calls.some(call=>call.name==='save_dashboard_preferences'&&call.args.target_block_order[1]==='receivables'&&!call.args.target_visible_blocks.includes('notifications')));
+  check('mode personnaliser fermé après sauvegarde',!document.querySelector('.cockpit-customizer'));
+  PilozDashboardCockpit.startCustomize();PilozDashboardCockpit.setDensity('compact');check('densité compacte configurable',document.querySelector('.cockpit-shell').classList.contains('density-compact'));PilozDashboardCockpit.cancelCustomize();
+  check('annulation restaure la disposition',!document.querySelector('.cockpit-customizer')&&!document.querySelector('.cockpit-shell').classList.contains('density-compact'));
+
+  PilozDashboardCockpit.setPeriod('last_30_days');await wait(650);
+  check('changement de période relance le serveur',calls.some(call=>call.name==='get_dashboard_cockpit'&&call.args.period_key==='last_30_days'));
+  check('période mémorisée côté serveur',calls.some(call=>call.name==='save_dashboard_preferences'&&call.args.target_period_config.preset==='last_30_days'));
+  PilozDashboardCockpit.openDocument('invoice-1');check('navigation document contextuelle',calls.some(call=>call.name==='openDocument'&&call.id==='invoice-1'));
+  PilozDashboardCockpit.openClient('client-1');check('navigation client contextuelle',calls.some(call=>call.name==='openClient'&&call.id==='client-1'));
+  PilozDashboardCockpit.quick('quote');check('action rapide devis',calls.some(call=>call.name==='newDocument'&&call.type==='quote'));
+  PilozDashboardCockpit.setPeriod('today');await wait(0);PilozDashboardCockpit.setPeriod('current_week');await wait(30);check('requête obsolète annulée',calls.some(call=>call.name==='get_dashboard_cockpit'&&call.signal?.aborted));
+  const companyCalls=calls.filter(call=>call.name==='get_dashboard_cockpit').length;state.companyId='company-2';PilozModern.renderRoute('dashboard',state);await wait(40);check('cache isolé par entreprise',calls.filter(call=>call.name==='get_dashboard_cockpit').length>companyCalls);
+  const cssText=[...document.styleSheets].flatMap(sheet=>{try{return[...sheet.cssRules].map(rule=>rule.cssText)}catch{return[]}}).join(' ');check('responsive mobile et tablette présent',cssText.includes('max-width: 620px')&&cssText.includes('max-width: 860px'));
+  check('aucun débordement horizontal sur petit écran',innerWidth>620||document.documentElement.scrollWidth<=innerWidth+1);
+  check('aucune erreur javascript',!__errors.length);
+ }catch(error){checks.push(['exécution',false,error.stack||error.message]);}
+ const failed=checks.filter(row=>!row[1]),result=document.getElementById('result');result.dataset.status=failed.length?'failed':'passed';result.textContent=failed.length?`Échec ${failed.length}/${checks.length} : ${failed.map(row=>row[0]+(row[2]?` (${row[2]})`:'' )).join(', ')}`:`${checks.length}/${checks.length} contrôles cockpit réussis`;
+})();
+</script>
+</body></html>

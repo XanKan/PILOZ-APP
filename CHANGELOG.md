@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0-compliance.9 — 24 juillet 2026
+
+- nouveau cockpit de pilotage connecté aux données Supabase réelles, avec quatre indicateurs principaux, analyse temporelle, trésorerie, priorités et blocs métier ;
+- personnalisation du tableau de bord enregistrée par utilisateur et par entreprise, avec ordre, taille, visibilité, période et densité ;
+- calculs financiers centralisés côté PostgreSQL, permissions par rôle et isolation stricte par entreprise ;
+- optimisation et tests de charge validés sur 10 001 clients, 50 000 factures, 100 000 paiements, 50 000 activités et 20 000 articles ;
+- affichage responsive, états vides, navigation contextuelle, accessibilité clavier et repli contrôlé vers l’ancien tableau de bord tant que la migration n’est pas active.
+
 ## 0.9.0-compliance.8 — 24 juillet 2026
 
 - correction additive de `public.has_feature` : le paramètre de fonctionnalité est désormais référencé sans ambiguïté avec la colonne SQL homonyme ;

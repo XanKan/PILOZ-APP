@@ -11,6 +11,8 @@ const executablePath =
   process.env.PILOZ_CHROME_PATH ||
   "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const files = process.argv.slice(2);
+const viewportWidth = Number(process.env.PILOZ_VIEWPORT_WIDTH || 0);
+const viewportHeight = Number(process.env.PILOZ_VIEWPORT_HEIGHT || 0);
 
 if (!files.length) {
   throw new Error("Indiquez au moins un fichier HTML de test.");
@@ -25,7 +27,11 @@ if (!files.length) {
   let failed = false;
   try {
     for (const file of files) {
-      const page = await browser.newPage();
+      const page = await browser.newPage(
+        viewportWidth > 0 && viewportHeight > 0
+          ? { viewport: { width: viewportWidth, height: viewportHeight } }
+          : undefined,
+      );
       const errors = [];
       page.on("pageerror", (error) => errors.push(error.message));
       await page.goto(pathToFileURL(path.resolve(file)).href, {

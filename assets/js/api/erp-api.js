@@ -122,7 +122,7 @@
   function insert(table,data){return request(`/rest/v1/${table}${restrictedReturns.has(table)?'?select=id':''}`,{method:'POST',headers:{Prefer:'return=representation'},body:serializeBody(data)});}
   function update(table,id,data){return request(`/rest/v1/${table}?id=eq.${encodeURIComponent(id)}${restrictedReturns.has(table)?'&select=id':''}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:serializeBody(data)});}
   function remove(table,id){return request(`/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,{method:'DELETE',headers:{Prefer:'return=minimal'}});}
-  function rpc(name,args={}){return request(`/rest/v1/rpc/${name}`,{method:'POST',body:serializeBody(args)});}
+  function rpc(name,args={},options={}){return request(`/rest/v1/rpc/${name}`,{...options,method:'POST',body:serializeBody(args)});}
   async function upload(bucket,path,file,upsert=true){const runtime=global.PilozRuntime,response=await fetch(`${runtime.config.url.replace(/\/$/,'')}/storage/v1/object/${bucket}/${path}`,{method:'POST',headers:{apikey:runtime.config.key,Authorization:`Bearer ${runtime.session.access_token}`,'Content-Type':file.type,'x-upsert':String(upsert)},body:file}),data=await readBody(response,`/storage/v1/object/${bucket}`);if(!response.ok){const failure=new Error(data?.message||data?.error||'Envoi impossible.');failure.status=response.status;technicalLog('Envoi de fichier refusé',response,bucket,failure);throw failure;}return data;}
   async function signedUrl(bucket,path,expiresIn=3600){
     const data=await request(`/storage/v1/object/sign/${bucket}/${path}`,{method:'POST',body:serializeBody({expiresIn})});
