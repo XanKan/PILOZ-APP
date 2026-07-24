@@ -49,17 +49,17 @@ jobs:
         run: node tests/fiscal-archive-verifier.mjs
       - name: Run browser suites
         run: |
-          tests=(browser-tests.html api-response.html fiscal-domain.html electronic-invoice.html erp-smoke.html production-regression.html dashboard-cockpit.html)
+          tests=(browser-tests.html api-response.html fiscal-domain.html electronic-invoice.html erp-smoke.html production-regression.html)
           for test in "${tests[@]}"; do
             output=$(google-chrome --headless --no-sandbox --disable-gpu --virtual-time-budget=10000 --user-data-dir="$RUNNER_TEMP/chrome-${test}" --dump-dom "file://$PWD/tests/${test}")
             echo "$output" | grep 'data-status="passed"'
           done
       - name: Install isolated mobile browser test dependency
         run: npm install --prefix "$RUNNER_TEMP/piloz-playwright" playwright-core@1.56.1
-      - name: Verify dashboard at a 390x844 mobile viewport
+      - name: Verify dashboard in desktop and mobile viewports
         env:
           PILOZ_PLAYWRIGHT_ROOT: ${{ runner.temp }}/piloz-playwright/node_modules/playwright-core
           PILOZ_CHROME_PATH: /usr/bin/google-chrome
-          PILOZ_VIEWPORT_WIDTH: "390"
-          PILOZ_VIEWPORT_HEIGHT: "844"
-        run: node tests/run-html-tests.cjs tests/dashboard-cockpit.html
+        run: |
+          node tests/run-html-tests.cjs tests/dashboard-cockpit.html
+          PILOZ_VIEWPORT_WIDTH=390 PILOZ_VIEWPORT_HEIGHT=844 node tests/run-html-tests.cjs tests/dashboard-cockpit.html
