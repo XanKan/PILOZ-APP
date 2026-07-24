@@ -2,7 +2,26 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607230052' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607240053' ok
+  union all
+  select 'platform_admin_context_rpc',coalesce(to_regprocedure('public.platform_admin_context()')::text,'missing'),
+    to_regprocedure('public.platform_admin_context()') is not null
+  union all
+  select 'platform_admin_audit_rls',coalesce((select relrowsecurity::text from pg_class where oid='public.platform_admin_audit_events'::regclass),'missing'),
+    coalesce((select relrowsecurity from pg_class where oid='public.platform_admin_audit_events'::regclass),false)
+  union all
+  select 'platform_admin_audit_immutable',count(*)::text,count(*)=1
+  from pg_trigger
+  where tgrelid='public.platform_admin_audit_events'::regclass
+    and tgname='platform_admin_audit_immutable'
+    and not tgisinternal
+  union all
+  select 'platform_admin_mfa_required',count(*)::text,count(*)=0
+  from public.platform_admins
+  where not mfa_required
+  union all
+  select 'platform_support_session_rpc',coalesce(to_regprocedure('public.platform_admin_start_support_session(uuid,text,text)')::text,'missing'),
+    to_regprocedure('public.platform_admin_start_support_session(uuid,text,text)') is not null
   union all
   select 'payment_reversal_rpc',coalesce(to_regprocedure('public.record_document_payment_reversal(uuid,text,numeric,text,timestamptz)')::text,'missing'),
     to_regprocedure('public.record_document_payment_reversal(uuid,text,numeric,text,timestamptz)') is not null
@@ -88,7 +107,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607230052',
+  'schema_version','202607240053',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;

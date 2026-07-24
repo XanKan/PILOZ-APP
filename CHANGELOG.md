@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.0-compliance.6 — 24 juillet 2026
+
+- fondation additive du back-office Piloz séparé de l’application cliente ;
+- rôles plateforme, permissions serveur et MFA AAL2 obligatoires ;
+- versions contractuelles des plans et calculs MRR/ARR documentés ;
+- suspension réversible des entreprises, sans suppression de données ;
+- sessions support temporaires et journal d’administration chaîné append-only ;
+- API Edge sécurisée sans clé `service_role` dans le navigateur.
+
+Le back-office de production reste volontairement désactivé tant que le premier super-administrateur avec MFA et les contrôles post-déploiement ne sont pas validés.
+
 ## 0.9.0-compliance.2 — 22 juillet 2026
 
 - rôles métier et permissions sensibles côté PostgreSQL ;

@@ -22,9 +22,13 @@ async function bootstrap(db){
     create schema storage;
     create schema extensions;
     create extension pgcrypto with schema extensions;
-    create table auth.users(id uuid primary key, email text, raw_user_meta_data jsonb default '{}'::jsonb);
+    create table auth.users(id uuid primary key, email text, raw_user_meta_data jsonb default '{}'::jsonb,created_at timestamptz default now(),last_sign_in_at timestamptz,banned_until timestamptz);
+    create table auth.mfa_factors(id uuid primary key default gen_random_uuid(),user_id uuid not null,status text not null);
     create or replace function auth.uid() returns uuid language sql stable as $$
       select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid
+    $$;
+    create or replace function auth.jwt() returns jsonb language sql stable as $$
+      select jsonb_build_object('aal',coalesce(nullif(current_setting('request.jwt.claim.aal',true),''),'aal1'),'iat',extract(epoch from now())::bigint)
     $$;
     create table storage.buckets(
       id text primary key,name text not null unique,public boolean default false,

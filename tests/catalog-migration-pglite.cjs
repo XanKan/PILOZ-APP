@@ -29,8 +29,10 @@ async function main(){
  await db.exec(`
   create role anon nologin; create role authenticated nologin; create role service_role nologin; create role supabase_admin nologin;
   create schema auth; create schema storage; create schema extensions;
-  create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb default '{}'::jsonb);
+  create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb default '{}'::jsonb,created_at timestamptz default now(),last_sign_in_at timestamptz,banned_until timestamptz);
+  create table auth.mfa_factors(id uuid primary key default gen_random_uuid(),user_id uuid not null,status text not null);
   create or replace function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+  create or replace function auth.jwt() returns jsonb language sql stable as $$ select jsonb_build_object('aal',coalesce(nullif(current_setting('request.jwt.claim.aal',true),''),'aal1'),'iat',extract(epoch from now())::bigint) $$;
   create or replace function extensions.digest(data bytea,algorithm text) returns bytea language sql immutable as $$ select decode(md5(encode(data,'hex')),'hex') $$;
   create or replace function public.digest(data bytea,algorithm text) returns bytea language sql immutable as $$ select extensions.digest(data,algorithm) $$;
   create table storage.buckets(id text primary key,name text not null unique,public boolean default false,file_size_limit bigint,allowed_mime_types text[]);

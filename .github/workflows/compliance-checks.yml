@@ -29,6 +29,14 @@ jobs:
         env:
           PILOZ_PGLITE_ROOT: ${{ runner.temp }}/piloz-pglite/node_modules/@electric-sql/pglite
         run: node tests/document-lifecycle-pglite.cjs
+      - name: Verify platform administration isolation and audit
+        env:
+          PILOZ_PGLITE_ROOT: ${{ runner.temp }}/piloz-pglite/node_modules/@electric-sql/pglite
+        run: node tests/platform-admin-pglite.cjs
+      - name: Verify admin queries with 10k companies and 100k users
+        env:
+          PILOZ_PGLITE_ROOT: ${{ runner.temp }}/piloz-pglite/node_modules/@electric-sql/pglite
+        run: node tests/platform-admin-performance-pglite.cjs
       - name: Verify archive tamper detection
         run: node tests/fiscal-archive-verifier.mjs
       - name: Run browser suites
