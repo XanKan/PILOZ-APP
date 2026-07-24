@@ -64,16 +64,32 @@ if (!files.length) {
         !/^Échec/.test(result.text) &&
         !errors.length;
       failed ||= !ok;
+      const overflowDetail = !ok
+        ? await page.evaluate(() =>
+            [...document.querySelectorAll("body *")]
+              .map((node) => {
+                const rect = node.getBoundingClientRect();
+                return {
+                  node: `${node.tagName.toLowerCase()}${node.className ? `.${String(node.className).trim().replace(/\s+/g, ".")}` : ""}`,
+                  left: Math.round(rect.left),
+                  right: Math.round(rect.right),
+                  width: Math.round(rect.width),
+                };
+              })
+              .filter((item) => item.left < -1 || item.right > innerWidth + 1)
+              .slice(0, 8),
+          )
+        : [];
       if (!ok && process.env.GITHUB_ACTIONS === "true") {
         const detail = `${path.basename(file)}: ${result.text}${
           errors.length ? ` | ${errors.join(" | ")}` : ""
-        }`.replace(/\r?\n/g, "%0A");
+        }${overflowDetail.length ? ` | Débordements: ${JSON.stringify(overflowDetail)}` : ""}`.replace(/\r?\n/g, "%0A");
         console.error(`::error title=Échec du test cockpit::${detail}`);
       }
       process.stdout.write(
         `${ok ? "PASS" : "FAIL"} ${path.basename(file)} — ${result.text}${
           errors.length ? ` — ${errors.join(" | ")}` : ""
-        }\n`,
+        }${overflowDetail.length ? ` — ${JSON.stringify(overflowDetail)}` : ""}\n`,
       );
       await page.close();
     }

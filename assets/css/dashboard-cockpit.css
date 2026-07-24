@@ -7,7 +7,9 @@
   --cockpit-shadow:0 12px 34px rgba(15,42,75,.065);
 }
 
-.cockpit-shell{display:grid;gap:22px;max-width:1680px;margin:0 auto;color:var(--text-primary)}
+.cockpit-shell,.cockpit-shell *{box-sizing:border-box}
+.cockpit-shell{display:grid;width:100%;min-width:0;max-width:1680px;margin:0 auto;gap:22px;color:var(--text-primary)}
+.cockpit-shell>*{min-width:0;max-width:100%}
 .cockpit-shell button,.cockpit-shell select,.cockpit-shell input{font-family:inherit}
 .cockpit-shell button{cursor:pointer}
 .cockpit-shell button:disabled{cursor:not-allowed}
@@ -54,6 +56,7 @@
 .cockpit-chart-legend span{display:flex;align-items:center;gap:6px}.cockpit-chart-legend i{width:19px;height:3px;border-radius:5px;background:var(--legend)}
 .cockpit-chart{min-width:0;height:286px;margin-top:4px}
 .cockpit-chart svg{display:block;width:100%;height:100%;overflow:visible}
+.cockpit-chart-table{position:absolute!important;width:1px!important;max-width:1px!important;height:1px!important;margin:-1px!important;padding:0!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
 .cockpit-chart-grid line{stroke:var(--border);stroke-width:1;stroke-dasharray:3 6;vector-effect:non-scaling-stroke}
 .cockpit-chart-line{fill:none;stroke:var(--line);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 .cockpit-chart circle{fill:#fff;stroke:var(--dot);stroke-width:2;vector-effect:non-scaling-stroke}
@@ -129,9 +132,9 @@
   .cockpit-block,.cockpit-block.size-wide{grid-column:span 12}.cockpit-customizer-grid{grid-template-columns:1fr}.cockpit-chart-panel>header,.cockpit-customizer>header{display:grid}.cockpit-chart-modes{overflow-x:auto;max-width:100%}.cockpit-priority article{grid-template-columns:auto minmax(0,1fr) auto}.cockpit-priority article>strong{display:none}.cockpit-onboarding{align-items:flex-start;flex-direction:column}.cockpit-performance-summary{grid-template-columns:repeat(2,1fr);row-gap:10px}.cockpit-performance-summary>div:nth-child(3){padding-left:0;border-left:0}
 }
 @media(max-width:620px){
-  .cockpit-shell{gap:14px}.cockpit-header{gap:13px}.cockpit-welcome h1{font-size:1.42rem}.cockpit-welcome p{font-size:.67rem}.cockpit-period{display:grid;grid-template-columns:1fr 1fr;width:100%}.cockpit-period label,.cockpit-period select{width:100%;box-sizing:border-box}.cockpit-custom-dates{display:grid;grid-template-columns:1fr 1fr;width:100%}.cockpit-custom-dates input{width:100%;box-sizing:border-box}.cockpit-header-buttons{width:100%}.cockpit-header-buttons button{flex:1}.cockpit-quick-actions{display:grid;grid-template-columns:1fr 1fr;width:100%}.cockpit-quick-actions>button,.cockpit-quick-actions>details,.cockpit-quick-actions summary{width:100%;box-sizing:border-box}.cockpit-quick-actions details{grid-column:1/-1}
+  .cockpit-shell{gap:14px}.cockpit-header{gap:13px}.cockpit-welcome,.cockpit-header-actions,.cockpit-chart-panel>header>div{min-width:0;max-width:100%}.cockpit-welcome h1{overflow-wrap:anywhere;font-size:1.42rem}.cockpit-welcome p{font-size:.67rem}.cockpit-period{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}.cockpit-period label,.cockpit-period select{width:100%;min-width:0}.cockpit-custom-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}.cockpit-custom-dates label,.cockpit-custom-dates input{width:100%;min-width:0}.cockpit-header-buttons{width:100%}.cockpit-header-buttons button{min-width:0;flex:1}.cockpit-quick-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}.cockpit-quick-actions>button,.cockpit-quick-actions>details,.cockpit-quick-actions summary{width:100%;min-width:0}.cockpit-quick-actions details{grid-column:1/-1}
   .cockpit-kpis{grid-template-columns:1fr 1fr;gap:8px}.cockpit-kpi{min-height:122px;padding:13px}.cockpit-kpi>strong{font-size:1.22rem}.cockpit-kpi>div{align-items:start;flex-direction:column}.cockpit-kpi small{max-width:100%;text-align:left}
-  .cockpit-chart-panel,.cockpit-forecast,.cockpit-priority,.cockpit-block{padding:14px;border-radius:14px}.cockpit-chart{height:230px}.cockpit-chart-legend{margin-top:11px}.cockpit-performance-summary{margin:7px -14px -14px;padding:11px 14px}.cockpit-forecast{display:grid;grid-template-columns:1fr}.cockpit-forecast>strong,.cockpit-forecast-highlights,.cockpit-forecast-bars,.cockpit-forecast>.cockpit-text-action{grid-column:1;grid-row:auto}.cockpit-forecast>strong{font-size:1.45rem}
+  .cockpit-chart-panel,.cockpit-forecast,.cockpit-priority,.cockpit-block{padding:14px;border-radius:14px}.cockpit-chart{max-width:100%;height:230px;overflow:hidden}.cockpit-chart svg{overflow:hidden}.cockpit-chart-modes,.cockpit-chart-legend{max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain}.cockpit-chart-legend{margin-top:11px}.cockpit-performance-summary{grid-template-columns:repeat(2,minmax(0,1fr));margin:7px -14px -14px;padding:11px 14px}.cockpit-forecast{display:grid;grid-template-columns:minmax(0,1fr)}.cockpit-forecast>strong,.cockpit-forecast-highlights,.cockpit-forecast-bars,.cockpit-forecast>.cockpit-text-action{min-width:0;grid-column:1;grid-row:auto}.cockpit-forecast>strong{font-size:1.45rem}
   .cockpit-priority article{grid-template-columns:auto minmax(0,1fr)}.cockpit-priority article>button{grid-column:2;justify-self:start}.cockpit-priority>header>button{display:none}.cockpit-receivable-head,.cockpit-purchase-summary{grid-template-columns:1fr}.cockpit-due-list article{grid-template-columns:1fr}.cockpit-due-list article>div{justify-content:flex-start}.cockpit-funnel{overflow-x:auto}.cockpit-funnel button{min-width:68px}.cockpit-customizer fieldset{grid-template-columns:1fr}.cockpit-customizer>header>div:last-child{justify-content:stretch}.cockpit-customizer>header button{flex:1}.cockpit-list>button{grid-template-columns:minmax(0,1fr) auto}.cockpit-list em{display:none}
 }
 @media(max-width:390px){.cockpit-kpis{grid-template-columns:1fr}.cockpit-period,.cockpit-custom-dates{grid-template-columns:1fr}.cockpit-quick-actions{grid-template-columns:1fr}.cockpit-quick-actions>details{grid-column:1}}

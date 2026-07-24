@@ -51,7 +51,7 @@ window.PilozCommercialWorkspace={openClient:id=>calls.push({name:'openClient',id
   check('quatre indicateurs maximum',document.querySelectorAll('.cockpit-kpi').length===4);
   check('valeurs financières serveur affichées',main.textContent.includes('42 000')&&main.textContent.includes('31 200')&&main.textContent.includes('8 450'));
   check('aucun undefined ou null visible',!main.textContent.includes('undefined')&&!main.textContent.includes('null'));
-  check('graphique analytique et alternative accessible',document.querySelectorAll('.cockpit-chart-line').length===2&&!!document.querySelector('.cockpit-chart-panel table.sr-only'));
+  check('graphique analytique et alternative accessible',document.querySelectorAll('.cockpit-chart-line').length===2&&!!document.querySelector('.cockpit-chart-table table'));
   check('prévision non garantie explicitée',main.textContent.includes('Montants attendus, non garantis'));
   check('prévisions semaine et mois affichées',main.textContent.includes('Semaine prochaine')&&main.textContent.includes('Mois prochain'));
   check('actions prioritaires concrètes',main.textContent.includes('FAC-2026-0042')&&main.textContent.includes('Relancer'));
@@ -90,7 +90,7 @@ window.PilozCommercialWorkspace={openClient:id=>calls.push({name:'openClient',id
   PilozDashboardCockpit.setPeriod('today');await wait(0);PilozDashboardCockpit.setPeriod('current_week');await wait(30);check('requête obsolète annulée',calls.some(call=>call.name==='get_dashboard_cockpit'&&call.signal?.aborted));
   const companyCalls=calls.filter(call=>call.name==='get_dashboard_cockpit').length;state.companyId='company-2';PilozModern.renderRoute('dashboard',state);await wait(40);check('cache isolé par entreprise',calls.filter(call=>call.name==='get_dashboard_cockpit').length>companyCalls);
   const cssText=[...document.styleSheets].flatMap(sheet=>{try{return[...sheet.cssRules].map(rule=>rule.cssText)}catch{return[]}}).join(' ');check('responsive mobile et tablette présent',cssText.includes('max-width: 620px')&&cssText.includes('max-width: 860px'));
-  check('aucun débordement horizontal sur petit écran',innerWidth>620||document.documentElement.scrollWidth<=innerWidth+1);
+  check(`aucun débordement horizontal sur petit écran (${document.documentElement.scrollWidth}/${innerWidth})`,innerWidth>620||document.documentElement.scrollWidth<=innerWidth+1);
   check('aucune erreur javascript',!__errors.length);
  }catch(error){checks.push(['exécution',false,error.stack||error.message]);}
  const failed=checks.filter(row=>!row[1]),result=document.getElementById('result');result.dataset.status=failed.length?'failed':'passed';result.textContent=failed.length?`Échec ${failed.length}/${checks.length} : ${failed.map(row=>row[0]+(row[2]?` (${row[2]})`:'' )).join(', ')}`:`${checks.length}/${checks.length} contrôles cockpit réussis`;
