@@ -114,6 +114,9 @@ async function bootstrap(db){
     const context=(await db.query('select public.platform_admin_context() context')).rows[0].context;
     if(context.role!=='super_admin'||context.aal!=='aal2'||!context.permissions.includes('subscriptions.write'))
       throw new Error(`security: invalid super-admin context ${JSON.stringify(context)}`);
+    await db.query("select set_config('request.jwt.claim.iat',(extract(epoch from now())::bigint-86400)::text,false)");
+    const activeMfaSession=await db.query('select public.platform_admin_recent_auth(300) allowed');
+    if(!activeMfaSession.rows[0].allowed)throw new Error('session: active MFA session incorrectly required repeated credentials');
     const dashboard=(await db.query('select public.platform_admin_dashboard() dashboard')).rows[0].dashboard;
     if(Number(dashboard.active_companies)!==1||Number(dashboard.mrr_cents)!==2900||Number(dashboard.arr_cents)!==34800)
       throw new Error(`revenue: invalid contract metrics ${JSON.stringify(dashboard)}`);
@@ -202,7 +205,7 @@ async function bootstrap(db){
     await db.exec('reset role');
     const audit=await db.query('select count(*)::int count,count(event_hash)::int hashed from public.platform_admin_audit_events');
     if(Number(audit.rows[0].count)<15||audit.rows[0].count!==audit.rows[0].hashed)throw new Error(`audit: incomplete platform trail ${JSON.stringify(audit.rows[0])}`);
-    console.log(JSON.stringify({ok:true,roleIsolation:true,mfaRequired:true,adminSuspension:true,sessionExpiry:true,mrrCents:Number(afterChange.mrr_cents),auditEvents:Number(audit.rows[0].count),companyCrud:true,userLifecycle:true,subscriptionLifecycle:true,planVersioning:true,export:true,supportClosed:true,suspensionEnforced:true,companyDetailSchema:true}));
+    console.log(JSON.stringify({ok:true,roleIsolation:true,mfaRequired:true,activeSessionNoRepeatedCredentials:true,adminSuspension:true,sessionExpiry:true,mrrCents:Number(afterChange.mrr_cents),auditEvents:Number(audit.rows[0].count),companyCrud:true,userLifecycle:true,subscriptionLifecycle:true,planVersioning:true,export:true,supportClosed:true,suspensionEnforced:true,companyDetailSchema:true}));
   }finally{
     await db.close();
   }

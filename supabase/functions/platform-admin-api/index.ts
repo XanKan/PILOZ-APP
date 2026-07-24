@@ -157,7 +157,7 @@ Deno.serve(async req=>{
    requirePermission("system.read");const [events,notifications]=await Promise.all([
     client.from("platform_system_events").select("id,event_type,severity,status,source,summary,retry_count,occurred_at,resolved_at").order("occurred_at",{ascending:false}).limit(100),
     client.from("platform_notifications").select("id,event_type,severity,title,message,company_id,action_url,created_at").order("created_at",{ascending:false}).limit(100)
-   ]);const firstError=[events,notifications].find(result=>result.error)?.error;if(firstError)throw firstError;return response(req,{events:events.data||[],notifications:notifications.data||[],schemaVersion:"202607240053",adminVersion:"0.1.0"});
+   ]);const firstError=[events,notifications].find(result=>result.error)?.error;if(firstError)throw firstError;return response(req,{events:events.data||[],notifications:notifications.data||[],schemaVersion:"202607240054",adminVersion:"0.1.1"});
   }
   if(action==="compliance.summary"){
    requirePermission("compliance.read");const [configurations,anomalies,privacy]=await Promise.all([

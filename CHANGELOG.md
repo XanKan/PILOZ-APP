@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0-compliance.7 — 24 juillet 2026
+
+- autorisation des actions du back-office pendant toute la session MFA active ;
+- suppression de la ressaisie répétée du mot de passe et du code TOTP ;
+- conservation de l’expiration pour inactivité, des rôles, permissions et audits.
+
 ## 0.9.0-compliance.6 — 24 juillet 2026
 
 - fondation additive du back-office Piloz séparé de l’application cliente ;
