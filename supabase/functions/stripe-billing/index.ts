@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@20.4.0";
 
 const allowedOrigins=new Set(["https://app.piloz.fr","http://localhost:4173","http://localhost:5173"]);
+const PILOZ_TAX_CODE="txcd_10103001";
 function cors(req:Request){const origin=req.headers.get("origin")||"";return{
  "Access-Control-Allow-Origin":allowedOrigins.has(origin)?origin:"https://app.piloz.fr",
  "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type",
@@ -27,12 +28,13 @@ async function currentPlanVersion(admin:SupabaseClient,planKey:string){
 
 async function ensurePrice(admin:SupabaseClient,stripe:Stripe,planVersion:any,billingInterval:string,livemode:boolean){
  let {data:mapping,error:readError}=await admin.from("subscription_provider_prices").select("*").eq("provider","stripe").eq("plan_version_id",planVersion.id).eq("billing_interval",billingInterval).eq("currency","eur").eq("livemode",livemode).eq("active",true).maybeSingle();
- if(readError)throw readError;if(mapping)return mapping;
+ if(readError)throw readError;if(mapping){await stripe.products.update(mapping.external_product_id,{tax_code:PILOZ_TAX_CODE});return mapping;}
  const amount=Number(billingInterval==="annual"?planVersion.price_annual_cents:planVersion.price_monthly_cents);
  if(!Number.isInteger(amount)||amount<=0)throw Object.assign(new Error("invalid_plan_amount"),{code:"invalid_plan_amount"});
  const {data:sibling}=await admin.from("subscription_provider_prices").select("external_product_id").eq("provider","stripe").eq("plan_version_id",planVersion.id).eq("livemode",livemode).eq("active",true).limit(1).maybeSingle();
  let productId=sibling?.external_product_id||"";
- if(!productId){const product=await stripe.products.create({name:`Piloz ${planVersion.name}`,description:`Abonnement Piloz ${planVersion.name}`,metadata:{piloz_plan_key:planVersion.plan_key,piloz_plan_version_id:planVersion.id}},{idempotencyKey:`piloz-product-${planVersion.id}-${livemode?"live":"test"}`});productId=product.id;}
+ if(!productId){const product=await stripe.products.create({name:`Piloz ${planVersion.name}`,description:`Abonnement Piloz ${planVersion.name}`,tax_code:PILOZ_TAX_CODE,metadata:{piloz_plan_key:planVersion.plan_key,piloz_plan_version_id:planVersion.id}},{idempotencyKey:`piloz-product-${planVersion.id}-${livemode?"live":"test"}`});productId=product.id;}
+ else await stripe.products.update(productId,{tax_code:PILOZ_TAX_CODE});
  const price=await stripe.prices.create({product:productId,currency:"eur",unit_amount:amount,recurring:{interval:billingInterval==="annual"?"year":"month"},lookup_key:`piloz_${planVersion.plan_key}_${billingInterval}_v${planVersion.version}_${livemode?"live":"test"}`,metadata:{piloz_plan_key:planVersion.plan_key,piloz_plan_version_id:planVersion.id,billing_interval:billingInterval}},{idempotencyKey:`piloz-price-${planVersion.id}-${billingInterval}-${livemode?"live":"test"}`});
  const {data:created,error:createError}=await admin.from("subscription_provider_prices").upsert({provider:"stripe",plan_version_id:planVersion.id,billing_interval:billingInterval,currency:"eur",livemode,external_product_id:productId,external_price_id:price.id,active:true,updated_at:new Date().toISOString()},{onConflict:"provider,plan_version_id,billing_interval,currency,livemode"}).select("*").single();
  if(createError)throw createError;return created;
@@ -125,7 +127,7 @@ Deno.serve(async req=>{
   }
   const successUrl=`${returnUrl}?stripe=success&session_id={CHECKOUT_SESSION_ID}`,cancelUrl=`${returnUrl}?stripe=cancelled`,trialEnd=subscription.status==="trialing"&&subscription.trial_ends_at&&new Date(subscription.trial_ends_at).getTime()>Date.now()+3600000?Math.floor(new Date(subscription.trial_ends_at).getTime()/1000):null;
   const subscriptionData:any={metadata:{piloz_company_id:companyId,piloz_plan_key:targetPlan,piloz_plan_version_id:planVersion.id,billing_interval:billingInterval},trial_settings:{end_behavior:{missing_payment_method:"cancel"}}};if(trialEnd)subscriptionData.trial_end=trialEnd;
-  const checkout=await stripe.checkout.sessions.create({mode:"subscription",payment_method_collection:"always",customer:customerId,client_reference_id:companyId,line_items:[{price:mapping.external_price_id,quantity:1}],success_url:successUrl,cancel_url:cancelUrl,billing_address_collection:"required",tax_id_collection:{enabled:true},customer_update:{address:"auto",name:"auto"},subscription_data:subscriptionData,metadata:{piloz_company_id:companyId,piloz_plan_key:targetPlan,piloz_plan_version_id:planVersion.id,billing_interval:billingInterval}},{idempotencyKey:`piloz-checkout-${companyId}-${planVersion.id}-${billingInterval}-${Math.floor(Date.now()/300000)}`});
+   const checkout=await stripe.checkout.sessions.create({mode:"subscription",payment_method_collection:"always",customer:customerId,client_reference_id:companyId,line_items:[{price:mapping.external_price_id,quantity:1}],success_url:successUrl,cancel_url:cancelUrl,billing_address_collection:"required",customer_update:{address:"auto",name:"auto"},subscription_data:subscriptionData,metadata:{piloz_company_id:companyId,piloz_plan_key:targetPlan,piloz_plan_version_id:planVersion.id,billing_interval:billingInterval}},{idempotencyKey:`piloz-checkout-${companyId}-${planVersion.id}-${billingInterval}-${Math.floor(Date.now()/300000)}`});
   if(!checkout.url)throw new Error("checkout_url_missing");return response(req,{url:checkout.url,mode:"checkout",trialEndsAt:trialEnd?new Date(trialEnd*1000).toISOString():null});
  }catch(error){
   const cause=error as {type?:string;code?:string;statusCode?:number};

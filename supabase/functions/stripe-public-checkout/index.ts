@@ -3,6 +3,7 @@ import Stripe from "npm:stripe@20.4.0";
 
 const origins=new Set(["https://piloz.fr","https://www.piloz.fr","http://localhost:4173","http://localhost:5173"]);
 const plans=new Set(["essential","pro","business"]),intervals=new Set(["monthly","annual"]);
+const PILOZ_TAX_CODE="txcd_10103001";
 function cors(req:Request){const origin=req.headers.get("origin")||"";return{
  "Access-Control-Allow-Origin":origins.has(origin)?origin:"https://piloz.fr",
  "Access-Control-Allow-Headers":"content-type",
@@ -40,18 +41,19 @@ Deno.serve(async req=>{
    if(!Number.isInteger(amount)||amount<=0)throw Object.assign(new Error("invalid_plan_amount"),{code:"invalid_plan_amount"});
    const {data:sibling}=await admin.from("subscription_provider_prices").select("external_product_id").eq("provider","stripe").eq("plan_version_id",version.id).eq("livemode",livemode).eq("active",true).limit(1).maybeSingle();
    let productId=sibling?.external_product_id||"";
-   if(!productId){const product=await stripe.products.create({name:`Piloz ${version.name}`,description:`Abonnement Piloz ${version.name}`,metadata:{piloz_plan_key:planKey,piloz_plan_version_id:version.id}},{idempotencyKey:`piloz-product-${version.id}-${livemode?"live":"test"}`});productId=product.id;}
+   if(!productId){const product=await stripe.products.create({name:`Piloz ${version.name}`,description:`Abonnement Piloz ${version.name}`,tax_code:PILOZ_TAX_CODE,metadata:{piloz_plan_key:planKey,piloz_plan_version_id:version.id}},{idempotencyKey:`piloz-product-${version.id}-${livemode?"live":"test"}`});productId=product.id;}
    const price=await stripe.prices.create({product:productId,currency:"eur",unit_amount:amount,recurring:{interval:billingInterval==="annual"?"year":"month"},lookup_key:`piloz_${planKey}_${billingInterval}_v${version.version}_${livemode?"live":"test"}`,metadata:{piloz_plan_key:planKey,piloz_plan_version_id:version.id,billing_interval:billingInterval}},{idempotencyKey:`piloz-price-${version.id}-${billingInterval}-${livemode?"live":"test"}`});
    const {data:created,error:createError}=await admin.from("subscription_provider_prices").upsert({provider:"stripe",plan_version_id:version.id,billing_interval:billingInterval,currency:"eur",livemode,external_product_id:productId,external_price_id:price.id,active:true,updated_at:new Date().toISOString()},{onConflict:"provider,plan_version_id,billing_interval,currency,livemode"}).select("*").single();
    if(createError)throw createError;mapping=created;
   }
+  await stripe.products.update(mapping.external_product_id,{tax_code:PILOZ_TAX_CODE});
   const claimId=crypto.randomUUID(),claimToken=`${crypto.randomUUID().replaceAll("-","")}${crypto.randomUUID().replaceAll("-","")}`,claimHash=await hashHex(claimToken);
   const success=new URL("https://app.piloz.fr/");
   success.searchParams.set("mode","signup");success.searchParams.set("stripe","checkout_success");success.searchParams.set("session_id","{CHECKOUT_SESSION_ID}");success.searchParams.set("claim",claimToken);success.searchParams.set("plan",planKey);success.searchParams.set("billing",billingInterval);success.searchParams.set("source","stripe-checkout");
   const checkout=await stripe.checkout.sessions.create({
    mode:"subscription",payment_method_collection:"always",client_reference_id:claimId,
    line_items:[{price:mapping.external_price_id,quantity:1}],success_url:success.toString(),cancel_url:"https://piloz.fr/#tarifs",
-   billing_address_collection:"required",tax_id_collection:{enabled:true},
+   billing_address_collection:"required",
    subscription_data:{trial_period_days:14,trial_settings:{end_behavior:{missing_payment_method:"cancel"}},metadata:{piloz_checkout_claim_id:claimId,piloz_plan_key:planKey,piloz_plan_version_id:version.id,billing_interval:billingInterval}},
    metadata:{piloz_checkout_claim_id:claimId,piloz_plan_key:planKey,piloz_plan_version_id:version.id,billing_interval:billingInterval}
   },{idempotencyKey:`piloz-public-checkout-${claimId}`});
@@ -62,6 +64,7 @@ Deno.serve(async req=>{
  }catch(error){
   const cause=error as {type?:string;code?:string;statusCode?:number};
   console.error("[PILOZ Stripe] public checkout failed",{type:cause.type||"unknown",code:cause.code||"unknown",status:cause.statusCode||500,planKey,billingInterval});
-  return json(req,{error:"Le paiement est temporairement indisponible. Réessayez dans quelques instants.",code:"stripe_checkout_failed"},cause.statusCode&&cause.statusCode<500?400:502);
+  const diagnostic=String(cause.code||cause.type||""),safeCode=/^[a-z0-9_.-]{1,80}$/i.test(diagnostic)?diagnostic:"stripe_checkout_failed";
+  return json(req,{error:"Le paiement est temporairement indisponible. Réessayez dans quelques instants.",code:safeCode},cause.statusCode&&cause.statusCode<500?400:502);
  }
 });

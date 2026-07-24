@@ -17,6 +17,7 @@ const checks={
  idempotent_events:billingMigration.includes('event_id text primary key')&&webhook.includes('duplicate:true'),
  checkout_and_portal:billing.includes('checkout.sessions.create')&&billing.includes('billingPortal.sessions.create'),
  card_required_during_trial:publicCheckout.includes('payment_method_collection:"always"')&&publicCheckout.includes('trial_period_days:14'),
+ managed_payments_tax_code:publicCheckout.includes('txcd_10103001')&&billing.includes('txcd_10103001')&&!publicCheckout.includes('tax_id_collection'),
  plan_update_confirmed_by_stripe:billing.includes('subscription_update_confirm')&&billing.includes('items:[{id:item.id,price:mapping.external_price_id'),
  secure_checkout_claim:trialMigration.includes('claim_token_hash text not null unique')&&trialMigration.includes('enable row level security')&&publicCheckout.includes('claimHash=await hashHex(claimToken)'),
  browser_plan_change_blocked:trialMigration.includes('revoke execute on function public.choose_plan(uuid,text,text) from public,anon,authenticated'),

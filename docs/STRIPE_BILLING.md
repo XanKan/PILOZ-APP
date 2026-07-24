@@ -6,6 +6,7 @@
 - Stripe exige une carte, crée l'abonnement avec 14 jours d'essai et ne débite rien le jour de l'inscription.
 - Après Checkout, un jeton à usage unique rattache l'abonnement au compte créé. Seule son empreinte SHA-256 est stockée en base.
 - Piloz crée les produits et tarifs Stripe à partir des offres versionnées en base.
+- Les produits sont classés avec le code fiscal Stripe `txcd_10103001` (SaaS destiné aux entreprises), requis par Managed Payments.
 - Un premier abonnement passe par Stripe Checkout.
 - Un changement d'offre Stripe existant ouvre un écran de confirmation ciblé du Customer Portal. Piloz ne change l'offre qu'après l'événement Stripe.
 - Le webhook signé synchronise l'abonnement, le profil de facturation, les factures PDF, paiements et remboursements.
