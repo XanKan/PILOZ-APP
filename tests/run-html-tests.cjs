@@ -64,6 +64,12 @@ if (!files.length) {
         !/^Échec/.test(result.text) &&
         !errors.length;
       failed ||= !ok;
+      if (!ok && process.env.GITHUB_ACTIONS === "true") {
+        const detail = `${path.basename(file)}: ${result.text}${
+          errors.length ? ` | ${errors.join(" | ")}` : ""
+        }`.replace(/\r?\n/g, "%0A");
+        console.error(`::error title=Échec du test cockpit::${detail}`);
+      }
       process.stdout.write(
         `${ok ? "PASS" : "FAIL"} ${path.basename(file)} — ${result.text}${
           errors.length ? ` — ${errors.join(" | ")}` : ""
