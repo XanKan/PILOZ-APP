@@ -9,6 +9,7 @@ const modern = fs.readFileSync(path.join(root, 'assets/js/modules/erp/erp-modern
 const clients = fs.readFileSync(path.join(root, 'assets/js/modules/erp/erp-clients.js'), 'utf8');
 const pdf = fs.readFileSync(path.join(root, 'supabase/functions/generate-document-pdf/index.ts'), 'utf8');
 const migration = fs.readFileSync(path.join(root, 'supabase/migrations/202607250060_restore_configured_document_templates.sql'), 'utf8');
+const progressMigration = fs.readFileSync(path.join(root, 'supabase/migrations/202607250062_editable_progress_drafts.sql'), 'utf8');
 
 const checks = [
   ['company default resolver', app.includes('function resolveDocumentTemplateId') && app.includes('default_quote_template_id')],
@@ -27,6 +28,10 @@ const checks = [
   ['same-route scroll position preserved', app.includes('function captureScrollState') && app.includes('function restoreScrollState')],
   ['editor suggestions close outside', editor.includes('function dismissTransientUi')],
   ['document filters close outside', modern.includes('function dismissDocumentFilters') && viewer.includes('function dismissTransientUi')],
+  ['later progress drafts keep every source line', progressMigration.includes('_piloz_complete_progress_draft_lines') && progressMigration.includes("progress_delta_percent',0")],
+  ['zero progress lines remain visible in PDF', !pdf.includes('unchangedProgressLine') && pdf.includes('for (const line of payload.lines || [])')],
+  ['draft invoices have a provisional reference', app.includes('draft_reference') && editor.includes('PilozDocumentDisplayNumber')],
+  ['draft invoice PDF has a provisional watermark', pdf.includes('FACTURE PROVISOIRE') && pdf.includes('provisionalInvoice') && viewer.includes('document-snapshot-provisional-watermark')],
 ];
 
 const failed = checks.filter(([, ok]) => !ok).map(([name]) => name);

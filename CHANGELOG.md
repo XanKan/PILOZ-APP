@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0-compliance.19 — 25 juillet 2026
+
+- toutes les lignes du devis restent disponibles et modifiables dans chaque situation brouillon, y compris N°2, N°3 et suivantes ;
+- toutes les lignes sont conservées sur le PDF de situation, y compris celles à 0 % et 0 € ;
+- rattrapage non destructif des situations brouillon déjà créées ;
+- référence provisoire stable `BR-AAAA-XXXXXXXX` affichée sur les factures brouillon, sans consommer la séquence fiscale ;
+- filigrane `FACTURE PROVISOIRE` sur chaque page de l’aperçu PDF d’une facture brouillon.
+
 ## 0.9.0-compliance.18 — 25 juillet 2026
 
 - Factures de situation cumulatives sans limite : Situation N°1, N°2, etc.

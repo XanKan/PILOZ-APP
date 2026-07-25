@@ -65,7 +65,7 @@ async function bootstrap(db){
   `);
 }
 
-async function saveDraft(db,type,existingId=null,unitPrice=100){
+async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[]){
   const targetDocument={
     company_id:company,document_type:type,version:1,client_id:client,issue_date:'2026-07-21',
     due_date:type==='quote'?null:'2026-08-20',validity_date:type==='quote'?'2026-08-20':null,
@@ -79,7 +79,7 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     position:1,line_type:'free_item',name:'Prestation de test',description:'Ligne réelle',quantity:1,
     unit:'unité',unit_cost_snapshot:50,unit_price:unitPrice,discount_rate:0,tax_rate:20,optional:false,
     cumulative_progress_percent:0,line_metadata:{}
-  }];
+  },...extraLines];
   const draft=await db.query(
     'select public.save_document_draft($1,$2::jsonb,$3::jsonb) result',
     [existingId,JSON.stringify(targetDocument),JSON.stringify(targetLines)]
@@ -89,7 +89,7 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
   if(!saved?.id||(type==='quote'&&!saved.number)||(type!=='quote'&&saved.number)||(expectedStatus&&saved.status!==expectedStatus))throw new Error(`${type}: invalid draft result ${JSON.stringify(saved)}`);
   const totals=await db.query('select total_excl_tax,total_tax,total_incl_tax from public.documents where id=$1',[saved.id]);
   const total=Number(totals.rows[0]?.total_incl_tax||0);
-  const expectedTotal=Math.round((unitPrice*1.2)*100)/100;
+  const expectedTotal=Math.round(targetLines.reduce((sum,line)=>sum+Number(line.quantity||0)*Number(line.unit_price||0)*(1-Number(line.discount_rate||0)/100)*(1+Number(line.tax_rate||0)/100),0)*100)/100;
   if(total!==expectedTotal)throw new Error(`${type}: expected total ${expectedTotal}, got ${total}`);
   return {id:saved.id,number:saved.number,total,status:saved.status};
 }
@@ -514,17 +514,34 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     // Les factures de situation suivent une suite N°1, N°2, ... indépendante
     // du numéro fiscal. Onze situations successives prouvent notamment qu'il
     // n'existe pas de plafond fonctionnel à dix documents.
-    const progressQuote=await saveDraft(db,'quote',null,1000);
+    const progressQuote=await saveDraft(db,'quote',null,1000,[{
+      id:crypto.randomUUID(),position:2,line_type:'free_item',reference:'SITUATION-2',name:'Deuxième ligne modifiable',
+      description:'Ligne conservée dans chaque situation',quantity:1,unit:'unité',unit_cost_snapshot:50,
+      unit_price:500,discount_rate:0,tax_rate:20,optional:false,cumulative_progress_percent:0,line_metadata:{}
+    }]);
     const progressSourceLine=(await db.query("select id from public.document_lines where document_id=$1 and line_type in('item','free_item','discount') order by position limit 1",[progressQuote.id])).rows[0];
+    const secondProgressSourceLine=(await db.query("select id from public.document_lines where document_id=$1 and line_type in('item','free_item','discount') order by position offset 1 limit 1",[progressQuote.id])).rows[0];
     const progressFiscalNumbers=[];
     for(let situation=1;situation<=11;situation+=1){
       const cumulative=situation*8;
       const progressId=(await db.query('select public.create_progress_invoice($1,$2::jsonb) result',[progressQuote.id,JSON.stringify([{line_id:progressSourceLine.id,progress_percent:cumulative}])])).rows[0].result;
       const progressDraft=(await db.query("select document_type,status,number,metadata from public.documents where id=$1",[progressId])).rows[0];
       const progressLine=(await db.query('select cumulative_progress_percent from public.document_lines where document_id=$1 and source_line_id=$2',[progressId,progressSourceLine.id])).rows[0];
+      const completeDraftLines=await db.query("select source_line_id,quantity,cumulative_progress_percent,optional from public.document_lines where document_id=$1 and line_type in('item','free_item','discount') order by position",[progressId]);
       if(progressDraft.document_type!=='invoice'||progressDraft.status!=='draft'||progressDraft.number!==null
-        ||Number(progressDraft.metadata?.situation_number)!==situation||Number(progressLine?.cumulative_progress_percent)!==cumulative)
-        throw new Error(`progress invoice: invalid situation ${situation} draft ${JSON.stringify({progressDraft,progressLine})}`);
+        ||Number(progressDraft.metadata?.situation_number)!==situation||Number(progressLine?.cumulative_progress_percent)!==cumulative
+        ||completeDraftLines.rows.length!==2||!completeDraftLines.rows.some(row=>row.source_line_id===secondProgressSourceLine.id&&Number(row.quantity)===0&&row.optional===false))
+        throw new Error(`progress invoice: invalid editable situation ${situation} draft ${JSON.stringify({progressDraft,progressLine,completeDraftLines:completeDraftLines.rows})}`);
+      if(situation===2){
+        await db.exec('reset role');
+        const editableDocument=(await db.query('select to_jsonb(d) payload from public.documents d where d.id=$1',[progressId])).rows[0].payload;
+        const editableLines=(await db.query('select coalesce(jsonb_agg(to_jsonb(line) order by line.position,line.id),\'[]\'::jsonb) payload from public.document_lines line where line.document_id=$1',[progressId])).rows[0].payload;
+        await db.exec(`set request.jwt.claim.sub='${actor}'; set role authenticated;`);
+        const resaved=await db.query('select public.save_document_draft($1,$2::jsonb,$3::jsonb) result',[progressId,JSON.stringify(editableDocument),JSON.stringify(editableLines)]);
+        const linesAfterSave=await db.query("select count(*)::int count from public.document_lines where document_id=$1 and line_type in('item','free_item','discount')",[progressId]);
+        if(resaved.rows[0]?.result?.status!=='draft'||Number(linesAfterSave.rows[0]?.count)!==2)
+          throw new Error(`progress invoice: situation 2 draft could not be edited and saved ${JSON.stringify({result:resaved.rows[0]?.result,lines:linesAfterSave.rows[0]})}`);
+      }
       const finalizedProgress=(await db.query('select public.finalize_document($1) result',[progressId])).rows[0].result;
       if(!/^FAC-\d{4}-\d+$/.test(finalizedProgress.number||''))
         throw new Error(`progress invoice: situation ${situation} did not receive a regular fiscal invoice number ${JSON.stringify(finalizedProgress)}`);

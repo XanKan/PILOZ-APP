@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage, type RGB } from "npm:pdf-lib@1.17.1";
+import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont, type PDFImage, type PDFPage, type RGB } from "npm:pdf-lib@1.17.1";
 import { corsHeaders, json } from "../_shared/http.ts";
 
 type SnapshotPayload = {
@@ -284,7 +284,11 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     : doc.document_type === "credit_note" ? "Avoir"
     : doc.document_type === "proforma_invoice" ? "Facture pro forma"
     : doc.document_type === "invoice" ? "Facture" : "Document";
-  const number = text(doc.number || "Brouillon");
+  const provisionalInvoice = !doc.number && ["invoice", "deposit_invoice", "balance_invoice", "recurring_invoice"].includes(String(doc.document_type || ""));
+  const draftSeed = text(doc.id || "").replace(/-/g, "").slice(0, 8).toUpperCase();
+  const draftYear = text(doc.issue_date || new Date().toISOString()).slice(0, 4).replace(/\D/g, "") || String(new Date().getFullYear());
+  const draftReference = text(metadata.draft_reference || (draftSeed ? `BR-${draftYear}-${draftSeed}` : "BR-PROVISOIRE"));
+  const number = text(doc.number || (provisionalInvoice ? `Brouillon ${draftReference}` : "Brouillon"));
   const pages: PDFPage[] = [];
   let page!: PDFPage;
   let y = 0;
@@ -342,6 +346,17 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     if (!referenceLayout) page.drawRectangle({ x: 0, y: A4[1] - metrics.bandHeight, width: A4[0], height: metrics.bandHeight, color: colors.primary });
     if (layoutKey === "modern") {
       page.drawRectangle({ x: 0, y: 826, width: A4[0], height: 10, color: colors.secondary });
+    }
+    if (provisionalInvoice) {
+      page.drawText("FACTURE PROVISOIRE", {
+        x: 58,
+        y: 330,
+        size: 48,
+        font: bold,
+        color: rgb(0.33, 0.4, 0.5),
+        opacity: 0.12,
+        rotate: degrees(38),
+      });
     }
     if (continuation) {
       page.drawText(fit(bold, `${kind} ${number}`, 10, 270), { x: 42, y: 800, size: 10, font: bold, color: colors.heading });
@@ -720,6 +735,7 @@ async function buildPreviewPayload(
   }
 
   const document: Record<string, unknown> = {
+    id: previewText(sourceDocument.id, 36),
     document_type: documentType,
     number: previewText(sourceDocument.number, 80),
     issue_date: previewText(sourceDocument.issue_date, 32),
@@ -752,6 +768,8 @@ async function buildPreviewPayload(
       discount_rate: previewNumber(line.discount_rate),
       tax_rate: previewNumber(line.tax_rate),
       optional: line.optional === true,
+      cumulative_progress_percent: previewNumber(line.cumulative_progress_percent),
+      line_metadata: record(line.line_metadata),
       total_excl_tax: previewNumber(line.total_excl_tax),
       total_tax: previewNumber(line.total_tax),
       total_incl_tax: previewNumber(line.total_incl_tax),

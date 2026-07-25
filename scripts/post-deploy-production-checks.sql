@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607250061' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607250062' ok
   union all
   select 'document_theme_assignments_rls',coalesce((select relrowsecurity::text from pg_class where oid='public.document_theme_assignments'::regclass),'missing'),
     coalesce((select relrowsecurity from pg_class where oid='public.document_theme_assignments'::regclass),false)
@@ -127,6 +127,16 @@ with controls as(
     and tgname='documents_enforce_issue_date_chronology'
     and not tgisinternal
   union all
+  select 'progress_draft_completion_trigger',count(*)::text,count(*)=1
+  from pg_trigger
+  where tgrelid='public.document_links'::regclass
+    and tgname='complete_progress_draft_lines_after_link'
+    and not tgisinternal
+  union all
+  select 'progress_invoice_zero_line_validator',
+    (position('invoice-validator-v2-progress-lines' in pg_get_functiondef(to_regprocedure('public.validate_invoice_for_finalization(uuid)')))>0)::text,
+    position('invoice-validator-v2-progress-lines' in pg_get_functiondef(to_regprocedure('public.validate_invoice_for_finalization(uuid)')))>0
+  union all
   select 'production_without_kms',count(*)::text,count(*)=0
   from public.company_fiscal_configurations
   where mode='production' and activation_status='production_active'
@@ -142,7 +152,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607250061',
+  'schema_version','202607250062',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;
