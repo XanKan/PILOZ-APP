@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607250063' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607250064' ok
   union all
   select 'document_theme_assignments_rls',coalesce((select relrowsecurity::text from pg_class where oid='public.document_theme_assignments'::regclass),'missing'),
     coalesce((select relrowsecurity from pg_class where oid='public.document_theme_assignments'::regclass),false)
@@ -140,6 +140,24 @@ with controls as(
   select 'invoice_progress_mode_rpc',coalesce(to_regprocedure('public.set_invoice_progress_mode(uuid,boolean)')::text,'missing'),
     to_regprocedure('public.set_invoice_progress_mode(uuid,boolean)') is not null
   union all
+  select 'quote_draft_guard_trigger',count(*)::text,count(*)=1
+  from pg_trigger
+  where tgrelid='public.documents'::regclass
+    and tgname='documents_00_force_new_quote_to_draft'
+    and not tgisinternal
+  union all
+  select 'quote_conversion_guard_trigger',count(*)::text,count(*)=1
+  from pg_trigger
+  where tgrelid='public.documents'::regclass
+    and tgname='documents_guard_invoice_created_from_quote'
+    and not tgisinternal
+  union all
+  select 'operational_document_client_guard_trigger',count(*)::text,count(*)=1
+  from pg_trigger
+  where tgrelid='public.documents'::regclass
+    and tgname='documents_guard_operational_client'
+    and not tgisinternal
+  union all
   select 'production_without_kms',count(*)::text,count(*)=0
   from public.company_fiscal_configurations
   where mode='production' and activation_status='production_active'
@@ -155,7 +173,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607250063',
+  'schema_version','202607250064',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;

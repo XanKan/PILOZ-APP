@@ -284,11 +284,14 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     : doc.document_type === "credit_note" ? "Avoir"
     : doc.document_type === "proforma_invoice" ? "Facture pro forma"
     : doc.document_type === "invoice" ? "Facture" : "Document";
-  const provisionalInvoice = !doc.number && ["invoice", "deposit_invoice", "balance_invoice", "recurring_invoice"].includes(String(doc.document_type || ""));
+  const draftDocument = String(doc.status || "draft") === "draft"
+    && !doc.finalized_at && !doc.validated_at && !doc.locked_at
+    && (doc.document_type === "quote" || ["invoice", "deposit_invoice", "balance_invoice", "recurring_invoice"].includes(String(doc.document_type || "")));
+  const draftWatermark = doc.document_type === "quote" ? "DEVIS BROUILLON" : "FACTURE BROUILLON";
   const draftSeed = text(doc.id || "").replace(/-/g, "").slice(0, 8).toUpperCase();
   const draftYear = text(doc.issue_date || new Date().toISOString()).slice(0, 4).replace(/\D/g, "") || String(new Date().getFullYear());
   const draftReference = text(metadata.draft_reference || (draftSeed ? `BR-${draftYear}-${draftSeed}` : "BR-PROVISOIRE"));
-  const number = text(doc.number || (provisionalInvoice ? `Brouillon ${draftReference}` : "Brouillon"));
+  const number = text(doc.number || (draftDocument ? `Brouillon ${draftReference}` : "Brouillon"));
   const pages: PDFPage[] = [];
   let page!: PDFPage;
   let y = 0;
@@ -347,8 +350,8 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     if (layoutKey === "modern") {
       page.drawRectangle({ x: 0, y: 826, width: A4[0], height: 10, color: colors.secondary });
     }
-    if (provisionalInvoice) {
-      page.drawText("FACTURE PROVISOIRE", {
+    if (draftDocument) {
+      page.drawText(draftWatermark, {
         x: 58,
         y: 330,
         size: 48,

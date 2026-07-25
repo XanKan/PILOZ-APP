@@ -32,7 +32,7 @@ const checks = [
   ['later progress drafts keep every source line', progressMigration.includes('_piloz_complete_progress_draft_lines') && progressMigration.includes("progress_delta_percent',0")],
   ['zero progress lines remain visible in PDF', !pdf.includes('unchangedProgressLine') && pdf.includes('for (const line of payload.lines || [])')],
   ['draft invoices have a provisional reference', app.includes('draft_reference') && editor.includes('PilozDocumentDisplayNumber')],
-  ['draft invoice PDF has a provisional watermark', pdf.includes('FACTURE PROVISOIRE') && pdf.includes('provisionalInvoice') && viewer.includes('document-snapshot-provisional-watermark')],
+  ['draft documents have the correct watermark', pdf.includes('DEVIS BROUILLON') && pdf.includes('FACTURE BROUILLON') && pdf.includes('draftDocument') && viewer.includes('document-snapshot-provisional-watermark')],
   ['quote invoice conversion opens a classic draft without progress popup', viewer.includes("if(type==='invoice'||type==='progress_invoice'){await runConversion('convert_quote_to_invoice'")],
   ['progress mode is activated from the editor side panel', editor.includes('Facture de situation') && editor.includes('toggleProgressMode') && editor.includes("api().rpc('set_invoice_progress_mode'")],
   ['progress mode transition is atomic and company scoped', progressModeMigration.includes('create or replace function public.set_invoice_progress_mode') && progressModeMigration.includes('public.is_company_member(target.company_id)') && progressModeMigration.includes("link_type='progress'")],

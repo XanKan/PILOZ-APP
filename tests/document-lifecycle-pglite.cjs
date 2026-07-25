@@ -65,9 +65,9 @@ async function bootstrap(db){
   `);
 }
 
-async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[]){
+async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[],clientId=client){
   const targetDocument={
-    company_id:company,document_type:type,version:1,client_id:client,issue_date:'2026-07-21',
+    company_id:company,document_type:type,version:1,client_id:clientId,issue_date:'2026-07-21',
     due_date:type==='quote'?null:'2026-08-20',validity_date:type==='quote'?'2026-08-20':null,
     subject:type==='quote'?'Devis de test':'Facture de test',currency:'EUR',language:'fr',
     sale_type:'services',
@@ -85,8 +85,8 @@ async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[]){
     [existingId,JSON.stringify(targetDocument),JSON.stringify(targetLines)]
   );
   const saved=draft.rows[0].result;
-  const expectedStatus=existingId?null:(type==='quote'?'pending':'draft');
-  if(!saved?.id||(type==='quote'&&!saved.number)||(type!=='quote'&&saved.number)||(expectedStatus&&saved.status!==expectedStatus))throw new Error(`${type}: invalid draft result ${JSON.stringify(saved)}`);
+  const expectedStatus=existingId?null:'draft';
+  if(!saved?.id||(!existingId&&saved.number)||(expectedStatus&&saved.status!==expectedStatus))throw new Error(`${type}: invalid draft result ${JSON.stringify(saved)}`);
   const totals=await db.query('select total_excl_tax,total_tax,total_incl_tax from public.documents where id=$1',[saved.id]);
   const total=Number(totals.rows[0]?.total_incl_tax||0);
   const expectedTotal=Math.round(targetLines.reduce((sum,line)=>sum+Number(line.quantity||0)*Number(line.unit_price||0)*(1-Number(line.discount_rate||0)/100)*(1+Number(line.tax_rate||0)/100),0)*100)/100;
@@ -189,8 +189,17 @@ async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[]){
     if(!foreignPayment||!/missing_permission:record_multi_invoice_payment/.test(foreignPayment.message))throw new Error('security: company A was able to reach the payment path of company B');
     const foreignEmail=await db.query("select public.record_manual_document_email($1,array['client@example.test'],array[]::text[],'Facture','Message','manual')",[foreignInvoice.id]).then(()=>null,error=>error);
     if(!foreignEmail||!/missing_permission:resend_invoice/.test(foreignEmail.message))throw new Error('security: company A was able to reach the email path of company B');
-    // Le devis reçoit son numéro officiel et son statut "en attente" dès son
-    // premier enregistrement — plus de brouillon, plus de finalisation.
+    // Un devis peut être conservé comme brouillon sans client et sans numéro.
+    // La validation et la conversion restent interdites tant qu'il est incomplet.
+    const incompleteQuote=await saveDraft(db,'quote',null,100,[],null);
+    if(incompleteQuote.status!=='draft'||incompleteQuote.number)throw new Error(`quote: incomplete quote must stay unnumbered ${JSON.stringify(incompleteQuote)}`);
+    const incompleteQuoteValidation=await db.query("select public.transition_document_status($1,'pending') result",[incompleteQuote.id]).then(()=>null,error=>error);
+    if(!incompleteQuoteValidation||!/document_client_required/.test(incompleteQuoteValidation.message))
+      throw new Error(`quote: validation without client should fail, got ${incompleteQuoteValidation&&incompleteQuoteValidation.message}`);
+    const incompleteQuoteConversion=await db.query('select public.convert_quote_to_invoice($1) result',[incompleteQuote.id]).then(()=>null,error=>error);
+    if(!incompleteQuoteConversion||!/(quote_must_be_validated|quote_number_required)/.test(incompleteQuoteConversion.message))
+      throw new Error(`quote: draft conversion should fail, got ${incompleteQuoteConversion&&incompleteQuoteConversion.message}`);
+
     const quote=await saveDraft(db,'quote');
     await db.query('select public.save_document_client_context($1,$2,$3,$4)',[quote.id,recipientId,billingAddressId,serviceAddressId]);
     const quoteContext=await db.query('select contact_id,billing_address_id,delivery_address_id,snapshot_id from public.documents where id=$1',[quote.id]);
@@ -199,7 +208,7 @@ async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[]){
     const quoteSnapshotContext=await db.query('select contact_payload,address_payload from public.document_contact_snapshots c join public.document_address_snapshots a on a.snapshot_id=c.snapshot_id and a.address_kind=\'billing\' where c.snapshot_id=$1',[quoteContext.rows[0].snapshot_id]);
     if(quoteSnapshotContext.rows[0]?.contact_payload?.first_name!=='Marie'||quoteSnapshotContext.rows[0]?.address_payload?.city!=='Lyon')
       throw new Error(`clients: quote snapshot context is incomplete ${JSON.stringify(quoteSnapshotContext.rows[0])}`);
-    if(quote.status!=='pending')throw new Error(`quote: expected initial status pending, got ${quote.status}`);
+    if(quote.status!=='draft'||quote.number)throw new Error(`quote: expected initial unnumbered draft, got ${JSON.stringify(quote)}`);
     const quoteRow=await db.query('select snapshot_id,finalized_at from public.documents where id=$1',[quote.id]);
     if(!quoteRow.rows[0].snapshot_id)throw new Error('quote: expected a snapshot to exist right after the first save (for PDF generation)');
     if(quoteRow.rows[0].finalized_at)throw new Error('quote: finalized_at should stay null — a quote is never content-locked before invoicing');
@@ -216,6 +225,12 @@ async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[]){
       throw new Error(`quote: finalize_document should reject quotes again, got ${quoteFinalizeAttempt&&quoteFinalizeAttempt.message}`);
     // Tant qu'aucune facture n'en découle, le statut peut basculer vers
     // accepté ou refusé.
+    const pendingQuote=await db.query("select public.transition_document_status($1,'pending') result",[quote.id]);
+    if(pendingQuote.rows[0].result.status!=='pending'||!pendingQuote.rows[0].result.number)
+      throw new Error(`quote: validation did not allocate its number ${JSON.stringify(pendingQuote.rows[0].result)}`);
+    const removeValidatedQuoteClient=await saveDraft(db,'quote',quote.id,250,[],null).then(()=>null,error=>error);
+    if(!removeValidatedQuoteClient||!/(document_client_required|document_contact_mismatch)/.test(removeValidatedQuoteClient.message))
+      throw new Error(`quote: a validated quote must keep its client, got ${removeValidatedQuoteClient&&removeValidatedQuoteClient.message}`);
     const accepted=await db.query("select public.transition_document_status($1,'accepted') result",[quote.id]);
     if(accepted.rows[0].result.status!=='accepted')throw new Error(`quote: expected status accepted, got ${JSON.stringify(accepted.rows[0].result)}`);
     const rejectedBack=await db.query("select public.transition_document_status($1,'rejected') result",[quote.id]);
@@ -249,6 +264,10 @@ async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[]){
       throw new Error(`progress toggle: disabling did not restore the classic draft ${JSON.stringify({disabledProgressMode,classicModeState})}`);
     // La facture brouillon n'a aucun numéro légal. La finalisation l'attribue
     // dans la même transaction que le verrouillage et l'instantané.
+    const incompleteInvoice=await saveDraft(db,'invoice',null,100,[],null);
+    const incompleteInvoiceFinalization=await db.query('select public.finalize_document($1) result',[incompleteInvoice.id]).then(()=>null,error=>error);
+    if(!incompleteInvoiceFinalization||!/(client_required|document_client_required)/.test(incompleteInvoiceFinalization.message))
+      throw new Error(`invoice: finalization without client should fail, got ${incompleteInvoiceFinalization&&incompleteInvoiceFinalization.message}`);
     const invoice=await saveDraft(db,'invoice');
     await db.query('select public.save_document_client_context($1,$2,$3,$4)',[invoice.id,recipientId,billingAddressId,serviceAddressId]);
     const final=await db.query('select public.finalize_document($1) result',[invoice.id]);
@@ -534,6 +553,7 @@ async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[]){
       description:'Ligne conservée dans chaque situation',quantity:1,unit:'unité',unit_cost_snapshot:50,
       unit_price:500,discount_rate:0,tax_rate:20,optional:false,cumulative_progress_percent:0,line_metadata:{}
     }]);
+    await db.query("select public.transition_document_status($1,'pending') result",[progressQuote.id]);
     const progressSourceLine=(await db.query("select id from public.document_lines where document_id=$1 and line_type in('item','free_item','discount') order by position limit 1",[progressQuote.id])).rows[0];
     const secondProgressSourceLine=(await db.query("select id from public.document_lines where document_id=$1 and line_type in('item','free_item','discount') order by position offset 1 limit 1",[progressQuote.id])).rows[0];
     const progressFiscalNumbers=[];

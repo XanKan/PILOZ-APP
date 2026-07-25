@@ -43,6 +43,7 @@
     if(value.includes('forbidden')||value.includes('row-level security')||status===403)return'Vous n’avez pas l’autorisation d’effectuer cette action.';
     if(value.includes('company_onboarding_required'))return'Complétez la raison sociale, le SIRET, l’e-mail et l’adresse de l’entreprise avant de finaliser ce document.';
     if(value.includes('document_client_required'))return'Sélectionnez un client actif avant de finaliser ce document.';
+    if(value.includes('quote_must_be_validated')||value.includes('quote_number_required'))return'Validez d’abord le devis avec un client avant de le transformer en facture.';
     if(value.includes('document_lines_required'))return'Ajoutez au moins une ligne avec une désignation et une quantité supérieure à zéro.';
     if(value.includes('document_total_must_be_positive'))return'Le total du document doit être supérieur à zéro avant la finalisation.';
     if(value.includes('issuer_legal_name_required'))return'Complétez la raison sociale de votre entreprise avant de finaliser la facture.';
