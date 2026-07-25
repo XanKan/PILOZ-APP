@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607260066' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607260067' ok
   union all
   select 'invoice_legal_validator',coalesce(to_regprocedure('public.validate_invoice_for_finalization(uuid)')::text,'missing'),
     to_regprocedure('public.validate_invoice_for_finalization(uuid)') is not null
@@ -196,7 +196,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607260066',
+  'schema_version','202607260067',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;

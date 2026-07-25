@@ -12,6 +12,7 @@ const migration = fs.readFileSync(path.join(root, 'supabase/migrations/202607250
 const progressMigration = fs.readFileSync(path.join(root, 'supabase/migrations/202607250062_editable_progress_drafts.sql'), 'utf8');
 const progressModeMigration = fs.readFileSync(path.join(root, 'supabase/migrations/202607250063_invoice_progress_mode.sql'), 'utf8');
 const nextProgressMigration = fs.readFileSync(path.join(root, 'supabase/migrations/202607250065_next_progress_invoice_draft.sql'), 'utf8');
+const marketMigration = fs.readFileSync(path.join(root, 'supabase/migrations/202607260067_deposit_followup_market_summary.sql'), 'utf8');
 
 const checks = [
   ['company default resolver', app.includes('function resolveDocumentTemplateId') && app.includes('default_quote_template_id')],
@@ -37,13 +38,18 @@ const checks = [
   ['zero progress lines remain visible in PDF', !pdf.includes('unchangedProgressLine') && pdf.includes('for (const line of payload.lines || [])')],
   ['draft invoices have a provisional reference', app.includes('draft_reference') && editor.includes('PilozDocumentDisplayNumber')],
   ['draft documents have the correct watermark', pdf.includes('DEVIS BROUILLON') && pdf.includes('FACTURE BROUILLON') && pdf.includes('draftDocument') && viewer.includes('document-snapshot-provisional-watermark')],
-  ['quote invoice conversion opens a classic draft without progress popup', viewer.includes("if(type==='invoice'||type==='progress_invoice'){await runConversion('convert_quote_to_invoice'")],
+  ['quote invoice conversion keeps classic and progress drafts distinct', viewer.includes("if(type==='invoice'){await runConversion('convert_quote_to_invoice'") && viewer.includes("if(type==='progress_invoice'){await runProgressConversion")],
   ['progress mode is activated from the editor side panel', editor.includes('Facture de situation') && editor.includes('toggleProgressMode') && editor.includes("api().rpc('set_invoice_progress_mode'")],
   ['progress invoice totals are simplified', editor.includes('Avancement total :') && viewer.includes('Avancement total :') && pdf.includes('Avancement total :') && !editor.includes('Avancement cumulé') && !editor.includes('Sans titre')],
   ['progress mode transition is atomic and company scoped', progressModeMigration.includes('create or replace function public.set_invoice_progress_mode') && progressModeMigration.includes('public.is_company_member(target.company_id)') && progressModeMigration.includes("link_type='progress'")],
   ['next situation opens its draft directly without obsolete popup', viewer.includes("runConversion('create_next_progress_invoice_draft'") && !viewer.includes("ui.modal={type:'progress'") && !viewer.includes("ui.modal.type==='progress'") && !viewer.includes("ui.modal?.type==='progress'")],
   ['progress editor has a weighted progress banner', editor.includes('document-v2-progress-banner') && editor.includes('État d’avancement du devis') && editor.includes('progressTotal(d)')],
   ['next situation creation is atomic and company scoped', nextProgressMigration.includes('create or replace function public.create_next_progress_invoice_draft') && nextProgressMigration.includes('public.is_company_member(current_situation.company_id)') && nextProgressMigration.includes("public.convert_quote_to_invoice(source_quote.id,'invoice')") && nextProgressMigration.includes('public.set_invoice_progress_mode(target_id,true)')],
+  ['finalization keeps the configured preview until the final PDF is ready', app.includes('primeDocumentPreview') && app.includes('{keepDraft:true}') && viewer.includes('bridgePdf')],
+  ['deposit must be finalized before classic or progress follow-up', viewer.includes('depositRequired||depositPending') && viewer.includes("convertFromInvoice('progress_invoice')")],
+  ['market summary is rendered in final PDFs', pdf.includes('Récapitulatif du marché') && pdf.includes('marketSummary.previous_total_incl_tax')],
+  ['market summary is frozen in legal snapshots', marketMigration.includes('document_snapshots_market_summary') && marketMigration.includes("'{market_summary}'") && marketMigration.includes('payload_hash:=encode')],
+  ['linked invoices cannot exceed the quote amount', marketMigration.includes('documents_quote_billing_cap') && marketMigration.includes('total des factures depasse le montant du devis')],
 ];
 
 const failed = checks.filter(([, ok]) => !ok).map(([name]) => name);

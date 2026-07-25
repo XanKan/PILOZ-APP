@@ -15,6 +15,7 @@ type SnapshotPayload = {
   lines?: Array<Record<string, unknown>>;
   logo?: Record<string, unknown>;
   template?: Record<string, unknown>;
+  market_summary?: Record<string, unknown>;
 };
 
 type LogoAsset = { bytes: Uint8Array; mimeType: "image/png" | "image/jpeg" };
@@ -242,6 +243,10 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   const displayedClientAddress = Object.keys(billingAddress).length ? billingAddress : client;
   const settings = payload.document_settings || {};
   const metadata = record(doc.metadata);
+  const marketSummary = record(payload.market_summary || metadata.market_summary);
+  const marketRows = Array.isArray(marketSummary.rows)
+    ? marketSummary.rows.map(record)
+    : [];
   const currency = text(doc.currency || "EUR");
 
   const templateInfo = record(payload.template);
@@ -570,6 +575,40 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     right(page, regular, amount(paidAmount, currency), 538, totalsY - 79 - progressRowOffset, 8, totalsTextColor);
     page.drawText("Reste à payer", { x: 374, y: totalsY - 95 - progressRowOffset, size: 8, font: bold, color: grandTotalColor });
     right(page, bold, amount(remainingAmount, currency), 538, totalsY - 95 - progressRowOffset, 8, grandTotalColor);
+  }
+  if (marketRows.length) {
+    const rowHeight = 14;
+    const summaryHeight = 58 + marketRows.length * rowHeight;
+    let marketTop = totalsY - totalsBoxHeight - 8;
+    if (marketTop - summaryHeight < 190) {
+      page = pdf.addPage(A4);
+      pages.push(page);
+      if (!referenceLayout) page.drawRectangle({ x: 0, y: A4[1] - metrics.bandHeight, width: A4[0], height: metrics.bandHeight, color: colors.primary });
+      if (draftDocument) page.drawText(draftWatermark, { x: 58, y: 330, size: 48, font: bold, color: rgb(0.33, 0.4, 0.5), opacity: 0.12, rotate: degrees(38) });
+      page.drawText(fit(bold, `${kind} ${number}`, 10, 270), { x: 42, y: 800, size: 10, font: bold, color: colors.heading });
+      right(page, bold, issuerName, 553, 800, 9, colors.heading, 245);
+      marketTop = 770;
+    }
+    page.drawText("Récapitulatif du marché", { x: 42, y: marketTop, size: 10, font: bold, color: colors.heading });
+    const headerY = marketTop - 19;
+    page.drawRectangle({ x: 42, y: headerY - 4, width: 511, height: 17, color: colors.tableBackground });
+    page.drawText("Date", { x: 48, y: headerY + 1, size: 7, font: bold, color: colors.secondary });
+    page.drawText("Facture antérieure", { x: 108, y: headerY + 1, size: 7, font: bold, color: colors.secondary });
+    page.drawText("Type", { x: 285, y: headerY + 1, size: 7, font: bold, color: colors.secondary });
+    right(page, bold, "Montant TTC", 547, headerY + 1, 7, colors.secondary, 95);
+    marketRows.forEach((row, index) => {
+      const rowY = headerY - 15 - index * rowHeight;
+      page.drawText(date(row.issue_date), { x: 48, y: rowY, size: 7, font: regular, color: colors.text });
+      page.drawText(fit(bold, row.number || "-", 7, 165), { x: 108, y: rowY, size: 7, font: bold, color: colors.text });
+      page.drawText(fit(regular, row.label || row.document_type || "Facture", 7, 155), { x: 285, y: rowY, size: 7, font: regular, color: colors.text });
+      right(page, regular, amount(row.total_incl_tax, currency), 547, rowY, 7, colors.text, 95);
+      page.drawLine({ start: { x: 42, y: rowY - 4 }, end: { x: 553, y: rowY - 4 }, thickness: 0.35, color: colors.border });
+    });
+    const totalsRowY = headerY - 20 - marketRows.length * rowHeight;
+    page.drawText("Total déjà facturé", { x: 285, y: totalsRowY, size: 7, font: bold, color: colors.heading });
+    right(page, bold, amount(marketSummary.previous_total_incl_tax, currency), 547, totalsRowY, 7, colors.heading, 95);
+    page.drawText("Reste apres ce document", { x: 285, y: totalsRowY - 14, size: 7, font: bold, color: colors.heading });
+    right(page, bold, amount(marketSummary.remaining_after_current, currency), 547, totalsRowY - 14, 7, colors.heading, 95);
   }
   const footerLines: string[] = [];
   // Render mandatory invoice notices first so optional template text cannot
@@ -900,7 +939,7 @@ async function buildSavedDraftPreviewPayload(
     if (error) throw previewFailure("Le nombre de lignes est indisponible", 503);
     if (Number(count) > MAX_PREVIEW_LINES) throw previewFailure(`Le document depasse la limite de ${MAX_PREVIEW_LINES} lignes`, 413);
   }
-  return buildPreviewPayload(userClient, userId, {
+  const result = await buildPreviewPayload(userClient, userId, {
     companyId,
     clientId: document.client_id,
     templateId: document.template_id,
@@ -910,6 +949,9 @@ async function buildSavedDraftPreviewPayload(
     document,
     lines,
   });
+  const { data: marketSummary } = await userClient.rpc("get_document_market_summary", { target_document_id: documentId });
+  if (marketSummary && typeof marketSummary === "object") result.payload.market_summary = record(marketSummary);
+  return result;
 }
 
 function failureCode(error: unknown) {

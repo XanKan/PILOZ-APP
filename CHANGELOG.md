@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0-compliance.26 — 26 juillet 2026
+
+- rétablissement de la finalisation directe depuis la fiche d’une facture brouillon ;
+- maintien du modèle configuré dans la visionneuse pendant la génération du PDF définitif ;
+- parcours acompte sécurisé : l’acompte prévu doit être finalisé avant une facture classique ou de situation ;
+- possibilité de poursuivre après l’acompte par une facture de solde ou une facture de situation ;
+- récapitulatif du marché dans les nouvelles factures liées et contrôle du plafond total facturé par rapport au devis.
+
 ## 0.9.0-compliance.25 — 26 juillet 2026
 
 - validation complète des mentions obligatoires avant finalisation d’une facture, avec contrôles renforcés au 1er septembre 2026 ;
