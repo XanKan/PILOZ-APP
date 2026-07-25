@@ -10,7 +10,7 @@ const migration = fs.readFileSync(path.join(root, 'supabase/migrations/202607250
 const checks = [
   ['company default resolver', app.includes('function resolveDocumentTemplateId') && app.includes('default_quote_template_id')],
   ['temporary system themes excluded', app.includes("row.document_type===templateType&&!row.is_system")],
-  ['template resolved before save', app.includes('ensureDraftDocumentTemplate(d);if(!d.template_id)')],
+  ['template resolved before save', app.includes('ensureDraftDocumentTemplate(d);if(d.numberReservation')],
   ['template resolved before preview', app.includes('const d=state.draft;ensureDraftDocumentTemplate(d);')],
   ['editor uses shared resolver', editor.includes('resolveDocumentTemplateId?.(d.document_type,d.template_id)')],
   ['viewer uses resolved template', viewer.includes('resolveDocumentTemplateId?.(doc.document_type,doc.template_id)')],
