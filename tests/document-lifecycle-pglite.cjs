@@ -511,9 +511,31 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     const complianceSummary=await db.query('select public.get_company_compliance_summary($1) result',[company]);
     if(Number(complianceSummary.rows[0].result?.open_data_subject_requests)!==0||complianceSummary.rows[0].result?.certifications?.length!==0)
       throw new Error(`compliance summary: dishonest or incomplete result ${JSON.stringify(complianceSummary.rows[0].result)}`);
+    // Les factures de situation suivent une suite N°1, N°2, ... indépendante
+    // du numéro fiscal. Onze situations successives prouvent notamment qu'il
+    // n'existe pas de plafond fonctionnel à dix documents.
+    const progressQuote=await saveDraft(db,'quote',null,1000);
+    const progressSourceLine=(await db.query("select id from public.document_lines where document_id=$1 and line_type in('item','free_item','discount') order by position limit 1",[progressQuote.id])).rows[0];
+    const progressFiscalNumbers=[];
+    for(let situation=1;situation<=11;situation+=1){
+      const cumulative=situation*8;
+      const progressId=(await db.query('select public.create_progress_invoice($1,$2::jsonb) result',[progressQuote.id,JSON.stringify([{line_id:progressSourceLine.id,progress_percent:cumulative}])])).rows[0].result;
+      const progressDraft=(await db.query("select document_type,status,number,metadata from public.documents where id=$1",[progressId])).rows[0];
+      const progressLine=(await db.query('select cumulative_progress_percent from public.document_lines where document_id=$1 and source_line_id=$2',[progressId,progressSourceLine.id])).rows[0];
+      if(progressDraft.document_type!=='invoice'||progressDraft.status!=='draft'||progressDraft.number!==null
+        ||Number(progressDraft.metadata?.situation_number)!==situation||Number(progressLine?.cumulative_progress_percent)!==cumulative)
+        throw new Error(`progress invoice: invalid situation ${situation} draft ${JSON.stringify({progressDraft,progressLine})}`);
+      const finalizedProgress=(await db.query('select public.finalize_document($1) result',[progressId])).rows[0].result;
+      if(!/^FAC-\d{4}-\d+$/.test(finalizedProgress.number||''))
+        throw new Error(`progress invoice: situation ${situation} did not receive a regular fiscal invoice number ${JSON.stringify(finalizedProgress)}`);
+      progressFiscalNumbers.push(finalizedProgress.number);
+    }
+    const progressSequence=await db.query("select count(*)::int count,max((target.metadata->>'situation_number')::integer)::int maximum from public.document_links link join public.documents target on target.id=link.target_document_id where link.source_document_id=$1 and link.link_type='progress'",[progressQuote.id]);
+    if(Number(progressSequence.rows[0]?.count)!==11||Number(progressSequence.rows[0]?.maximum)!==11||new Set(progressFiscalNumbers).size!==11)
+      throw new Error(`progress invoice: unlimited sequence or fiscal numbering is invalid ${JSON.stringify({sequence:progressSequence.rows[0],progressFiscalNumbers})}`);
     await db.exec(fs.readFileSync(path.join(repoRoot,'supabase','tests','202607220045_privacy_roles_and_compliance_checks.sql'),'utf8'));
     await db.exec(fs.readFileSync(path.join(repoRoot,'supabase','tests','202607220047_payment_privacy_maintenance_checks.sql'),'utf8'));
-    console.log(JSON.stringify({ok:true,quote:{...quote,convertedInvoiceId:convertedInvoiceId.rows[0].result},invoice:{id:invoice.id,draftNumber:invoice.number,number:finalized.number,total:invoice.total,status:finalized.status,finalizedAt:finalized.finalized_at}}));
+    console.log(JSON.stringify({ok:true,quote:{...quote,convertedInvoiceId:convertedInvoiceId.rows[0].result},invoice:{id:invoice.id,draftNumber:invoice.number,number:finalized.number,total:invoice.total,status:finalized.status,finalizedAt:finalized.finalized_at},progressInvoices:{count:progressFiscalNumbers.length,lastSituation:11,fiscalNumbers:progressFiscalNumbers}}));
   }finally{
     await db.close();
   }

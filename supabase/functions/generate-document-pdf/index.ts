@@ -274,13 +274,15 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     : "";
 
   const templateDocTitle = text(templateVersion.document_title || "");
-  const kind = (doc.document_type === "quote" || doc.document_type === "invoice") && templateDocTitle ? templateDocTitle
+  const isProgressInvoice = doc.document_type === "invoice" && (metadata.conversion === "progress" || metadata.document_kind === "progress_invoice");
+  const situationNumber = Math.max(1, Number(metadata.situation_number) || 1);
+  const kind = isProgressInvoice ? `Facture de situation N°${situationNumber}`
+    : (doc.document_type === "quote" || doc.document_type === "invoice") && templateDocTitle ? templateDocTitle
     : doc.document_type === "quote" ? "Devis"
     : doc.document_type === "deposit_invoice" ? "Facture d'acompte"
     : doc.document_type === "balance_invoice" ? "Facture de solde"
     : doc.document_type === "credit_note" ? "Avoir"
     : doc.document_type === "proforma_invoice" ? "Facture pro forma"
-    : doc.document_type === "invoice" && metadata.conversion === "progress" ? "Facture de situation"
     : doc.document_type === "invoice" ? "Facture" : "Document";
   const number = text(doc.number || "Brouillon");
   const pages: PDFPage[] = [];
@@ -324,6 +326,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     page.drawRectangle({ x: 42, y: y - 4, width: 511, height: 20, color: colors.tableBackground });
     page.drawText(referenceLayout ? "Produits" : "DESIGNATION", { x: 48, y: y + 3, size: 7, font: bold, color: colors.secondary });
     right(page, bold, referenceLayout ? "Qté" : "QTE", columnX.qty, y + 3, 7, colors.secondary);
+    if (isProgressInvoice) right(page, bold, "AVANCEMENT", 292, y + 3, 6, colors.secondary, 62);
     right(page, bold, referenceLayout ? "Prix u. HT" : "PRIX U. HT", columnX.price, y + 3, 7, colors.secondary);
     if (showDiscountColumn) right(page, bold, "REM.", columnX.discount, y + 3, 7, colors.secondary, 30);
     right(page, bold, referenceLayout ? "TVA (%)" : "TVA", columnX.tax, y + 3, 7, colors.secondary);
@@ -437,8 +440,9 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
       continue;
     }
     const structural = ["title", "subtitle", "section", "text", "comment", "subtotal"].includes(lineType);
-    const nameLines = limitedLines(structural ? bold : regular, line.name || line.description || "Designation", structural ? metrics.lineNameSize + 1 : metrics.lineNameSize, 220, structural ? 8 : 5);
-    const descriptionLines = structural || !line.description ? [] : limitedLines(regular, line.description, metrics.lineSize - 1, 220, metrics.compact ? 1 : 2);
+    const nameWidth = isProgressInvoice ? 180 : 220;
+    const nameLines = limitedLines(structural ? bold : regular, line.name || line.description || "Designation", structural ? metrics.lineNameSize + 1 : metrics.lineNameSize, nameWidth, structural ? 8 : 5);
+    const descriptionLines = structural || !line.description ? [] : limitedLines(regular, line.description, metrics.lineSize - 1, nameWidth, metrics.compact ? 1 : 2);
     const rowHeight = Math.max(metrics.rowPadding, 10 + nameLines.length * 10 + descriptionLines.length * 9);
     if (y - rowHeight < 106) addPage(true);
     if (structural) {
@@ -452,6 +456,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
       nameLines.forEach((value, index) => page.drawText(value, { x: 48, y: y - 7 - index * 10, size: metrics.lineNameSize, font: index === 0 ? bold : regular, color: colors.text }));
       descriptionLines.forEach((value, index) => page.drawText(value, { x: 48, y: y - 7 - nameLines.length * 10 - index * 9, size: metrics.lineSize - 1, font: regular, color: colors.muted }));
       right(page, regular, `${Number(line.quantity || 0).toLocaleString("fr-FR")} ${text(line.unit || "")}`, columnX.qty, y - 7, metrics.lineSize, colors.text, 58);
+      if (isProgressInvoice) right(page, bold, `${Number(line.cumulative_progress_percent || 0).toLocaleString("fr-FR")} %`, 292, y - 7, metrics.lineSize - 1, colors.primary, 54);
       right(page, regular, amount(line.unit_price, currency), columnX.price, y - 7, metrics.lineSize, colors.text, 72);
       if (showDiscountColumn) right(page, regular, `${Number(line.discount_rate || 0).toLocaleString("fr-FR")}%`, columnX.discount, y - 7, metrics.lineSize - 1, colors.muted, 34);
       right(page, regular, `${Number(line.tax_rate || 0).toLocaleString("fr-FR")} %`, columnX.tax, y - 7, metrics.lineSize, colors.text, 40);
@@ -803,7 +808,7 @@ async function buildSavedDraftPreviewPayload(
     const lineColumns = [
       "id", "company_id", "document_id", "position", "line_type", "reference", "name", "description",
       "quantity", "unit", "unit_price", "discount_rate", "tax_rate", "optional",
-      "total_excl_tax", "total_tax", "total_incl_tax",
+      "cumulative_progress_percent", "line_metadata", "total_excl_tax", "total_tax", "total_incl_tax",
     ].join(",");
     const { data, error } = await userClient.from("document_lines").select(lineColumns)
       .eq("company_id", companyId).eq("document_id", documentId)

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0-compliance.18 — 25 juillet 2026
+
+- Factures de situation cumulatives sans limite : Situation N°1, N°2, etc.
+- Avancement configurable sur la totalité, par titre et par ligne, sans retour sous le pourcentage précédent.
+- Création de la situation suivante depuis la facture finalisée et facture de solde à 100 %.
+- Numéro fiscal attribué dans la séquence normale des factures lors de la finalisation.
+- Numéro de situation et avancement visibles dans l’éditeur, les documents liés et le PDF.
+
 ## 0.9.0-compliance.17 — 25 juillet 2026
 
 - le devis déjà facturé affiche de nouveau l’action « Modifier », désormais grisée et désactivée ;
