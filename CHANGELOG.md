@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0-compliance.15 — 25 juillet 2026
+
+- Corrige l’association du modèle configuré lors de la création et de l’enregistrement d’un devis ou d’une facture.
+- Empêche les thèmes temporaires de l’ancien atelier d’apparence de remplacer les modèles métier existants.
+- Réaligne les références de modèle des brouillons et leur aperçu PDF sans modifier les documents finalisés.
+
 ## 0.9.0-compliance.14 — 25 juillet 2026
 
 - retrait du bloc « Destinataire et adresses » dans l’éditeur des devis et factures ;
