@@ -32,7 +32,7 @@ location.hash='settings/company';
  await new Promise(resolve=>setTimeout(resolve,30));
  const overviewCards=[...document.querySelectorAll('.settings-overview-card')];
  const overviewText=document.getElementById('main').textContent;
- const overviewReady=overviewCards.length===13&&overviewText.includes('Mon entreprise')&&overviewText.includes('Paramètres du catalogue Articles & services')&&overviewText.includes('Apparence des documents')&&!overviewText.includes('Conformité et fiscalité')&&!overviewText.includes('À propos et conformité');
+ const overviewReady=overviewCards.length===13&&overviewText.includes('Mon entreprise')&&overviewText.includes('Paramètres du catalogue Articles & services')&&overviewText.includes('Modèles de documents')&&!overviewText.includes('Conformité et fiscalité')&&!overviewText.includes('À propos et conformité');
  const routes=['profile','contacts','addresses','legal','tax','logo','bank'];
  let rendered=0;
  for(const route of routes){

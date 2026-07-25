@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
-import { PDFDocument, PDFName, PDFString, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage, type RGB } from "npm:pdf-lib@1.17.1";
+import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage, type RGB } from "npm:pdf-lib@1.17.1";
 import { corsHeaders, json } from "../_shared/http.ts";
 
 type SnapshotPayload = {
@@ -17,7 +17,7 @@ type SnapshotPayload = {
   template?: Record<string, unknown>;
 };
 
-type LogoAsset = { bytes: Uint8Array; mimeType: "image/png" | "image/jpeg"; name?: string; width?: number };
+type LogoAsset = { bytes: Uint8Array; mimeType: "image/png" | "image/jpeg" };
 type LayoutKey = "classic" | "modern" | "compact";
 
 const A4: [number, number] = [595.28, 841.89];
@@ -48,15 +48,16 @@ const LAYOUT_DEFAULTS: Record<LayoutKey, { primary: string; secondary: string; h
 
 function resolveColors(layoutKey: LayoutKey, overrides: Record<string, unknown>) {
   const base = LAYOUT_DEFAULTS[layoutKey];
+  const accent = overrides.primary || overrides.secondary || overrides.heading || base.primary;
   return {
-    primary: hexToRgb(overrides.primary, hexToRgb(base.primary, rgb(0.05, 0.43, 0.45))),
-    secondary: hexToRgb(overrides.secondary, hexToRgb(base.secondary, rgb(0.05, 0.43, 0.45))),
-    heading: hexToRgb(overrides.heading || overrides.secondary, hexToRgb(base.heading, rgb(0.08, 0.12, 0.2))),
+    primary: hexToRgb(accent, hexToRgb(base.primary, rgb(0.05, 0.43, 0.45))),
+    secondary: hexToRgb(accent, hexToRgb(base.primary, rgb(0.05, 0.43, 0.45))),
+    heading: hexToRgb(accent, hexToRgb(base.primary, rgb(0.05, 0.43, 0.45))),
     border: hexToRgb(overrides.border, hexToRgb(base.border, rgb(0.85, 0.88, 0.91))),
-    tableBackground: hexToRgb(overrides.tableBackground || overrides.background, hexToRgb(base.tableBackground, rgb(0.96, 0.97, 0.98))),
+    tableBackground: hexToRgb(overrides.tableBackground, hexToRgb(base.tableBackground, rgb(0.96, 0.97, 0.98))),
     text: hexToRgb(overrides.text, hexToRgb(base.text, rgb(0.08, 0.12, 0.2))),
-    totals: hexToRgb(overrides.totals || overrides.primary, hexToRgb(base.totals, rgb(0.05, 0.43, 0.45))),
-    muted: hexToRgb(overrides.muted, rgb(0.38, 0.43, 0.51)),
+    totals: hexToRgb(overrides.totals, hexToRgb(base.totals, rgb(0.05, 0.43, 0.45))),
+    muted: rgb(0.38, 0.43, 0.51),
   };
 }
 
@@ -196,21 +197,14 @@ const LAYOUT_METRICS: Record<LayoutKey, {
   compact: { bandHeight: 12, titleSize: 9, numberSize: 15, lineNameSize: 7, lineSize: 7, rowPadding: 18, metaBoxHeight: 50, compact: true },
 };
 
-async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset, footerLogos: LogoAsset[] = []) {
+async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   const pdf = await PDFDocument.create();
-  let regular = await pdf.embedFont(StandardFonts.Helvetica);
-  let bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const regular = await pdf.embedFont(StandardFonts.Helvetica);
+  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   let embeddedLogo: PDFImage | null = null;
   if (logo) {
     try { embeddedLogo = logo.mimeType === "image/png" ? await pdf.embedPng(logo.bytes) : await pdf.embedJpg(logo.bytes); }
     catch { embeddedLogo = null; }
-  }
-  const embeddedFooterLogos: Array<{ image: PDFImage; width: number }> = [];
-  for (const footerLogo of footerLogos.slice(0, 6)) {
-    try {
-      const image = footerLogo.mimeType === "image/png" ? await pdf.embedPng(footerLogo.bytes) : await pdf.embedJpg(footerLogo.bytes);
-      embeddedFooterLogos.push({ image, width: Math.max(18, Math.min(60, Number(footerLogo.width || 64) * .45)) });
-    } catch { /* Invalid or unsupported footer image: omit it without breaking the document. */ }
   }
   const doc = payload.document || {};
   const issuer = payload.issuer || {};
@@ -226,39 +220,10 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset, footerLogos:
   const templateInfo = record(payload.template);
   const templateVersion = record(templateInfo.version);
   const templateFooter = record(templateInfo.footer);
-  const frozenTheme = record(doc.theme_snapshot);
-  const canonical = record(frozenTheme.configuration || templateVersion.configuration_json);
-  const configuredFont = text(record(record(canonical.typography).content).family).toLowerCase();
-  if (configuredFont.includes("times") || configuredFont.includes("georgia")) {
-    regular = await pdf.embedFont(StandardFonts.TimesRoman); bold = await pdf.embedFont(StandardFonts.TimesRomanBold);
-  } else if (configuredFont.includes("courier")) {
-    regular = await pdf.embedFont(StandardFonts.Courier); bold = await pdf.embedFont(StandardFonts.CourierBold);
-  }
-  const canonicalStructure = text(record(canonical.structure).key);
-  const canonicalLayout = canonicalStructure === "modern-color" || canonicalStructure === "editorial" ? "modern"
-    : canonicalStructure === "compact-header" ? "compact" : "classic";
-  const layoutKey = resolveLayoutKey(canonicalStructure ? canonicalLayout : templateVersion.layout_key);
-  const colorSettings = Object.keys(record(canonical.colors)).length ? record(canonical.colors) : record(templateVersion.color_settings);
-  const colors = resolveColors(layoutKey, colorSettings);
-  const pageBackground = hexToRgb(colorSettings.background, rgb(1, 1, 1));
-  const logoSettings = Object.keys(record(canonical.logo)).length ? record(canonical.logo) : record(templateVersion.logo_settings);
-  const tableSettings = record(canonical.table);
-  const footerSettings = record(canonical.footer);
-  const decorationSettings = record(canonical.decoration);
-  const spacingSettings = record(canonical.spacing);
-  // The editor stores A4 margins in screen pixels. The PDF uses points, but the
-  // same bounded numeric value keeps the visual rhythm stable and predictable.
-  const contentLeft = Math.max(18, Math.min(120, Number(spacingSettings.left || 42)));
-  const contentRight = A4[0] - Math.max(18, Math.min(120, Number(spacingSettings.right || 42)));
-  const contentWidth = Math.max(330, contentRight - contentLeft);
-  const clientColumnX = contentLeft + contentWidth * .59;
-  const canonicalLinks = Array.isArray(canonical.links) ? canonical.links.map(value => record(value))
-    .filter(link => /^https?:\/\//i.test(text(link.url))).slice(0, 3) : [];
-  const contentBottomLimit = Math.max(96, Math.min(180, Number(spacingSettings.bottom || 48) + 62));
-  const coloredTableHeader = tableSettings.colored_header !== false;
-  const stripedTableRows = tableSettings.striped === true;
-  const visibleTableBorders = tableSettings.borders !== false;
-  const rawVisibleColumns = Array.isArray(tableSettings.columns) ? tableSettings.columns : templateVersion.visible_columns;
+  const layoutKey = resolveLayoutKey(templateVersion.layout_key);
+  const colors = resolveColors(layoutKey, record(templateVersion.color_settings));
+  const logoSettings = record(templateVersion.logo_settings);
+  const rawVisibleColumns = templateVersion.visible_columns;
   const visibleColumns = Array.isArray(rawVisibleColumns)
     ? Object.fromEntries(rawVisibleColumns.map((column) => {
       const definition = record(column);
@@ -266,27 +231,13 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset, footerLogos:
     }).filter(([key]) => Boolean(key)))
     : record(rawVisibleColumns);
   const showDiscountColumn = visibleColumns.discount === true;
-  const configuredColumns = Array.isArray(rawVisibleColumns)
-    ? rawVisibleColumns.map(value => record(value)).filter(column => column.visible !== false)
-      .sort((left, right) => Number(left.position || 0) - Number(right.position || 0))
-    : [];
-  const orderedColumns = configuredColumns.length ? configuredColumns : [
-    { key: "description", label: "Désignation" }, { key: "quantity", label: "Qté" },
-    { key: "unit_price", label: "Prix u. HT" }, { key: "tax_rate", label: "TVA" },
-    { key: "total_excl_tax", label: "Total HT" }, { key: "total_incl_tax", label: "Total TTC" },
-  ];
-  const showLogo = logoSettings.enabled !== false && logoSettings.show !== false;
-  const contentSize = text(record(record(canonical.typography).content).size);
-  const fontScale = contentSize === "small" ? .88 : contentSize === "large" ? 1.12 : 1;
-  const baseMetrics = LAYOUT_METRICS[layoutKey];
-  const metrics = { ...baseMetrics, titleSize: baseMetrics.titleSize * fontScale, numberSize: baseMetrics.numberSize * fontScale, lineNameSize: baseMetrics.lineNameSize * fontScale, lineSize: baseMetrics.lineSize * fontScale };
+  const showLogo = logoSettings.show !== false;
+  const metrics = LAYOUT_METRICS[layoutKey];
   const hasFooterConfig = Object.keys(templateFooter).length > 0;
-  const showLegalMentions = Object.keys(footerSettings).length ? footerSettings.show_legal !== false : hasFooterConfig ? templateFooter.show_legal_mentions !== false : true;
+  const showLegalMentions = hasFooterConfig ? templateFooter.show_legal_mentions !== false : true;
   const showPaymentTerms = hasFooterConfig ? templateFooter.show_payment_terms !== false : true;
   const showLatePenalties = hasFooterConfig ? templateFooter.show_late_penalties !== false : true;
-  const showPageNumber = Object.keys(footerSettings).length ? footerSettings.show_page_number !== false : hasFooterConfig ? templateFooter.show_page_number !== false : true;
-  const showBankDetails = Object.keys(footerSettings).length ? footerSettings.show_bank_details !== false : true;
-  const showPilozBrand = footerSettings.show_piloz_brand === true;
+  const showPageNumber = hasFooterConfig ? templateFooter.show_page_number !== false : true;
 
   const issuerProfile = record(templateVersion.issuer_profile);
   const issuerName = text(issuerProfile.trade_name || issuer.trade_name || issuer.legal_name || "") || partyName(issuer);
@@ -365,22 +316,19 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset, footerLogos:
   };
 
   const referenceLayout = layoutKey === "classic";
-  const valueColumns = orderedColumns.filter(column => !["number", "reference", "description"].includes(text(column.key)));
-  const numericWidth = Math.max(38, Math.min(72, (contentWidth * .56) / Math.max(valueColumns.length, 1)));
-  const columnRight = new Map(valueColumns.map((column, index) => [text(column.key), contentRight - (valueColumns.length - index - 1) * numericWidth]));
-  const descriptionWidth = Math.max(120, contentWidth - 8 - valueColumns.length * numericWidth);
-  const columnLabel = (column: Record<string, unknown>) => text(column.label || ({
-    number: "#", reference: "Référence", description: "Désignation", unit: "Unité", quantity: "Qté",
-    unit_price: "Prix u. HT", discount: "Remise", tax_rate: "TVA", total_excl_tax: "Total HT", total_incl_tax: "Total TTC",
-  } as Record<string, string>)[text(column.key)] || column.key);
+  const columnX = referenceLayout
+    ? { qty: 356, price: 415, discount: 425, tax: 450, total: 500, totalTtc: 552 }
+    : { qty: 340, price: 418, discount: 456, tax: 482, total: 547, totalTtc: 552 };
 
   const drawColumns = () => {
-    const headerColor = coloredTableHeader ? colors.primary : colors.tableBackground;
-    const headerTextColor = coloredTableHeader ? rgb(1, 1, 1) : colors.secondary;
-    page.drawRectangle({ x: contentLeft, y: y - 4, width: contentWidth, height: 20, color: headerColor });
-    const descriptive = orderedColumns.filter(column => ["number", "reference", "description"].includes(text(column.key))).map(columnLabel).join(" · ") || "Désignation";
-    page.drawText(fit(bold, descriptive, 7, descriptionWidth), { x: contentLeft + 6, y: y + 3, size: 7, font: bold, color: headerTextColor });
-    valueColumns.forEach(column => right(page, bold, columnLabel(column), columnRight.get(text(column.key)) || contentRight, y + 3, 6.5, headerTextColor, numericWidth - 4));
+    page.drawRectangle({ x: 42, y: y - 4, width: 511, height: 20, color: colors.tableBackground });
+    page.drawText(referenceLayout ? "Produits" : "DESIGNATION", { x: 48, y: y + 3, size: 7, font: bold, color: colors.secondary });
+    right(page, bold, referenceLayout ? "Qté" : "QTE", columnX.qty, y + 3, 7, colors.secondary);
+    right(page, bold, referenceLayout ? "Prix u. HT" : "PRIX U. HT", columnX.price, y + 3, 7, colors.secondary);
+    if (showDiscountColumn) right(page, bold, "REM.", columnX.discount, y + 3, 7, colors.secondary, 30);
+    right(page, bold, referenceLayout ? "TVA (%)" : "TVA", columnX.tax, y + 3, 7, colors.secondary);
+    right(page, bold, referenceLayout ? "Total HT" : "TOTAL HT", columnX.total, y + 3, 7, colors.secondary);
+    if (referenceLayout) right(page, bold, "Total TTC", columnX.totalTtc, y + 3, 7, colors.secondary);
     y -= 16;
   };
 
@@ -388,36 +336,23 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset, footerLogos:
     const firstPage = pages.length === 0;
     page = pdf.addPage(A4);
     pages.push(page);
-    page.drawRectangle({ x: 0, y: 0, width: A4[0], height: A4[1], color: pageBackground });
-    if (text(decorationSettings.kind) !== "none" && text(decorationSettings.kind)) {
-      const opacity = Math.max(0, Math.min(.35, Number(decorationSettings.opacity) || .12));
-      const kindName = text(decorationSettings.kind);
-      if (["frame", "lines"].includes(kindName)) {
-        page.drawRectangle({ x: 18, y: 18, width: A4[0] - 36, height: A4[1] - 36, borderColor: colors.primary, borderWidth: kindName === "frame" ? 3 : 1, opacity });
-      } else {
-        page.drawCircle({ x: A4[0] - 35, y: A4[1] - 32, size: 115, color: colors.primary, opacity });
-        page.drawRectangle({ x: A4[0] - 175, y: A4[1] - 42, width: 175, height: 18, color: colors.secondary, opacity });
-      }
-    }
     if (!referenceLayout) page.drawRectangle({ x: 0, y: A4[1] - metrics.bandHeight, width: A4[0], height: metrics.bandHeight, color: colors.primary });
     if (layoutKey === "modern") {
       page.drawRectangle({ x: 0, y: 826, width: A4[0], height: 10, color: colors.secondary });
     }
     if (continuation) {
-      page.drawText(fit(bold, `${kind} ${number}`, 10, contentWidth * .52), { x: contentLeft, y: 800, size: 10, font: bold, color: colors.heading });
-      right(page, bold, issuerName, contentRight, 800, 9, colors.heading, contentWidth * .43);
+      page.drawText(fit(bold, `${kind} ${number}`, 10, 270), { x: 42, y: 800, size: 10, font: bold, color: colors.heading });
+      right(page, bold, issuerName, 553, 800, 9, colors.heading, 245);
       y = 770;
       drawColumns();
       return;
     }
     if (firstPage && embeddedLogo && showLogo) {
-      const maxWidth = Math.min(260, Math.max(48, Number(logoSettings.width || logoSettings.max_width) || 140));
+      const maxWidth = Math.min(220, Math.max(60, Number(logoSettings.max_width) || 140));
       const scale = Math.min(maxWidth / embeddedLogo.width, 80 / embeddedLogo.height, 1);
       const width = embeddedLogo.width * scale;
       const height = embeddedLogo.height * scale;
-      const logoAlignment = text(logoSettings.alignment || "left");
-      const logoX = logoAlignment === "right" ? contentRight - width : logoAlignment === "center" ? (A4[0] - width) / 2 : contentLeft;
-      page.drawImage(embeddedLogo, { x: logoX, y: 805 - height, width, height });
+      page.drawImage(embeddedLogo, { x: 42, y: 805 - height, width, height });
     }
     if (referenceLayout) {
       page.drawText(kind, { x: 42, y: 700, size: 13, font: bold, color: colors.primary });
@@ -465,7 +400,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset, footerLogos:
   const metaBoxHeight = metrics.metaBoxHeight + clientContactLines.length * 10;
 
   addPage();
-  if (!referenceLayout) page.drawRectangle({ x: contentLeft, y: 662 - metaBoxHeight, width: contentWidth, height: metaBoxHeight, color: colors.tableBackground });
+  if (!referenceLayout) page.drawRectangle({ x: 42, y: 662 - metaBoxHeight, width: 511, height: metaBoxHeight, color: colors.tableBackground });
   const metaTop = referenceLayout ? 700 : 643;
   if (!referenceLayout) {
     page.drawText("Date d'emission", { x: 52, y: metaTop, size: 8, font: bold, color: colors.muted });
@@ -481,24 +416,20 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset, footerLogos:
       page.drawText(fit(regular, saleTypeLabel, 8, 193), { x: 132, y: metaTop - 45, size: 8, font: regular, color: colors.text });
     }
   }
-  if (canonicalStructure === "boxed-client") page.drawRectangle({ x: clientColumnX - 9, y: metaTop - metaBoxHeight + 9, width: contentRight - clientColumnX + 9, height: metaBoxHeight, color: colors.tableBackground, borderColor: colors.border, borderWidth: .8 });
-  if (canonicalStructure === "split-addresses") page.drawLine({ start: { x: clientColumnX - 18, y: metaTop + 8 }, end: { x: clientColumnX - 18, y: metaTop - metaBoxHeight + 4 }, thickness: 2, color: colors.primary });
-  if (canonicalStructure === "editorial") page.drawRectangle({ x: contentLeft, y: 674, width: 5, height: 42, color: colors.primary });
-  page.drawText(referenceLayout ? "Client facturé" : "CLIENT FACTURÉ", { x: clientColumnX, y: metaTop, size: referenceLayout ? 8 : 7, font: referenceLayout ? regular : bold, color: referenceLayout ? colors.text : colors.secondary });
-  page.drawText(fit(bold, partyName(client), referenceLayout ? 9 : 10, contentRight - clientColumnX), { x: clientColumnX, y: metaTop - 15, size: referenceLayout ? 9 : 10, font: bold, color: colors.heading });
-  const clientAddressLines = limitedLines(regular, address(displayedClientAddress), 8, contentRight - clientColumnX, 3);
+  page.drawText(referenceLayout ? "Client facturé" : "CLIENT FACTURÉ", { x: 345, y: metaTop, size: referenceLayout ? 8 : 7, font: referenceLayout ? regular : bold, color: referenceLayout ? colors.text : colors.secondary });
+  page.drawText(fit(bold, partyName(client), referenceLayout ? 9 : 10, 198), { x: 345, y: metaTop - 15, size: referenceLayout ? 9 : 10, font: bold, color: colors.heading });
+  const clientAddressLines = limitedLines(regular, address(displayedClientAddress), 8, 198, 3);
   const clientIdentityLines = referenceLayout
     ? [client.siret || client.siren, ...clientAddressLines, client.vat_number && `N° de TVA ${client.vat_number}`].filter(Boolean).map(text)
     : clientAddressLines;
-  clientIdentityLines.forEach((line, index) => page.drawText(line, { x: clientColumnX, y: metaTop - 29 - index * 11, size: 8, font: regular, color: referenceLayout ? colors.text : colors.muted }));
-  clientContactLines.forEach((line, index) => page.drawText(line, { x: clientColumnX, y: metaTop - 29 - clientIdentityLines.length * 11 - index * 10, size: 8, font: regular, color: colors.muted }));
+  clientIdentityLines.forEach((line, index) => page.drawText(line, { x: 345, y: metaTop - 29 - index * 11, size: 8, font: regular, color: referenceLayout ? colors.text : colors.muted }));
+  clientContactLines.forEach((line, index) => page.drawText(line, { x: 345, y: metaTop - 29 - clientIdentityLines.length * 11 - index * 10, size: 8, font: regular, color: colors.muted }));
   y = referenceLayout
     ? Math.min(606, metaTop - 44 - clientIdentityLines.length * 11 - clientContactLines.length * 10)
     : 662 - metaBoxHeight - 10;
   drawColumns();
 
   let runningSectionSubtotal = 0;
-  let renderedLineIndex = 0;
   for (const line of payload.lines || []) {
     const lineType = text(line.line_type || "item");
     if (lineType === "page_break") {
@@ -509,37 +440,30 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset, footerLogos:
     const nameLines = limitedLines(structural ? bold : regular, line.name || line.description || "Designation", structural ? metrics.lineNameSize + 1 : metrics.lineNameSize, 220, structural ? 8 : 5);
     const descriptionLines = structural || !line.description ? [] : limitedLines(regular, line.description, metrics.lineSize - 1, 220, metrics.compact ? 1 : 2);
     const rowHeight = Math.max(metrics.rowPadding, 10 + nameLines.length * 10 + descriptionLines.length * 9);
-    if (y - rowHeight < contentBottomLimit) addPage(true);
+    if (y - rowHeight < 106) addPage(true);
     if (structural) {
-      page.drawRectangle({ x: contentLeft, y: y - rowHeight + 6, width: contentWidth, height: rowHeight, color: colors.tableBackground });
-      nameLines.forEach((value, index) => page.drawText(value, { x: contentLeft + 6, y: y - 7 - index * 10, size: metrics.lineNameSize + 1, font: bold, color: colors.heading }));
+      page.drawRectangle({ x: 42, y: y - rowHeight + 6, width: 511, height: rowHeight, color: colors.tableBackground });
+      nameLines.forEach((value, index) => page.drawText(value, { x: 48, y: y - 7 - index * 10, size: metrics.lineNameSize + 1, font: bold, color: colors.heading }));
       if (lineType === "subtotal") {
-        const subtotalRight = columnRight.get("total_excl_tax") || columnRight.get("total_incl_tax") || contentRight;
-        right(page, bold, amount(Number(line.total_excl_tax) || runningSectionSubtotal, currency), subtotalRight, y - 7, metrics.lineNameSize + 1, colors.heading, 85);
+        right(page, bold, amount(Number(line.total_excl_tax) || runningSectionSubtotal, currency), columnX.total, y - 7, metrics.lineNameSize + 1, colors.heading, 85);
         runningSectionSubtotal = 0;
       }
     } else {
-      if (stripedTableRows && renderedLineIndex % 2 === 1) page.drawRectangle({ x: contentLeft, y: y - rowHeight + 4, width: contentWidth, height: rowHeight, color: colors.tableBackground });
-      const descriptivePrefix = [visibleColumns.number === true ? `${(payload.lines || []).indexOf(line) + 1}.` : "", visibleColumns.reference === true ? text(line.reference || "") : ""].filter(Boolean).join(" ");
-      nameLines.forEach((value, index) => page.drawText(fit(index === 0 ? bold : regular, `${index === 0 && descriptivePrefix ? descriptivePrefix + " " : ""}${value}`, metrics.lineNameSize, descriptionWidth), { x: contentLeft + 6, y: y - 7 - index * 10, size: metrics.lineNameSize, font: index === 0 ? bold : regular, color: colors.text }));
-      descriptionLines.forEach((value, index) => page.drawText(fit(regular, value, metrics.lineSize - 1, descriptionWidth), { x: contentLeft + 6, y: y - 7 - nameLines.length * 10 - index * 9, size: metrics.lineSize - 1, font: regular, color: colors.muted }));
-      const lineExclTax = Number(line.total_excl_tax ?? ((Number(line.quantity) || 0) * (Number(line.unit_price) || 0))) || 0;
-      const lineTax = Number(line.total_tax ?? lineExclTax * (Number(line.tax_rate) || 0) / 100) || 0;
-      valueColumns.forEach(column => {
-        const key = text(column.key), targetX = columnRight.get(key) || contentRight;
-        const value = key === "unit" ? text(line.unit || "")
-          : key === "quantity" ? Number(line.quantity || 0).toLocaleString("fr-FR")
-          : key === "unit_price" ? amount(line.unit_price, currency)
-          : key === "discount" ? `${Number(line.discount_rate || 0).toLocaleString("fr-FR")}%`
-          : key === "tax_rate" ? `${Number(line.tax_rate || 0).toLocaleString("fr-FR")}%`
-          : key === "total_incl_tax" ? amount(line.total_incl_tax ?? lineExclTax + lineTax, currency)
-          : amount(lineExclTax, currency);
-        right(page, key.startsWith("total_") ? bold : regular, value, targetX, y - 7, metrics.lineSize, key.startsWith("total_") ? colors.heading : colors.text, numericWidth - 4);
-      });
+      nameLines.forEach((value, index) => page.drawText(value, { x: 48, y: y - 7 - index * 10, size: metrics.lineNameSize, font: index === 0 ? bold : regular, color: colors.text }));
+      descriptionLines.forEach((value, index) => page.drawText(value, { x: 48, y: y - 7 - nameLines.length * 10 - index * 9, size: metrics.lineSize - 1, font: regular, color: colors.muted }));
+      right(page, regular, `${Number(line.quantity || 0).toLocaleString("fr-FR")} ${text(line.unit || "")}`, columnX.qty, y - 7, metrics.lineSize, colors.text, 58);
+      right(page, regular, amount(line.unit_price, currency), columnX.price, y - 7, metrics.lineSize, colors.text, 72);
+      if (showDiscountColumn) right(page, regular, `${Number(line.discount_rate || 0).toLocaleString("fr-FR")}%`, columnX.discount, y - 7, metrics.lineSize - 1, colors.muted, 34);
+      right(page, regular, `${Number(line.tax_rate || 0).toLocaleString("fr-FR")} %`, columnX.tax, y - 7, metrics.lineSize, colors.text, 40);
+      right(page, bold, amount(line.total_excl_tax ?? ((Number(line.quantity) || 0) * (Number(line.unit_price) || 0)), currency), columnX.total, y - 7, metrics.lineSize, colors.heading, 62);
       if (!line.optional) runningSectionSubtotal += Number(line.total_excl_tax ?? ((Number(line.quantity) || 0) * (Number(line.unit_price) || 0))) || 0;
-      renderedLineIndex += 1;
+      if (referenceLayout) {
+        const lineExclTax = Number(line.total_excl_tax ?? ((Number(line.quantity) || 0) * (Number(line.unit_price) || 0))) || 0;
+        const lineTax = Number(line.total_tax ?? lineExclTax * (Number(line.tax_rate) || 0) / 100) || 0;
+        right(page, regular, amount(line.total_incl_tax ?? lineExclTax + lineTax, currency), columnX.totalTtc, y - 7, metrics.lineSize, colors.text, 62);
+      }
     }
-    if (visibleTableBorders) page.drawLine({ start: { x: contentLeft, y: y - rowHeight + 4 }, end: { x: contentRight, y: y - rowHeight + 4 }, thickness: 0.5, color: colors.border });
+    page.drawLine({ start: { x: 42, y: y - rowHeight + 4 }, end: { x: 553, y: y - rowHeight + 4 }, thickness: 0.5, color: colors.border });
     y -= rowHeight;
   }
 
@@ -594,7 +518,6 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset, footerLogos:
   let legalIdentity = "";
   let legalContact = "";
   if (templateVersion.free_field) footerLines.push(String(templateVersion.free_field));
-  if (footerSettings.free_text) footerLines.push(resolveFooterTokens(footerSettings.free_text, issuer));
   if (showLegalMentions) {
     const registeredAddress = [issuer.address_line1 || issuer.address_line_1, issuer.address_line2 || issuer.address_line_2, issuer.postal_code, issuer.city, issuer.country_code].filter(Boolean).map(text).join(" - ");
     legalIdentity = [
@@ -623,7 +546,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset, footerLogos:
     page.drawText(fit(regular, `Mode de paiement : ${paymentMethodLabel}`, 7, 245), { x: 42, y: 149, size: 7, font: regular, color: colors.text });
     if (depositText) page.drawText(fit(regular, depositText, 7, 245), { x: 42, y: 137, size: 7, font: regular, color: colors.text });
   }
-  if (acceptsBankTransfer && showBankDetails) drawBankDetails(page, 42, depositText ? 124 : 136, 245);
+  if (acceptsBankTransfer) drawBankDetails(page, 42, depositText ? 124 : 136, 245);
   if (referenceLayout && doc.document_type === "quote") {
     page.drawText(fit(regular, "Date et signature précédées de la mention « Bon pour accord »", 8, 250), { x: 303, y: 101, size: 8, font: regular, color: colors.text });
   }
@@ -641,28 +564,6 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset, footerLogos:
       const label = `${index + 1} / ${pages.length}`;
       right(current, regular, label, 553, 18, 7, colors.muted);
     }
-    if (embeddedFooterLogos.length) {
-      let footerLogoX = 42;
-      for (const footerLogo of embeddedFooterLogos) {
-        const ratio = footerLogo.image.height > 0 ? footerLogo.image.width / footerLogo.image.height : 1;
-        const width = footerLogo.width, height = Math.min(22, width / Math.max(.25, ratio));
-        current.drawImage(footerLogo.image, { x: footerLogoX, y: 50, width, height });
-        footerLogoX += width + 8;
-      }
-    }
-    if (canonicalLinks.length) {
-      const annotations = canonicalLinks.map((link, linkIndex) => {
-        const url = text(link.url), label = fit(regular, link.label || link.display_text || url, 6.5, 145);
-        const x = 42 + linkIndex * 160, y = embeddedFooterLogos.length ? 77 : 49;
-        current.drawText(label, { x, y, size: 6.5, font: regular, color: colors.primary });
-        return pdf.context.register(pdf.context.obj({
-          Type: PDFName.of("Annot"), Subtype: PDFName.of("Link"), Rect: [x, y - 2, x + Math.max(24, regular.widthOfTextAtSize(label, 6.5)), y + 8],
-          Border: [0, 0, 0], A: { Type: PDFName.of("Action"), S: PDFName.of("URI"), URI: PDFString.of(url) },
-        }));
-      });
-      current.node.set(PDFName.of("Annots"), pdf.context.obj(annotations));
-    }
-    if (showPilozBrand) centered(current, regular, "Généré avec Piloz", 18, 6.5, colors.muted, 220);
   });
   pdf.setTitle(`${kind} ${number}`);
   pdf.setAuthor(issuerName);
@@ -764,24 +665,20 @@ async function buildPreviewPayload(
   billingAddress = await loadAddress(billingAddressId, "Adresse de facturation");
   deliveryAddress = await loadAddress(deliveryAddressId, "Adresse de livraison");
 
-  const legacyTemplateId = templateType === "quote"
+  const configuredTemplateId = templateType === "quote"
     ? record(documentSettings).default_quote_template_id
     : record(documentSettings).default_invoice_template_id;
-  const assignmentType = documentType === "proforma_invoice" ? "invoice" : documentType;
-  const { data: assignedTheme } = await userClient.from("document_theme_assignments").select("theme_id")
-    .eq("company_id", companyId).eq("document_type", assignmentType).maybeSingle();
-  const configuredTemplateId = record(assignedTheme).theme_id || legacyTemplateId;
   const requestedTemplateId = String(preview.templateId || configuredTemplateId || "");
   let template: Record<string, unknown> | null = null;
   if (requestedTemplateId) {
     if (!UUID.test(requestedTemplateId)) throw previewFailure("Modele de document invalide", 400);
     const { data, error } = await userClient.from("document_templates").select("*")
-      .eq("id", requestedTemplateId).eq("company_id", companyId).eq("status", "active").maybeSingle();
+      .eq("id", requestedTemplateId).eq("company_id", companyId).eq("document_type", templateType).eq("status", "active").maybeSingle();
     if (error || !data) throw previewFailure("Le modele selectionne est introuvable ou inactif", 404);
     template = record(data);
   } else {
     const { data, error } = await userClient.from("document_templates").select("*")
-      .eq("company_id", companyId).eq("status", "active")
+      .eq("company_id", companyId).eq("document_type", templateType).eq("status", "active")
       .order("is_default", { ascending: false }).order("created_at", { ascending: true }).limit(1).maybeSingle();
     if (error || !data) throw previewFailure("Aucun modele actif pour ce document", 409);
     template = record(data);
@@ -801,28 +698,10 @@ async function buildPreviewPayload(
       .eq("id", footerId).eq("company_id", companyId).eq("is_active", true).maybeSingle();
     footer = record(data);
   }
-  const { data: footerLogoRows } = await userClient.from("document_theme_footer_logos")
-    .select("id,name,position,width,document_types,document_theme_assets!inner(storage_path,mime_type,size_bytes)")
-    .eq("company_id", companyId).eq("theme_id", templateId).eq("visible", true).order("position");
-  const previewDocumentType = documentType || "invoice";
-  const themeFooterLogos = (footerLogoRows || []).filter(value => {
-    const types = Array.isArray(record(value).document_types) ? record(value).document_types.map(String) : [];
-    return !types.length || types.includes(previewDocumentType) || (previewDocumentType !== "quote" && types.includes("invoice"));
-  }).map(value => {
-    const row = record(value), assetValue = row.document_theme_assets;
-    const asset = record(Array.isArray(assetValue) ? assetValue[0] : assetValue);
-    return { id: row.id, name: row.name, position: row.position, width: row.width, document_types: row.document_types, ...asset };
-  });
 
-  const themeConfiguration = record(version.configuration_json);
-  const logoSettings = Object.keys(record(themeConfiguration.logo)).length ? record(themeConfiguration.logo) : record(version.logo_settings);
+  const logoSettings = record(version.logo_settings);
   let logo: Record<string, unknown> = {};
-  const themeLogoId = String(logoSettings.asset_id || "");
-  if (logoSettings.enabled !== false && logoSettings.show !== false && UUID.test(themeLogoId)) {
-    const { data: themeLogo } = await userClient.from("document_theme_assets").select("storage_path,mime_type,size_bytes,width,height")
-      .eq("id", themeLogoId).eq("theme_id", templateId).eq("company_id", companyId).eq("asset_type", "logo").maybeSingle();
-    logo = record(themeLogo);
-  } else if (logoSettings.enabled !== false && logoSettings.show !== false) {
+  if (logoSettings.show !== false) {
     const requestedVariant = logoSettings.use_alternate === true ? "dark" : "light";
     const { data: requestedLogo } = await userClient.from("company_logos").select("storage_path,mime_type,size_bytes,width,height,variant")
       .eq("company_id", companyId).eq("variant", requestedVariant).eq("is_active", true).order("created_at", { ascending: false }).limit(1).maybeSingle();
@@ -888,7 +767,7 @@ async function buildPreviewPayload(
       billing_address: billingAddress,
       delivery_address: deliveryAddress,
       logo,
-      template: { template, version, footer, theme_footer_logos: themeFooterLogos },
+      template: { template, version, footer },
     },
   };
 }
@@ -1003,9 +882,7 @@ async function loadFrozenLogo(
   const mimeType = String(logo.mime_type || "");
   const size = Number(logo.size_bytes) || 0;
   if (!storagePath || !["image/png", "image/jpeg"].includes(mimeType) || size < 1 || size > 5 * 1024 * 1024) return undefined;
-  const companyLogoPath = storagePath.startsWith(`${companyId}/logos/`);
-  const themeLogoPath = storagePath.startsWith(`${companyId}/themes/`);
-  if ((!companyLogoPath && !themeLogoPath) || storagePath.includes("..")) return undefined;
+  if (!storagePath.startsWith(`${companyId}/logos/`) || storagePath.includes("..")) return undefined;
   try {
     const { data, error } = await userClient.storage.from("company-assets").download(storagePath);
     if (error || !data || data.size > 5 * 1024 * 1024) return undefined;
@@ -1014,25 +891,6 @@ async function loadFrozenLogo(
     console.warn("[PILOZ PDF] frozen logo unavailable", { code: "logo_download_failed" });
     return undefined;
   }
-}
-
-async function loadThemeFooterLogos(
-  userClient: SupabaseClient<any, "public", "public", any, any>,
-  payload: SnapshotPayload,
-  companyId: string,
-): Promise<LogoAsset[]> {
-  const template = record(payload.template);
-  const rows = Array.isArray(template.theme_footer_logos) ? template.theme_footer_logos.map(record) : [];
-  const loaded: LogoAsset[] = [];
-  for (const row of rows.slice(0, 6)) {
-    const storagePath = String(row.storage_path || ""), mimeType = String(row.mime_type || ""), size = Number(row.size_bytes) || 0;
-    if (!storagePath.startsWith(`${companyId}/themes/`) || storagePath.includes("..") || !["image/png", "image/jpeg"].includes(mimeType) || size < 1 || size > 5 * 1024 * 1024) continue;
-    try {
-      const { data, error } = await userClient.storage.from("company-assets").download(storagePath);
-      if (!error && data && data.size <= 5 * 1024 * 1024) loaded.push({ bytes: new Uint8Array(await data.arrayBuffer()), mimeType: mimeType as LogoAsset["mimeType"], name: String(row.name || ""), width: Number(row.width || 64) });
-    } catch { console.warn("[PILOZ PDF] footer logo unavailable", { code: "footer_logo_download_failed" }); }
-  }
-  return loaded;
 }
 
 Deno.serve(async (req) => {
@@ -1057,8 +915,7 @@ Deno.serve(async (req) => {
         ? await buildSavedDraftPreviewPayload(userClient, user.id, body.draftDocumentId)
         : await buildPreviewPayload(userClient, user.id, body.preview || {});
       const logo = await loadFrozenLogo(userClient, payload, companyId);
-      const footerLogos = await loadThemeFooterLogos(userClient, payload, companyId);
-      const bytes = await buildPdf(payload, logo, footerLogos);
+      const bytes = await buildPdf(payload, logo);
       const responseBody = new Uint8Array(bytes.byteLength);
       responseBody.set(bytes);
       return new Response(responseBody.buffer, {
@@ -1103,8 +960,7 @@ Deno.serve(async (req) => {
   let persistedObject = false;
   try {
     const logo = await loadFrozenLogo(userClient, payload, companyId);
-    const footerLogos = await loadThemeFooterLogos(userClient, payload, companyId);
-    const bytes = await buildPdf(payload, logo, footerLogos);
+    const bytes = await buildPdf(payload, logo);
     let sha256 = await sha256Hex(bytes);
     const path = `${companyId}/documents/${documentId}/${snapshotId}.pdf`;
     const { error: uploadError } = await admin.storage.from("company-files").upload(path, bytes, {
