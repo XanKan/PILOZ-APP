@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0-compliance.27 — 26 juillet 2026
+
+- réduction de l’indicateur d’avancement des factures de situation ;
+- déplacement de la barre d’avancement dans l’en-tête, immédiatement à côté de « Plus d’actions » ;
+- conservation du pourcentage réalisé et du reste à avancer dans ce format compact.
+
 ## 0.9.0-compliance.26 — 26 juillet 2026
 
 - rétablissement de la finalisation directe depuis la fiche d’une facture brouillon ;
