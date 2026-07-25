@@ -83,6 +83,33 @@ function amount(value: unknown, currency = "EUR") {
   }
 }
 
+function progressTotalPercent(lines: Array<Record<string, unknown>>) {
+  const rows = (lines || []).filter(line => ["item", "free_item", "discount"].includes(text(line.line_type || "item"))
+    && !line.optional);
+  if (!rows.length) return 0;
+  let totalWeight = 0;
+  let completedWeight = 0;
+  for (const line of rows) {
+    const metadata = record(line.line_metadata);
+    const current = Math.max(0, Math.min(100, Number(line.cumulative_progress_percent) || 0));
+    const previous = Math.max(0, Math.min(100, Number(metadata.previous_progress_percent) || 0));
+    const delta = Math.max(0, current - previous);
+    const inferredQuantity = delta > 0 ? (Number(line.quantity) || 0) * 100 / delta : Number(line.quantity) || 0;
+    const originalQuantity = Math.abs(Number(metadata.original_quantity ?? inferredQuantity) || 0);
+    const originalPrice = Math.abs(Number(metadata.original_unit_price ?? line.unit_price) || 0);
+    const discount = Math.max(0, Math.min(100, Number(line.discount_rate) || 0));
+    const weight = originalQuantity * originalPrice * (1 - discount / 100);
+    if (weight > 0) {
+      totalWeight += weight;
+      completedWeight += weight * current / 100;
+    }
+  }
+  const value = totalWeight > 0
+    ? completedWeight / totalWeight * 100
+    : rows.reduce((sum, line) => sum + Math.max(0, Math.min(100, Number(line.cumulative_progress_percent) || 0)), 0) / rows.length;
+  return Math.max(0, Math.min(100, value));
+}
+
 function date(value: unknown) {
   if (!value) return "-";
   const parsed = new Date(String(value).length === 10 ? `${value}T12:00:00Z` : String(value));
@@ -515,7 +542,8 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     right(page, regular, referenceLayout ? amount(values.base, currency) : `TVA ${amount(values.tax, currency)}`, 330, rowY, 7, referenceLayout ? colors.text : colors.muted, 115);
   });
   const showPaymentBalance = doc.document_type !== "quote";
-  const totalsBoxHeight = showPaymentBalance ? 115 : (layoutKey === "modern" ? 91 : 83);
+  const progressRowOffset = isProgressInvoice ? 16 : 0;
+  const totalsBoxHeight = (showPaymentBalance ? 115 : (layoutKey === "modern" ? 91 : 83)) + progressRowOffset;
   if (!referenceLayout) page.drawRectangle({ x: 354, y: totalsY - totalsBoxHeight + 12, width: 199, height: totalsBoxHeight, color: layoutKey === "modern" ? colors.totals : colors.tableBackground });
   const totalsTextColor = layoutKey === "modern" ? rgb(1, 1, 1) : colors.text;
   if (!referenceLayout) page.drawText("Récapitulatif", { x: 374, y: totalsY + 3, size: 9, font: bold, color: totalsTextColor });
@@ -524,17 +552,22 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   page.drawText("Total TVA", { x: referenceLayout ? 354 : 374, y: totalsY - 30, size: referenceLayout ? 8 : 9, font: bold, color: totalsTextColor });
   right(page, regular, amount(doc.total_tax, currency), 538, totalsY - (referenceLayout ? 30 : 34), 9, totalsTextColor);
   const grandTotalColor = layoutKey === "modern" ? rgb(1, 1, 1) : colors.totals;
-  if (referenceLayout) page.drawRectangle({ x: 350, y: totalsY - 53, width: 203, height: 17, color: colors.tableBackground });
-  else page.drawLine({ start: { x: 370, y: totalsY - 44 }, end: { x: 538, y: totalsY - 44 }, thickness: 1, color: grandTotalColor });
-  page.drawText("Total TTC", { x: referenceLayout ? 354 : 374, y: totalsY - (referenceLayout ? 48 : 61), size: referenceLayout ? 8 : 10, font: bold, color: grandTotalColor });
-  right(page, bold, amount(doc.total_incl_tax, currency), 538, totalsY - (referenceLayout ? 48 : 61), referenceLayout ? 8 : 10, grandTotalColor);
+  if (isProgressInvoice) {
+    const progressY = totalsY - (referenceLayout ? 46 : 50);
+    page.drawText("Avancement total :", { x: referenceLayout ? 354 : 374, y: progressY, size: referenceLayout ? 8 : 9, font: bold, color: totalsTextColor });
+    right(page, regular, `${progressTotalPercent(payload.lines || []).toLocaleString("fr-FR", { maximumFractionDigits: 2 })} %`, 538, progressY, 9, totalsTextColor);
+  }
+  if (referenceLayout) page.drawRectangle({ x: 350, y: totalsY - 53 - progressRowOffset, width: 203, height: 17, color: colors.tableBackground });
+  else page.drawLine({ start: { x: 370, y: totalsY - 44 - progressRowOffset }, end: { x: 538, y: totalsY - 44 - progressRowOffset }, thickness: 1, color: grandTotalColor });
+  page.drawText("Total TTC", { x: referenceLayout ? 354 : 374, y: totalsY - (referenceLayout ? 48 : 61) - progressRowOffset, size: referenceLayout ? 8 : 10, font: bold, color: grandTotalColor });
+  right(page, bold, amount(doc.total_incl_tax, currency), 538, totalsY - (referenceLayout ? 48 : 61) - progressRowOffset, referenceLayout ? 8 : 10, grandTotalColor);
   if (showPaymentBalance) {
     const paidAmount = Number(doc.amount_paid || doc.paid_amount || 0);
     const remainingAmount = Math.max(0, Number(doc.total_incl_tax || 0) - paidAmount);
-    page.drawText("Encaissé", { x: 374, y: totalsY - 79, size: 8, font: regular, color: totalsTextColor });
-    right(page, regular, amount(paidAmount, currency), 538, totalsY - 79, 8, totalsTextColor);
-    page.drawText("Reste à payer", { x: 374, y: totalsY - 95, size: 8, font: bold, color: grandTotalColor });
-    right(page, bold, amount(remainingAmount, currency), 538, totalsY - 95, 8, grandTotalColor);
+    page.drawText("Encaissé", { x: 374, y: totalsY - 79 - progressRowOffset, size: 8, font: regular, color: totalsTextColor });
+    right(page, regular, amount(paidAmount, currency), 538, totalsY - 79 - progressRowOffset, 8, totalsTextColor);
+    page.drawText("Reste à payer", { x: 374, y: totalsY - 95 - progressRowOffset, size: 8, font: bold, color: grandTotalColor });
+    right(page, bold, amount(remainingAmount, currency), 538, totalsY - 95 - progressRowOffset, 8, grandTotalColor);
   }
   const footerLines: string[] = [];
   const footerBody = resolveFooterTokens(templateFooter.body, issuer);
@@ -771,6 +804,7 @@ async function buildPreviewPayload(
       discount_rate: previewNumber(line.discount_rate),
       tax_rate: previewNumber(line.tax_rate),
       optional: line.optional === true,
+      source_line_id: previewText(line.source_line_id, 36),
       cumulative_progress_percent: previewNumber(line.cumulative_progress_percent),
       line_metadata: record(line.line_metadata),
       total_excl_tax: previewNumber(line.total_excl_tax),
@@ -828,7 +862,7 @@ async function buildSavedDraftPreviewPayload(
   for (let offset = 0; offset < MAX_PREVIEW_LINES; offset += PREVIEW_PAGE_SIZE) {
     const lineColumns = [
       "id", "company_id", "document_id", "position", "line_type", "reference", "name", "description",
-      "quantity", "unit", "unit_price", "discount_rate", "tax_rate", "optional",
+      "quantity", "unit", "unit_price", "discount_rate", "tax_rate", "optional", "source_line_id",
       "cumulative_progress_percent", "line_metadata", "total_excl_tax", "total_tax", "total_incl_tax",
     ].join(",");
     const { data, error } = await userClient.from("document_lines").select(lineColumns)

@@ -35,6 +35,7 @@ const checks = [
   ['draft documents have the correct watermark', pdf.includes('DEVIS BROUILLON') && pdf.includes('FACTURE BROUILLON') && pdf.includes('draftDocument') && viewer.includes('document-snapshot-provisional-watermark')],
   ['quote invoice conversion opens a classic draft without progress popup', viewer.includes("if(type==='invoice'||type==='progress_invoice'){await runConversion('convert_quote_to_invoice'")],
   ['progress mode is activated from the editor side panel', editor.includes('Facture de situation') && editor.includes('toggleProgressMode') && editor.includes("api().rpc('set_invoice_progress_mode'")],
+  ['progress invoice totals are simplified', editor.includes('Avancement total :') && viewer.includes('Avancement total :') && pdf.includes('Avancement total :') && !editor.includes('Avancement cumulé') && !editor.includes('Sans titre')],
   ['progress mode transition is atomic and company scoped', progressModeMigration.includes('create or replace function public.set_invoice_progress_mode') && progressModeMigration.includes('public.is_company_member(target.company_id)') && progressModeMigration.includes("link_type='progress'")],
 ];
 
