@@ -10,6 +10,7 @@ const clients = fs.readFileSync(path.join(root, 'assets/js/modules/erp/erp-clien
 const pdf = fs.readFileSync(path.join(root, 'supabase/functions/generate-document-pdf/index.ts'), 'utf8');
 const migration = fs.readFileSync(path.join(root, 'supabase/migrations/202607250060_restore_configured_document_templates.sql'), 'utf8');
 const progressMigration = fs.readFileSync(path.join(root, 'supabase/migrations/202607250062_editable_progress_drafts.sql'), 'utf8');
+const progressModeMigration = fs.readFileSync(path.join(root, 'supabase/migrations/202607250063_invoice_progress_mode.sql'), 'utf8');
 
 const checks = [
   ['company default resolver', app.includes('function resolveDocumentTemplateId') && app.includes('default_quote_template_id')],
@@ -32,6 +33,9 @@ const checks = [
   ['zero progress lines remain visible in PDF', !pdf.includes('unchangedProgressLine') && pdf.includes('for (const line of payload.lines || [])')],
   ['draft invoices have a provisional reference', app.includes('draft_reference') && editor.includes('PilozDocumentDisplayNumber')],
   ['draft invoice PDF has a provisional watermark', pdf.includes('FACTURE PROVISOIRE') && pdf.includes('provisionalInvoice') && viewer.includes('document-snapshot-provisional-watermark')],
+  ['quote invoice conversion opens a classic draft without progress popup', viewer.includes("if(type==='invoice'||type==='progress_invoice'){await runConversion('convert_quote_to_invoice'")],
+  ['progress mode is activated from the editor side panel', editor.includes('Facture de situation') && editor.includes('toggleProgressMode') && editor.includes("api().rpc('set_invoice_progress_mode'")],
+  ['progress mode transition is atomic and company scoped', progressModeMigration.includes('create or replace function public.set_invoice_progress_mode') && progressModeMigration.includes('public.is_company_member(target.company_id)') && progressModeMigration.includes("link_type='progress'")],
 ];
 
 const failed = checks.filter(([, ok]) => !ok).map(([name]) => name);

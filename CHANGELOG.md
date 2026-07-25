@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0-compliance.20 — 25 juillet 2026
+
+- le bouton « Facture » crée et ouvre directement une facture classique en brouillon, sans fenêtre d’avancement intermédiaire ;
+- ajout de l’option persistante « Facture de situation » dans le panneau droit du brouillon issu d’un devis ;
+- la colonne et les réglages d’avancement apparaissent uniquement lorsque cette option est activée ;
+- activation et désactivation atomiques du mode situation, avec restauration des quantités originales.
+
 ## 0.9.0-compliance.19 — 25 juillet 2026
 
 - toutes les lignes du devis restent disponibles et modifiables dans chaque situation brouillon, y compris N°2, N°3 et suivantes ;

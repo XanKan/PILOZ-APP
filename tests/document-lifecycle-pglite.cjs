@@ -232,6 +232,21 @@ async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[]){
     const editAfterInvoiceAttempt=await saveDraft(db,'quote',quote.id,999).then(()=>null,error=>error);
     if(!editAfterInvoiceAttempt||!/quote_locked_by_invoice/.test(editAfterInvoiceAttempt.message))
       throw new Error(`quote: content edits should be locked once invoiced, got ${editAfterInvoiceAttempt&&editAfterInvoiceAttempt.message}`);
+    // Le bouton Facture cree d'abord une facture classique. Le mode situation
+    // est active uniquement depuis le brouillon, puis peut etre retire sans
+    // perdre les quantites originales.
+    const modeConvertedDraftId=convertedInvoiceId.rows[0].result;
+    const enabledProgressMode=(await db.query('select public.set_invoice_progress_mode($1,true) result',[modeConvertedDraftId])).rows[0].result;
+    const progressModeState=(await db.query("select d.metadata,l.link_type,line.quantity,line.cumulative_progress_percent,line.line_metadata from public.documents d join public.document_links l on l.target_document_id=d.id join public.document_lines line on line.document_id=d.id and line.line_type in('item','free_item','discount') where d.id=$1",[modeConvertedDraftId])).rows[0];
+    if(enabledProgressMode.enabled!==true||Number(enabledProgressMode.situation_number)!==1
+      ||progressModeState.metadata?.document_kind!=='progress_invoice'||progressModeState.link_type!=='progress'
+      ||Number(progressModeState.quantity)!==0||Number(progressModeState.line_metadata?.original_quantity)!==1)
+      throw new Error(`progress toggle: classic draft was not converted atomically ${JSON.stringify({enabledProgressMode,progressModeState})}`);
+    const disabledProgressMode=(await db.query('select public.set_invoice_progress_mode($1,false) result',[modeConvertedDraftId])).rows[0].result;
+    const classicModeState=(await db.query("select d.metadata,l.link_type,line.quantity,line.line_metadata from public.documents d join public.document_links l on l.target_document_id=d.id join public.document_lines line on line.document_id=d.id and line.line_type in('item','free_item','discount') where d.id=$1",[modeConvertedDraftId])).rows[0];
+    if(disabledProgressMode.enabled!==false||classicModeState.metadata?.conversion!=='full'||classicModeState.metadata?.document_kind
+      ||classicModeState.link_type!=='invoice'||Number(classicModeState.quantity)!==1||classicModeState.line_metadata?.progress_placeholder)
+      throw new Error(`progress toggle: disabling did not restore the classic draft ${JSON.stringify({disabledProgressMode,classicModeState})}`);
     // La facture brouillon n'a aucun numéro légal. La finalisation l'attribue
     // dans la même transaction que le verrouillage et l'instantané.
     const invoice=await saveDraft(db,'invoice');

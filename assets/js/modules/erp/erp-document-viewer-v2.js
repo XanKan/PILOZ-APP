@@ -335,7 +335,7 @@
    if(type==='invoice'&&configuredDeposit.enabled&&!existingDeposit){await runConversion('create_deposit_invoice',{target_quote_id:doc.id,deposit_percent:configuredDeposit.mode==='percent'?configuredDeposit.value:null,deposit_amount:configuredDeposit.mode==='amount'?configuredDeposit.value:null});return;}
    if(type==='invoice'&&configuredDeposit.enabled&&existingDeposit){if(!existingDeposit.validated_at&&!existingDeposit.finalized_at&&!existingDeposit.locked_at){app().editDocument(existingDeposit.id);notify('Finalisez d’abord la facture d’acompte.','info');return;}await runConversion('create_balance_invoice',{target_quote_id:doc.id});return;}
    if(type==='deposit_invoice'){ui.modal={type:'deposit'};renderViewer(state());return;}
-  if(type==='invoice'||type==='progress_invoice'){ui.modal={type:'progress',mode:'initial'};renderViewer(state());return;}
+  if(type==='invoice'||type==='progress_invoice'){await runConversion('convert_quote_to_invoice',{target_quote_id:doc.id,target_invoice_type:'invoice'});return;}
   if(type==='balance_invoice'){ui.modal={type:'balance'};renderViewer(state());return;}
   await runConversion('convert_quote_to_invoice',{target_quote_id:doc.id,target_invoice_type:type});
  }
