@@ -2,7 +2,17 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607240058' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607250059' ok
+  union all
+  select 'document_theme_assignments_rls',coalesce((select relrowsecurity::text from pg_class where oid='public.document_theme_assignments'::regclass),'missing'),
+    coalesce((select relrowsecurity from pg_class where oid='public.document_theme_assignments'::regclass),false)
+  union all
+  select 'document_theme_save_rpc',coalesce(to_regprocedure('public.save_document_theme(uuid,text,jsonb,jsonb)')::text,'missing'),
+    to_regprocedure('public.save_document_theme(uuid,text,jsonb,jsonb)') is not null
+  union all
+  select 'document_theme_snapshot_columns',count(*)::text,count(*)=3
+  from information_schema.columns where table_schema='public' and table_name='documents'
+    and column_name in('theme_id','theme_version','theme_snapshot')
   union all
   select 'stripe_price_mapping_rls',coalesce((select relrowsecurity::text from pg_class where oid='public.subscription_provider_prices'::regclass),'missing'),
     coalesce((select relrowsecurity from pg_class where oid='public.subscription_provider_prices'::regclass),false)
@@ -132,7 +142,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607240058',
+  'schema_version','202607250059',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;

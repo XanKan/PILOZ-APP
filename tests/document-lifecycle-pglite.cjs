@@ -112,7 +112,7 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
       where company_id=$1 and status='active' and document_type in('quote','invoice')
       order by document_type
     `,[company]);
-    if(activeTemplates.rows.length!==5)throw new Error(`templates: expected 2 seeded models plus 3 user models, got ${JSON.stringify(activeTemplates.rows)}`);
+    if(activeTemplates.rows.length!==8)throw new Error(`templates: expected 2 compatibility models, 3 user models and 3 system themes, got ${JSON.stringify(activeTemplates.rows)}`);
     if(activeTemplates.rows.filter(row=>row.is_default).length!==2)throw new Error(`templates: expected one default per document family ${JSON.stringify(activeTemplates.rows)}`);
     if(!activeTemplates.rows.some(row=>row.document_type==='quote'&&row.name==='Modèle de devis'))throw new Error('templates: unique quote model is missing');
     if(!activeTemplates.rows.some(row=>row.document_type==='invoice'&&row.name==='Modèle de facture'))throw new Error('templates: unique invoice model is missing');
@@ -243,6 +243,19 @@ async function saveDraft(db,type,existingId=null,unitPrice=100){
     const frozenBilling=await db.query("select address_payload from public.document_address_snapshots where snapshot_id=$1 and address_kind='billing'",[finalized.snapshot_id]);
     if(frozenContact.rows[0]?.contact_payload?.first_name!=='Marie'||frozenBilling.rows[0]?.address_payload?.address_line_1!=='25 rue Facture')
       throw new Error(`clients: final invoice snapshot did not freeze the selected recipient ${JSON.stringify({frozenContact:frozenContact.rows,frozenBilling:frozenBilling.rows})}`);
+    await db.exec('reset role');
+    const frozenThemeBefore=await db.query(`select d.theme_id,d.theme_version,d.theme_snapshot,s.payload_hash,t.name,t.current_version,v.configuration_json,
+      coalesce((select jsonb_agg(a.document_type order by a.document_type) from public.document_theme_assignments a where a.theme_id=d.theme_id),'[]'::jsonb) assignments
+      from public.documents d join public.document_snapshots s on s.id=d.snapshot_id join public.document_templates t on t.id=d.theme_id
+      join public.document_template_versions v on v.template_id=t.id and v.version=t.current_version where d.id=$1`,[invoice.id]);
+    const frozenTheme=frozenThemeBefore.rows[0];
+    await db.exec(`set request.jwt.claim.sub='${actor}'; set role authenticated;`);
+    await db.query("select public.save_document_theme($1,$2,jsonb_set($3::jsonb,'{colors,primary}','\"#7C3AED\"'::jsonb,true),$4::jsonb)",[frozenTheme.theme_id,frozenTheme.name,JSON.stringify(frozenTheme.configuration_json),JSON.stringify(frozenTheme.assignments)]);
+    await db.exec('reset role');
+    const frozenThemeAfter=await db.query('select d.theme_version,d.theme_snapshot,s.payload_hash,t.current_version from public.documents d join public.document_snapshots s on s.id=d.snapshot_id join public.document_templates t on t.id=d.theme_id where d.id=$1',[invoice.id]);
+    if(frozenThemeAfter.rows[0].payload_hash!==frozenTheme.payload_hash||frozenThemeAfter.rows[0].theme_version!==frozenTheme.theme_version||JSON.stringify(frozenThemeAfter.rows[0].theme_snapshot)!==JSON.stringify(frozenTheme.theme_snapshot)||Number(frozenThemeAfter.rows[0].current_version)<=Number(frozenTheme.current_version))
+      throw new Error(`themes: changing a theme altered a finalized invoice ${JSON.stringify({before:frozenTheme,after:frozenThemeAfter.rows[0]})}`);
+    await db.exec(`set request.jwt.claim.sub='${actor}'; set role authenticated;`);
     await db.query(
       "select public.save_client_contact($1,$2::jsonb,array['primary','billing','signatory']) result",
       [client,JSON.stringify({id:recipientId,first_name:'Marie modifiée',last_name:'Destinataire',email:'nouveau@client.test',is_primary:true,active:true})]
