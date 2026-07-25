@@ -52,8 +52,8 @@ async function bootstrap(db){
     insert into auth.users(id,email,raw_user_meta_data) values('${actor}','test@piloz.fr',jsonb_build_object('first_name','Alex'));
     insert into public.companies(id,owner_user_id,name) values('${company}','${actor}','Société Test');
     insert into public.company_members(company_id,user_id,role) values('${company}','${actor}','owner');
-    insert into public.company_settings(company_id,legal_name,siren,siret,address_line1,postal_code,city,country,email,subject_to_vat,default_vat_rate,onboarding_completed_at)
-      values('${company}','Société Test','123456789','12345678900012','1 rue du Test','75001','Paris','France','contact@piloz.fr',true,20,now())
+    insert into public.company_settings(company_id,legal_name,legal_form,social_capital,siren,siret,vat_number,address_line1,postal_code,city,country,email,subject_to_vat,default_vat_rate,fiscal_year_start,onboarding_completed_at)
+      values('${company}','Société Test','SARL',1000,'123456789','12345678900012','FR00123456789','1 rue du Test','75001','Paris','France','contact@piloz.fr',true,20,'04-01',now())
       on conflict(company_id) do update set legal_name=excluded.legal_name;
     insert into public.company_document_settings(company_id,quote_prefix,invoice_prefix,credit_prefix,default_payment_terms,default_payment_method,quote_validity_days)
       values('${company}','DEV','FAC','AV','days_30','bank_transfer',30)
@@ -174,7 +174,7 @@ async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[],cli
     await db.exec(`set request.jwt.claim.sub='${otherActor}';`);
     await db.query("insert into public.company_members(company_id,user_id,role) values($1,$2,'owner')",[otherCompany,otherActor]);
     await db.query("insert into public.clients(id,company_id,kind,legal_name,created_by) values($1,$2,'company','Client étranger',$3)",[otherClient,otherCompany,otherActor]);
-    await db.query("insert into public.company_settings(company_id,legal_name,siret,address_line1,postal_code,city,country,email,subject_to_vat,default_vat_rate,onboarding_completed_at) values($1,'Entreprise B','98765432100019','9 rue B','33000','Bordeaux','France','b@example.test',true,20,now()) on conflict(company_id) do update set legal_name=excluded.legal_name,siret=excluded.siret,address_line1=excluded.address_line1,postal_code=excluded.postal_code,city=excluded.city",[otherCompany]);
+    await db.query("insert into public.company_settings(company_id,legal_name,legal_form,siret,vat_number,address_line1,postal_code,city,country,email,subject_to_vat,default_vat_rate,onboarding_completed_at) values($1,'Entreprise B','EI','98765432100019','FR00987654321','9 rue B','33000','Bordeaux','France','b@example.test',true,20,now()) on conflict(company_id) do update set legal_name=excluded.legal_name,legal_form=excluded.legal_form,siret=excluded.siret,vat_number=excluded.vat_number,address_line1=excluded.address_line1,postal_code=excluded.postal_code,city=excluded.city",[otherCompany]);
     await db.query("update public.clients set address_line_1='10 rue Client B',postal_code='33000',city='Bordeaux',country_code='FR' where id=$1",[otherClient]);
     const foreignDraft=(await db.query('select public.save_document_draft($1,$2::jsonb,$3::jsonb) result',[null,JSON.stringify({company_id:otherCompany,document_type:'invoice',version:1,client_id:otherClient,issue_date:'2026-07-23',due_date:'2026-08-23',subject:'Facture entreprise B',currency:'EUR',language:'fr',sale_type:'services',payment_terms:'days_30',payment_method:'bank_transfer',discount_rate:0,deposit_rate:0,pipeline_stage:'draft',metadata:{pipeline_stage:'draft'}}),JSON.stringify([{id:crypto.randomUUID(),position:1,line_type:'free_item',name:'Prestation B',description:'Donnée isolée',quantity:1,unit:'unité',unit_price:100,discount_rate:0,tax_rate:20,optional:false,line_metadata:{}}])])).rows[0].result;
     const foreignInvoice=(await db.query('select public.finalize_document($1) result',[foreignDraft.id])).rows[0].result;
@@ -307,6 +307,39 @@ async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[],cli
     const versioned=await db.query('select fiscal_security_status,application_version,database_schema_version,calculation_version,legal_mentions_snapshot from public.documents where id=$1',[invoice.id]);
     if(versioned.rows[0].fiscal_security_status!=='legacy_unsecured'||!versioned.rows[0].application_version||versioned.rows[0].calculation_version!=='financial-v1')
       throw new Error(`invoice: version manifest is incomplete ${JSON.stringify(versioned.rows[0])}`);
+    const legalRetention=await db.query('select legal_retention_until,legal_validation_report from public.documents where id=$1',[invoice.id]);
+    if(!new Date(legalRetention.rows[0]?.legal_retention_until).toISOString().startsWith('2037-03-31')||legalRetention.rows[0]?.legal_validation_report?.validator_version!=='invoice-validator-v3-fr-2026')
+      throw new Error(`compliance: legal retention or validation report is missing ${JSON.stringify(legalRetention.rows[0])}`);
+    await db.exec('reset role');
+    const finalMutation=await db.query("update public.documents set subject='ALTERED AFTER FINALIZATION' where id=$1",[invoice.id]).then(()=>null,error=>error);
+    if(!finalMutation||!/(validated_document_is_locked|finalized_document_is_immutable_create_credit_note)/.test(finalMutation.message))
+      throw new Error(`compliance: finalized invoice data remained editable ${finalMutation&&finalMutation.message}`);
+    const finalCancellation=await db.query("update public.documents set status='cancelled' where id=$1",[invoice.id]).then(()=>null,error=>error);
+    if(!finalCancellation||!/finalized_invoice_requires_credit_note/.test(finalCancellation.message))
+      throw new Error(`compliance: finalized invoice could be cancelled without a credit note ${finalCancellation&&finalCancellation.message}`);
+    const attachment=(await db.query("insert into public.attachments(company_id,entity_type,entity_id,storage_path,file_name,mime_type,size_bytes,sha256,created_by) values($1,'document',$2,'evidence/test.pdf','test.pdf','application/pdf',12,$3,$4) returning id,locked_at,retention_until",[company,invoice.id,'a'.repeat(64),actor])).rows[0];
+    if(!attachment?.locked_at||!new Date(attachment.retention_until).toISOString().startsWith('2037-03-31'))throw new Error(`compliance: fiscal evidence was not retained ${JSON.stringify(attachment)}`);
+    const attachmentDeletion=await db.query('delete from public.attachments where id=$1',[attachment.id]).then(()=>null,error=>error);
+    if(!attachmentDeletion||!/(fiscal_attachment_is_retained|permission denied)/.test(attachmentDeletion.message))throw new Error('compliance: retained evidence could be deleted');
+    await db.exec(`set request.jwt.claim.sub='${actor}'; set role authenticated;`);
+    const auditTrail=(await db.query('select public.get_document_audit_trail($1) result',[invoice.id])).rows[0].result;
+    if(!auditTrail?.integrity?.number_allocated||!auditTrail?.integrity?.snapshot_present||auditTrail?.attachments?.length!==1)
+      throw new Error(`compliance: audit trail is incomplete ${JSON.stringify(auditTrail)}`);
+    const einvoiceReadiness=(await db.query('select public.get_einvoice_readiness($1) result',[company])).rows[0].result;
+    if(einvoiceReadiness?.external_platform_required!==true||einvoiceReadiness?.issue_ready!==false||!new Date(einvoiceReadiness?.receive_mandatory_on).toISOString().startsWith('2026-09-01'))
+      throw new Error(`e-invoicing: readiness must remain honest without an accredited platform ${JSON.stringify(einvoiceReadiness)}`);
+    const breachId=(await db.query("select public.record_personal_data_breach($1,'Accès non autorisé de test','2026-07-21T08:00:00Z','high',$2::jsonb) result",[company,JSON.stringify({data_categories:['contact'],subject_categories:['client'],likely_consequences:'Divulgation',measures_taken:'Accès révoqué'})])).rows[0].result;
+    await db.query("select public.transition_personal_data_breach($1,'contained',$2::jsonb)",[breachId,JSON.stringify({measures_taken:'Accès révoqué et jetons renouvelés'})]);
+    const breach=await db.query('select status,authority_deadline_at from public.personal_data_breaches where id=$1',[breachId]);
+    const breachEvents=await db.query('select count(*)::int count from public.personal_data_breach_events where breach_id=$1',[breachId]);
+    if(breach.rows[0]?.status!=='contained'||Number(breachEvents.rows[0]?.count)!==2||!breach.rows[0]?.authority_deadline_at)
+      throw new Error(`privacy: breach workflow is incomplete ${JSON.stringify({breach:breach.rows[0],events:breachEvents.rows[0]})}`);
+    const agreementId=(await db.query("select public.save_data_processing_agreement($1,$2::jsonb,null) result",[company,JSON.stringify({processor_name:'Sous-traitant Test',processing_scope:'Hébergement de test',data_categories:['clients'],data_subject_categories:['clients'],security_measures:{encryption:true}})])).rows[0].result;
+    await db.query('select public.sign_data_processing_agreement($1,$2,$3,current_date)',[agreementId,'agreements/test.pdf','b'.repeat(64)]);
+    const signedMutation=await db.query("update public.data_processing_agreements set processor_name='ALTERED' where id=$1",[agreementId]).then(()=>null,error=>error);
+    if(!signedMutation||!/(signed_data_processing_agreement_is_immutable|permission denied)/.test(signedMutation.message))throw new Error('privacy: signed processor agreement remained editable');
+    const securityControl=(await db.query("select public.update_company_security_control($1,'backup_restore','tested',null,'2026-07-21T09:00:00Z','2027-01-21T09:00:00Z','Responsable test') result",[company])).rows[0].result;
+    if(securityControl?.status!=='tested'||!securityControl?.last_tested_at)throw new Error(`security: control evidence was not recorded ${JSON.stringify(securityControl)}`);
     const convertedDraftId=convertedInvoiceId.rows[0].result;
     const draftPaymentAttempt=await db.query("select public.record_document_payment_v2($1,10,'bank_transfer','DRAFT','2026-07-21T10:00:00Z',null) result",[convertedDraftId]).then(()=>null,error=>error);
     if(!draftPaymentAttempt||!/invalid_invoice_state/.test(draftPaymentAttempt.message))

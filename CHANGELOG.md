@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.0-compliance.25 — 26 juillet 2026
+
+- validation complète des mentions obligatoires avant finalisation d’une facture, avec contrôles renforcés au 1er septembre 2026 ;
+- verrouillage irréversible des données d’une facture définitive et correction exclusivement par avoir ;
+- numérotation fiscale continue, unique et chronologique, avec contrôle de chronologie par séquence ;
+- conservation légale sur dix ans des factures, instantanés, PDF et justificatifs verrouillés, avec empreintes d’intégrité ;
+- piste d’audit reliant documents, paiements, pièces jointes, événements fiscaux et cycle de facturation électronique ;
+- préparation facturation électronique et e-reporting avec calendrier d’obligation et contrôle d’aptitude honnête ;
+- registre RGPD des violations, accords de sous-traitance et contrôles de sécurité/sauvegarde ;
+- ajout des champs date de vente ou prestation, nature de l’opération, bon de commande et référence de contrat dans l’éditeur et le PDF ;
+- écran Conformité enrichi et tests couvrant archivage, immutabilité, audit, RGPD et préparation e-facturation.
+
 ## 0.9.0-compliance.24 — 25 juillet 2026
 
 - suppression immédiate de l’ancien aperçu PDF après l’enregistrement d’un devis ou d’une facture brouillon ;

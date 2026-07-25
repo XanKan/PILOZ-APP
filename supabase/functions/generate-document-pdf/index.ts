@@ -272,7 +272,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   const issuerEmail = text(issuerProfile.email || issuer.email || "");
   const issuerPhone = text(issuerProfile.phone || issuer.phone_e164 || issuer.phone || "");
   const saleTypeLabels: Record<string, string> = { goods: "Livraison de biens", services: "Prestation de services", goods_and_services: "Livraison de biens et prestation de services" };
-  const saleTypeLabel = saleTypeLabels[String(issuerProfile.sale_type || "")] || "";
+  const saleTypeLabel = saleTypeLabels[String(doc.operation_category || doc.sale_type || issuerProfile.sale_type || "")] || "";
 
   const clientProfile = record(templateVersion.client_profile);
   const showClientEmail = clientProfile.show_email !== false;
@@ -467,9 +467,11 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   page.drawText(referenceLayout ? "Client facturé" : "CLIENT FACTURÉ", { x: 345, y: metaTop, size: referenceLayout ? 8 : 7, font: referenceLayout ? regular : bold, color: referenceLayout ? colors.text : colors.secondary });
   page.drawText(fit(bold, partyName(client), referenceLayout ? 9 : 10, 198), { x: 345, y: metaTop - 15, size: referenceLayout ? 9 : 10, font: bold, color: colors.heading });
   const clientAddressLines = limitedLines(regular, address(displayedClientAddress), 8, 198, 3);
-  const clientIdentityLines = referenceLayout
-    ? [client.siret || client.siren, ...clientAddressLines, client.vat_number && `N° de TVA ${client.vat_number}`].filter(Boolean).map(text)
-    : clientAddressLines;
+  const clientIdentityLines = [
+    client.siret ? `SIRET ${client.siret}` : client.siren ? `SIREN ${client.siren}` : null,
+    ...clientAddressLines,
+    client.vat_number && `N° de TVA ${client.vat_number}`,
+  ].filter(Boolean).map(text);
   clientIdentityLines.forEach((line, index) => page.drawText(line, { x: 345, y: metaTop - 29 - index * 11, size: 8, font: regular, color: referenceLayout ? colors.text : colors.muted }));
   clientContactLines.forEach((line, index) => page.drawText(line, { x: 345, y: metaTop - 29 - clientIdentityLines.length * 11 - index * 10, size: 8, font: regular, color: colors.muted }));
   y = referenceLayout
@@ -570,6 +572,15 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     right(page, bold, amount(remainingAmount, currency), 538, totalsY - 95 - progressRowOffset, 8, grandTotalColor);
   }
   const footerLines: string[] = [];
+  // Render mandatory invoice notices first so optional template text cannot
+  // push them outside the footer line limit.
+  if (doc.supply_date) footerLines.push(`Date de vente / prestation : ${date(doc.supply_date)}`);
+  if (doc.purchase_order_reference) footerLines.push(`Bon de commande client : ${text(doc.purchase_order_reference)}`);
+  if (doc.contract_reference) footerLines.push(`Référence du contrat : ${text(doc.contract_reference)}`);
+  if (doc.document_type !== "quote" || showLatePenalties) {
+    [settings.early_payment_discount_notice, settings.late_payment_penalty_notice, settings.collection_fee_notice]
+      .filter(Boolean).forEach(value => footerLines.push(String(value)));
+  }
   const footerBody = resolveFooterTokens(templateFooter.body, issuer);
   let legalIdentity = "";
   let legalContact = "";
@@ -593,9 +604,11 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     if (!referenceLayout && legalContact) footerLines.push(legalContact);
     [settings.visible_mention, settings.legal_notice].filter(Boolean).forEach(value => footerLines.push(String(value)));
   }
-  if (showLatePenalties && settings.collection_fee_notice) footerLines.push(String(settings.collection_fee_notice));
   const footerNote = footerLines.join(" | ");
-  limitedLines(regular, footerNote, 6.5, 245, 6).forEach((line, index) => page.drawText(line, { x: 303, y: 175 - index * 8, size: 6.5, font: regular, color: colors.muted }));
+  const footerSize = doc.document_type === "quote" ? 6.5 : 5.2;
+  const footerLimit = doc.document_type === "quote" ? 6 : 12;
+  const footerGap = doc.document_type === "quote" ? 8 : 6.2;
+  limitedLines(regular, footerNote, footerSize, 245, footerLimit).forEach((line, index) => page.drawText(line, { x: 303, y: 175 - index * footerGap, size: footerSize, font: regular, color: colors.muted }));
   if (showPaymentTerms || acceptsBankTransfer) {
     page.drawText("Conditions de paiement :", { x: 42, y: 175, size: 8, font: bold, color: colors.heading });
     page.drawText(fit(regular, `Délai : ${paymentTermLabel}`, 7, 245), { x: 42, y: 161, size: 7, font: regular, color: colors.text });
@@ -773,10 +786,16 @@ async function buildPreviewPayload(
   const document: Record<string, unknown> = {
     id: previewText(sourceDocument.id, 36),
     document_type: documentType,
+    status: previewText(sourceDocument.status, 32) || "draft",
     number: previewText(sourceDocument.number, 80),
     issue_date: previewText(sourceDocument.issue_date, 32),
+    supply_date: previewText(sourceDocument.supply_date, 32),
     due_date: previewText(sourceDocument.due_date, 32),
     validity_date: previewText(sourceDocument.validity_date, 32),
+    operation_category: previewText(sourceDocument.operation_category || sourceDocument.sale_type, 32),
+    sale_type: previewText(sourceDocument.sale_type, 32),
+    contract_reference: previewText(sourceDocument.contract_reference, 160),
+    purchase_order_reference: previewText(sourceDocument.purchase_order_reference, 160),
     subject: previewText(sourceDocument.subject, 500),
     currency: previewText(sourceDocument.currency, 3) || "EUR",
     language: previewText(sourceDocument.language, 8) || "fr",
@@ -846,6 +865,7 @@ async function buildSavedDraftPreviewPayload(
     "contact_id", "billing_address_id", "delivery_address_id",
     "issue_date", "due_date", "validity_date", "subject", "currency", "language",
     "payment_terms", "payment_method", "public_notes", "discount_rate", "deposit_rate",
+    "operation_category", "supply_date", "contract_reference", "purchase_order_reference",
     "total_excl_tax", "total_tax", "total_incl_tax", "metadata",
   ].join(",");
   const { data: documentData, error: documentError } = await userClient.from("documents")

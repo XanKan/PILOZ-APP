@@ -2,7 +2,27 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607250065' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607260066' ok
+  union all
+  select 'invoice_legal_validator',coalesce(to_regprocedure('public.validate_invoice_for_finalization(uuid)')::text,'missing'),
+    to_regprocedure('public.validate_invoice_for_finalization(uuid)') is not null
+      and position('invoice-validator-v3-fr-2026' in pg_get_functiondef(to_regprocedure('public.validate_invoice_for_finalization(uuid)')))>0
+  union all
+  select 'document_audit_trail_rpc',coalesce(to_regprocedure('public.get_document_audit_trail(uuid)')::text,'missing'),
+    to_regprocedure('public.get_document_audit_trail(uuid)') is not null
+  union all
+  select 'invoice_legal_retention_columns',count(*)::text,count(*)=2
+  from information_schema.columns where table_schema='public' and table_name='documents'
+    and column_name in('legal_validation_report','legal_retention_until')
+  union all
+  select 'personal_data_breaches_rls',coalesce((select relrowsecurity::text from pg_class where oid='public.personal_data_breaches'::regclass),'missing'),
+    coalesce((select relrowsecurity from pg_class where oid='public.personal_data_breaches'::regclass),false)
+  union all
+  select 'data_processing_agreements_rls',coalesce((select relrowsecurity::text from pg_class where oid='public.data_processing_agreements'::regclass),'missing'),
+    coalesce((select relrowsecurity from pg_class where oid='public.data_processing_agreements'::regclass),false)
+  union all
+  select 'einvoice_readiness_rpc',coalesce(to_regprocedure('public.get_einvoice_readiness(uuid)')::text,'missing'),
+    to_regprocedure('public.get_einvoice_readiness(uuid)') is not null
   union all
   select 'next_progress_draft_rpc',coalesce(to_regprocedure('public.create_next_progress_invoice_draft(uuid)')::text,'missing'),
     to_regprocedure('public.create_next_progress_invoice_draft(uuid)') is not null
@@ -137,8 +157,8 @@ with controls as(
     and not tgisinternal
   union all
   select 'progress_invoice_zero_line_validator',
-    (position('invoice-validator-v2-progress-lines' in pg_get_functiondef(to_regprocedure('public.validate_invoice_for_finalization(uuid)')))>0)::text,
-    position('invoice-validator-v2-progress-lines' in pg_get_functiondef(to_regprocedure('public.validate_invoice_for_finalization(uuid)')))>0
+    (position('progress_placeholder' in pg_get_functiondef(to_regprocedure('public.validate_invoice_for_finalization(uuid)')))>0)::text,
+    position('progress_placeholder' in pg_get_functiondef(to_regprocedure('public.validate_invoice_for_finalization(uuid)')))>0
   union all
   select 'invoice_progress_mode_rpc',coalesce(to_regprocedure('public.set_invoice_progress_mode(uuid,boolean)')::text,'missing'),
     to_regprocedure('public.set_invoice_progress_mode(uuid,boolean)') is not null
@@ -176,7 +196,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607250065',
+  'schema_version','202607260066',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;
