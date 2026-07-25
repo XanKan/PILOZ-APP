@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0-compliance.28 — 26 juillet 2026
+
+- conservation de la quantité contractuelle dans l’éditeur des factures de situation ;
+- calcul du montant de la situation uniquement à partir du pourcentage d’avancement ;
+- affichage cohérent de la quantité totale et de l’avancement dans l’aperçu intégré, les modèles et le PDF final ;
+- compatibilité avec les anciennes situations grâce aux métadonnées de quantité d’origine déjà conservées.
+
 ## 0.9.0-compliance.27 — 26 juillet 2026
 
 - réduction de l’indicateur d’avancement des factures de situation ;

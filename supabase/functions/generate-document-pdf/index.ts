@@ -111,6 +111,17 @@ function progressTotalPercent(lines: Array<Record<string, unknown>>) {
   return Math.max(0, Math.min(100, value));
 }
 
+function contractQuantity(line: Record<string, unknown>) {
+  const metadata = record(line.line_metadata);
+  const configured = Number(metadata.original_quantity);
+  if (Number.isFinite(configured)) return Math.abs(configured);
+  const previous = Math.max(0, Math.min(100, Number(metadata.previous_progress_percent) || 0));
+  const current = Math.max(previous, Math.min(100, Number(line.cumulative_progress_percent) || previous));
+  const delta = Math.max(0, current - previous);
+  const billed = Math.abs(Number(line.quantity) || 0);
+  return delta > 0 ? billed * 100 / delta : billed;
+}
+
 function date(value: unknown) {
   if (!value) return "-";
   const parsed = new Date(String(value).length === 10 ? `${value}T12:00:00Z` : String(value));
@@ -507,7 +518,8 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     } else {
       nameLines.forEach((value, index) => page.drawText(value, { x: 48, y: y - 7 - index * 10, size: metrics.lineNameSize, font: index === 0 ? bold : regular, color: colors.text }));
       descriptionLines.forEach((value, index) => page.drawText(value, { x: 48, y: y - 7 - nameLines.length * 10 - index * 9, size: metrics.lineSize - 1, font: regular, color: colors.muted }));
-      right(page, regular, `${Number(line.quantity || 0).toLocaleString("fr-FR")} ${text(line.unit || "")}`, columnX.qty, y - 7, metrics.lineSize, colors.text, 58);
+      const displayedQuantity = isProgressInvoice ? contractQuantity(line) : Number(line.quantity || 0);
+      right(page, regular, `${displayedQuantity.toLocaleString("fr-FR")} ${text(line.unit || "")}`, columnX.qty, y - 7, metrics.lineSize, colors.text, 58);
       if (isProgressInvoice) right(page, bold, `${Number(line.cumulative_progress_percent || 0).toLocaleString("fr-FR")} %`, 292, y - 7, metrics.lineSize - 1, colors.primary, 54);
       right(page, regular, amount(line.unit_price, currency), columnX.price, y - 7, metrics.lineSize, colors.text, 72);
       if (showDiscountColumn) right(page, regular, `${Number(line.discount_rate || 0).toLocaleString("fr-FR")}%`, columnX.discount, y - 7, metrics.lineSize - 1, colors.muted, 34);
