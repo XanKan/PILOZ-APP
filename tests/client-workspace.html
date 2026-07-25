@@ -47,7 +47,7 @@ location.hash='sales/clients';
   const draft={id:'88888888-8888-4888-8888-888888888888',document_type:'invoice',client_id:client};state.draft=draft;await PilozClients.applyClientDefaults(draft,client,state);
   check('préférences appliquées au document',draft.contact_id===contact&&draft.billing_address_id===billing&&draft.delivery_address_id===service&&draft.payment_terms==='45 jours');
   main.innerHTML='<div class="document-v2"><aside class="document-v2-panel"><section></section></aside></div>';location.hash='document-editor';PilozClients.enhanceDocumentContext();await wait(20);
-  check('sélecteurs document injectés',main.querySelectorAll('[data-client-document-context] select').length===3&&main.textContent.includes('Contact destinataire'));
+  check('bloc destinataire et adresses retiré',!main.querySelector('[data-client-document-context]')&&!main.textContent.includes('Contact destinataire'));
   await PilozApp.saveDocument(true);check('contexte document persisté',calls.some(call=>call[0]==='rpc'&&call[1]==='save_document_client_context'&&call[2].target_contact_id===contact));
   check('aucune erreur JavaScript',!__errors.length);
  }catch(error){checks.push(['exécution',false,error.stack||error.message]);}

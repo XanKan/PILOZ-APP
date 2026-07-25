@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0-compliance.14 — 25 juillet 2026
+
+- retrait du bloc « Destinataire et adresses » dans l’éditeur des devis et factures ;
+- conservation silencieuse des informations de contact et d’adresse déjà associées aux documents ;
+- aucune suppression des contacts ou adresses enregistrés dans Supabase.
+
 ## 0.9.0-compliance.13 — 25 juillet 2026
 
 - fermeture automatique de l’éditeur après l’enregistrement réussi d’un modèle ;

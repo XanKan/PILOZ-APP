@@ -1837,14 +1837,9 @@
     const state = app()?.getState?.(),
       d = state?.draft;
     if (!d?.client_id || !document.querySelector(".document-v2")) return;
-    const panel = document.querySelector(".document-v2-panel");
-    if (panel && !panel.querySelector("[data-client-document-context]")) {
-      const section = document.createElement("section");
-      section.dataset.clientDocumentContext = "";
-      section.className = "document-v2-client-context";
-      section.innerHTML = `<h3>Destinataire et adresses</h3><label>Contact destinataire<select onchange="PilozClients.setDocumentContext('contact_id',this.value||null)">${contextOptions(d.clientContacts || [], d.contact_id, "Aucun contact")}</select></label><div class="document-context-actions"><button type="button" onclick="PilozClients.openContactModal('${d.client_id}',null,true)">+ Contact</button><button type="button" onclick="PilozClients.openClient('${d.client_id}','contacts')">Gérer</button></div><label>Adresse de facturation<select onchange="PilozClients.setDocumentContext('billing_address_id',this.value||null)">${contextOptions(d.clientAddresses || [], d.billing_address_id, "Adresse historique")}</select></label><label>Livraison / intervention<select onchange="PilozClients.setDocumentContext('delivery_address_id',this.value||null)">${contextOptions(d.clientAddresses || [], d.delivery_address_id, "Non affichée")}</select></label><div class="document-context-actions"><button type="button" onclick="PilozClients.useBillingForDelivery()">Même adresse</button><button type="button" onclick="PilozClients.openAddressModal('${d.client_id}',null,true)">+ Adresse</button><button type="button" onclick="PilozClients.openClient('${d.client_id}','addresses')">Gérer</button></div>`;
-      panel.insertBefore(section, panel.children[1] || null);
-    }
+    document
+      .querySelectorAll("[data-client-document-context]")
+      .forEach((section) => section.remove());
     if (
       lastDocumentClient !== d.client_id ||
       (!(d.clientContacts || []).length && !(d.clientAddresses || []).length)
