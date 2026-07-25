@@ -312,7 +312,7 @@ body.auth-checking #auth-loading{display:flex}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <link rel="stylesheet" href="assets/css/phase1-foundation.css?v=20260721.11">
-<link rel="stylesheet" href="assets/css/modern-erp.css?v=20260724.3">
+<link rel="stylesheet" href="assets/css/modern-erp.css?v=20260725.2">
 <link rel="stylesheet" href="assets/css/dashboard-cockpit.css?v=20260724.4">
 <link rel="stylesheet" href="assets/css/document-viewer-v2.css?v=20260723.4">
 <link rel="stylesheet" href="assets/css/clients-workspace.css?v=20260723.1">
@@ -2630,6 +2630,8 @@ async function authLogin(){
     SES = {access_token:j.access_token, refresh_token:j.refresh_token, user_id:j.user.id, email:j.user.email};
     window.PilozSiteOffer?.captureUser?.(j.user);
     await authSyncSession({remember:loginDraft.remember});
+    history.replaceState(null, '', `${location.pathname}#dashboard`);
+    render();
     loginDraft.password = '';
     toast('Connecté ☁️');
   }catch(e){
@@ -2857,14 +2859,14 @@ function adminCreerCompte(){
 <script src="assets/js/modules/subscription/entitlements.js?v=20260721.10"></script>
 <script src="assets/js/modules/onboarding/company-search.js?v=20260721.10"></script>
 <script src="assets/js/modules/onboarding/professional-onboarding.js?v=20260721.10"></script>
-<script src="assets/js/modules/erp/erp-app.js?v=20260725.1"></script>
+<script src="assets/js/modules/erp/erp-app.js?v=20260725.2"></script>
 <script src="assets/js/modules/erp/erp-modern.js?v=20260725.2"></script>
 <script src="assets/js/modules/erp/erp-compliance.js?v=20260722.2"></script>
 <script src="assets/js/modules/erp/erp-commercial-v2.js?v=20260725.1"></script>
 <script src="assets/js/modules/erp/erp-dashboard-cockpit.js?v=20260724.4"></script>
 <script src="assets/js/modules/erp/erp-commercial-workspace.js?v=20260724.2"></script>
-<script src="assets/js/modules/erp/erp-document-editor-v2.js?v=20260722.9"></script>
-<script src="assets/js/modules/erp/erp-document-viewer-v2.js?v=20260723.4"></script>
+<script src="assets/js/modules/erp/erp-document-editor-v2.js?v=20260725.2"></script>
+<script src="assets/js/modules/erp/erp-document-viewer-v2.js?v=20260725.2"></script>
 <script src="assets/js/modules/erp/erp-clients.js?v=20260723.1"></script>
 <script src="assets/js/modules/erp/erp-catalog-v2.js?v=20260723.1"></script>
 <script src="assets/js/auth-guard.js?v=20260721.10"></script>

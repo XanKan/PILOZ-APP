@@ -262,6 +262,16 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     || (rawPaymentTerm.match(/^days_(\d+)$/)?.[1] ? `${rawPaymentTerm.match(/^days_(\d+)$/)?.[1]} jours` : rawPaymentTerm)
     || "—";
   const paymentMethodLabel = paymentMethodsCatalog[rawPaymentMethod] || rawPaymentMethod || "—";
+  const depositMode = text(metadata.deposit_mode || (Number(metadata.deposit_amount_ttc) > 0 ? "amount" : "percent"));
+  const depositValue = Number(metadata.deposit_value ?? (depositMode === "amount" ? metadata.deposit_amount_ttc : doc.deposit_rate)) || 0;
+  const depositEnabled = Boolean(metadata.deposit_enabled ?? (Number(doc.deposit_rate) > 0)) && depositValue > 0 && doc.document_type === "quote";
+  const depositAmount = depositMode === "amount" ? depositValue : (Number(doc.total_incl_tax) || 0) * depositValue / 100;
+  const depositPercent = Number(doc.total_incl_tax) ? depositAmount / Number(doc.total_incl_tax) * 100 : depositMode === "percent" ? depositValue : 0;
+  const depositText = depositEnabled
+    ? depositMode === "percent"
+      ? `Acompte de ${depositPercent.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} % soit ${amount(depositAmount, currency)} à la signature`
+      : `Acompte de ${amount(depositAmount, currency)}${depositPercent ? ` (soit ${depositPercent.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} %)` : ""} à la signature`
+    : "";
 
   const templateDocTitle = text(templateVersion.document_title || "");
   const kind = (doc.document_type === "quote" || doc.document_type === "invoice") && templateDocTitle ? templateDocTitle
@@ -419,6 +429,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     : 662 - metaBoxHeight - 10;
   drawColumns();
 
+  let runningSectionSubtotal = 0;
   for (const line of payload.lines || []) {
     const lineType = text(line.line_type || "item");
     if (lineType === "page_break") {
@@ -433,7 +444,10 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     if (structural) {
       page.drawRectangle({ x: 42, y: y - rowHeight + 6, width: 511, height: rowHeight, color: colors.tableBackground });
       nameLines.forEach((value, index) => page.drawText(value, { x: 48, y: y - 7 - index * 10, size: metrics.lineNameSize + 1, font: bold, color: colors.heading }));
-      if (lineType === "subtotal") right(page, bold, amount(line.total_excl_tax, currency), columnX.total, y - 7, metrics.lineNameSize + 1, colors.heading, 85);
+      if (lineType === "subtotal") {
+        right(page, bold, amount(Number(line.total_excl_tax) || runningSectionSubtotal, currency), columnX.total, y - 7, metrics.lineNameSize + 1, colors.heading, 85);
+        runningSectionSubtotal = 0;
+      }
     } else {
       nameLines.forEach((value, index) => page.drawText(value, { x: 48, y: y - 7 - index * 10, size: metrics.lineNameSize, font: index === 0 ? bold : regular, color: colors.text }));
       descriptionLines.forEach((value, index) => page.drawText(value, { x: 48, y: y - 7 - nameLines.length * 10 - index * 9, size: metrics.lineSize - 1, font: regular, color: colors.muted }));
@@ -442,6 +456,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
       if (showDiscountColumn) right(page, regular, `${Number(line.discount_rate || 0).toLocaleString("fr-FR")}%`, columnX.discount, y - 7, metrics.lineSize - 1, colors.muted, 34);
       right(page, regular, `${Number(line.tax_rate || 0).toLocaleString("fr-FR")} %`, columnX.tax, y - 7, metrics.lineSize, colors.text, 40);
       right(page, bold, amount(line.total_excl_tax ?? ((Number(line.quantity) || 0) * (Number(line.unit_price) || 0)), currency), columnX.total, y - 7, metrics.lineSize, colors.heading, 62);
+      if (!line.optional) runningSectionSubtotal += Number(line.total_excl_tax ?? ((Number(line.quantity) || 0) * (Number(line.unit_price) || 0))) || 0;
       if (referenceLayout) {
         const lineExclTax = Number(line.total_excl_tax ?? ((Number(line.quantity) || 0) * (Number(line.unit_price) || 0))) || 0;
         const lineTax = Number(line.total_tax ?? lineExclTax * (Number(line.tax_rate) || 0) / 100) || 0;
@@ -529,8 +544,9 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     page.drawText("Conditions de paiement :", { x: 42, y: 175, size: 8, font: bold, color: colors.heading });
     page.drawText(fit(regular, `Délai : ${paymentTermLabel}`, 7, 245), { x: 42, y: 161, size: 7, font: regular, color: colors.text });
     page.drawText(fit(regular, `Mode de paiement : ${paymentMethodLabel}`, 7, 245), { x: 42, y: 149, size: 7, font: regular, color: colors.text });
+    if (depositText) page.drawText(fit(regular, depositText, 7, 245), { x: 42, y: 137, size: 7, font: regular, color: colors.text });
   }
-  if (acceptsBankTransfer) drawBankDetails(page, 42, 136, 245);
+  if (acceptsBankTransfer) drawBankDetails(page, 42, depositText ? 124 : 136, 245);
   if (referenceLayout && doc.document_type === "quote") {
     page.drawText(fit(regular, "Date et signature précédées de la mention « Bon pour accord »", 8, 250), { x: 303, y: 101, size: 8, font: regular, color: colors.text });
   }
@@ -711,6 +727,7 @@ async function buildPreviewPayload(
     payment_method: previewText(sourceDocument.payment_method, 160),
     public_notes: previewText(sourceDocument.public_notes, 4000),
     discount_rate: previewNumber(sourceDocument.discount_rate),
+    deposit_rate: previewNumber(sourceDocument.deposit_rate),
     total_excl_tax: previewNumber(sourceDocument.total_excl_tax),
     total_tax: previewNumber(sourceDocument.total_tax),
     total_incl_tax: previewNumber(sourceDocument.total_incl_tax),
@@ -768,7 +785,7 @@ async function buildSavedDraftPreviewPayload(
     "id", "company_id", "document_type", "number", "status", "client_id", "template_id",
     "contact_id", "billing_address_id", "delivery_address_id",
     "issue_date", "due_date", "validity_date", "subject", "currency", "language",
-    "payment_terms", "payment_method", "public_notes", "discount_rate",
+    "payment_terms", "payment_method", "public_notes", "discount_rate", "deposit_rate",
     "total_excl_tax", "total_tax", "total_incl_tax", "metadata",
   ].join(",");
   const { data: documentData, error: documentError } = await userClient.from("documents")

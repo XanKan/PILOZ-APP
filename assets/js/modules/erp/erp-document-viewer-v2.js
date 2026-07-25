@@ -129,10 +129,12 @@
  function lineAmount(line){if(line.total_excl_tax!==null&&line.total_excl_tax!==undefined)return Number(line.total_excl_tax)||0;return(Number(line.quantity)||0)*(Number(line.unit_price)||0)*(1-(Number(line.discount_rate)||0)/100);}
  function pageCount(context){const content=context.lines.filter(line=>line.line_type!=='page_break'),breaks=context.lines.filter(line=>line.line_type==='page_break').length;return Math.max(1,Math.ceil(content.length/18)+breaks);}
  function publicLineRows(lines){
+  let runningSubtotal=0;
   return lines.map(line=>{
    if(line.line_type==='page_break')return'';
-   if(['title','subtitle','section','text','comment','subtotal'].includes(line.line_type))return`<tr class="document-snapshot-structural ${esc(line.line_type)}"><td colspan="5"><b>${esc(line.name||line.description||'')}</b></td></tr>`;
-   return`<tr><td><b>${esc(line.name||'Désignation')}</b>${line.description?`<small>${esc(line.description)}</small>`:''}${line.optional?'<em>Option</em>':''}</td><td>${Number(line.quantity||0).toLocaleString('fr-FR')} ${esc(line.unit||'')}</td><td>${money(line.unit_price)}</td><td>${Number(line.tax_rate||0).toLocaleString('fr-FR')} %</td><td>${money(lineAmount(line))}</td></tr>`;
+  if(['title','subtitle','section','text','comment'].includes(line.line_type))return`<tr class="document-snapshot-structural ${esc(line.line_type)}"><td colspan="5"><b>${esc(line.name||line.description||'')}</b></td></tr>`;
+  if(line.line_type==='subtotal'){const subtotal=Number(line.total_excl_tax)||runningSubtotal;runningSubtotal=0;return`<tr class="document-snapshot-structural subtotal"><td colspan="4"><b>${esc(line.name||'Sous-total')}</b></td><td><b>${money(subtotal)}</b></td></tr>`;}
+   if(!line.optional)runningSubtotal+=lineAmount(line);return`<tr><td><b>${esc(line.name||'Désignation')}</b>${line.description?`<small>${esc(line.description)}</small>`:''}${line.optional?'<em>Option</em>':''}</td><td>${Number(line.quantity||0).toLocaleString('fr-FR')} ${esc(line.unit||'')}</td><td>${money(line.unit_price)}</td><td>${Number(line.tax_rate||0).toLocaleString('fr-FR')} %</td><td>${money(lineAmount(line))}</td></tr>`;
   }).join('');
  }
  function renderFallbackPage(context,page){
@@ -181,11 +183,13 @@
 
  function linkedDocuments(data,doc){
   const map=new Map(),links=(data.documentLinks||[]).filter(link=>link.source_document_id===doc.id||link.target_document_id===doc.id);
-  links.forEach(link=>{const id=link.source_document_id===doc.id?link.target_document_id:link.source_document_id,target=(data.documents||[]).find(row=>row.id===id);if(target)map.set(id,{doc:target,label:linkLabels[link.link_type]||typeLabels[target.document_type]||'Document',metadata:link.metadata||{}});});
+  links.forEach(link=>{const id=link.source_document_id===doc.id?link.target_document_id:link.source_document_id,target=(data.documents||[]).find(row=>row.id===id);if(target)map.set(id,{doc:target,link,label:linkLabels[link.link_type]||typeLabels[target.document_type]||'Document',metadata:link.metadata||{}});});
   (data.documents||[]).filter(row=>row.source_document_id===doc.id||doc.source_document_id===row.id).forEach(target=>map.set(target.id,{doc:target,label:typeLabels[target.document_type]||'Document'}));
   return[...map.values()];
  }
  function quoteInvoiced(data,doc){return linkedDocuments(data,doc).filter(item=>accountingInvoiceTypes.has(item.doc.document_type)).reduce((sum,item)=>sum+Number(item.doc.total_incl_tax||0),0);}
+ function quoteDepositRequest(doc){const metadata=doc?.metadata||{},mode=metadata.deposit_mode||(Number(metadata.deposit_amount_ttc)>0?'amount':'percent'),value=Number(metadata.deposit_value??(mode==='amount'?metadata.deposit_amount_ttc:doc?.deposit_rate))||0,enabled=(metadata.deposit_enabled??Number(doc?.deposit_rate)>0)&&value>0;return{enabled,mode,value};}
+ function linkedDeposit(data,doc){return linkedDocuments(data,doc).find(item=>item.link?.link_type==='deposit'&&!['cancelled','archived'].includes(item.doc.status))?.doc||null;}
  function quoteHasDownstreamDocument(data,doc){return linkedDocuments(data,doc).some(item=>accountingInvoiceTypes.has(item.doc.document_type));}
  function deletionEligibility(data,doc){if(doc.document_type==='quote')return quoteHasDownstreamDocument(data,doc)?{allowed:false,reason:'Ce devis est lié à une facture et doit être conservé.'}:{allowed:true,reason:''};if(isFinalized(doc)||doc.status!=='draft')return{allowed:false,reason:'Seule une facture au brouillon peut être supprimée.'};if(paymentHistory(data,doc.id).length)return{allowed:false,reason:'Cette facture possède un historique de paiement.'};return{allowed:true,reason:''};}
  function renderLinks(data,doc){
@@ -230,9 +234,9 @@
    const receipt=(data.paymentReceipts||[]).find(row=>row.id===ui.modal.receiptId),allocations=(data.paymentAllocations||[]).filter(row=>row.payment_receipt_id===receipt?.id);
    return`<div class="document-viewer-modal-backdrop" role="presentation" onclick="if(event.target===this)PilozDocumentViewerV2.closeModal()"><section class="document-viewer-modal compact" role="dialog" aria-modal="true"><header><div><h2>Corriger le règlement ${esc(receipt?.payment_number||'')}</h2><p>Une écriture inverse sera ajoutée pour chacune des ${allocations.length} factures. Le règlement d’origine et ses affectations resteront intacts.</p></div>${iconButton('Fermer','×','PilozDocumentViewerV2.closeModal()')}</header><form id="document-viewer-receipt-cancellation-form" onsubmit="event.preventDefault();PilozDocumentViewerV2.cancelReceipt()"><label><span>Opération *</span><select name="entry_type" required><option value="correction">Correction de saisie</option><option value="refund">Remboursement</option><option value="rejection">Rejet bancaire</option><option value="chargeback">Chargeback</option></select></label><label class="full"><span>Motif *</span><textarea name="reason" maxlength="1000" required></textarea></label><footer><button type="button" onclick="PilozDocumentViewerV2.closeModal()">Conserver le règlement</button><button type="submit" ${ui.busy?'disabled':''}>Créer les écritures inverses</button></footer></form></section></div>`;
   }
-  if(ui.modal.type==='deposit'){
-   const remaining=Math.max(0,Number(doc.total_incl_tax||0)-quoteInvoiced(data,doc));
-   return`<div class="document-viewer-modal-backdrop" role="presentation" onclick="if(event.target===this)PilozDocumentViewerV2.closeModal()"><section class="document-viewer-modal compact" role="dialog" aria-modal="true"><header><div><h2>Créer une facture d’acompte</h2><p>Reste à facturer : ${money(remaining,doc.currency)}</p></div>${iconButton('Fermer','×','PilozDocumentViewerV2.closeModal()')}</header><form id="document-viewer-conversion-form" onsubmit="event.preventDefault();PilozDocumentViewerV2.saveConversion()"><label><span>Calcul de l’acompte</span><select name="deposit_mode" onchange="PilozDocumentViewerV2.setDepositMode(this.value)"><option value="percent">Pourcentage du devis</option><option value="amount">Montant TTC</option></select></label><label data-deposit-field="percent"><span>Pourcentage *</span><input name="deposit_percent" type="number" min="0.01" max="100" step="0.01" value="30"></label><label data-deposit-field="amount" hidden><span>Montant TTC *</span><input name="deposit_amount" type="number" min="0.01" max="${remaining}" step="0.01"></label><footer><button type="button" onclick="PilozDocumentViewerV2.closeModal()">Annuler</button><button type="submit">Créer le brouillon d’acompte</button></footer></form></section></div>`;
+   if(ui.modal.type==='deposit'){
+    const remaining=Math.max(0,Number(doc.total_incl_tax||0)-quoteInvoiced(data,doc)),configured=quoteDepositRequest(doc);
+    return`<div class="document-viewer-modal-backdrop" role="presentation" onclick="if(event.target===this)PilozDocumentViewerV2.closeModal()"><section class="document-viewer-modal compact" role="dialog" aria-modal="true"><header><div><h2>Créer une facture d’acompte</h2><p>Reste à facturer : ${money(remaining,doc.currency)}</p></div>${iconButton('Fermer','×','PilozDocumentViewerV2.closeModal()')}</header><form id="document-viewer-conversion-form" onsubmit="event.preventDefault();PilozDocumentViewerV2.saveConversion()"><label><span>Calcul de l’acompte</span><select name="deposit_mode" onchange="PilozDocumentViewerV2.setDepositMode(this.value)"><option value="percent">Pourcentage du devis</option><option value="amount" ${configured.mode==='amount'?'selected':''}>Montant TTC</option></select></label><label data-deposit-field="percent" ${configured.mode==='amount'?'hidden':''}><span>Pourcentage *</span><input name="deposit_percent" type="number" min="0.01" max="100" step="0.01" value="${configured.mode==='percent'&&configured.value?configured.value:30}"></label><label data-deposit-field="amount" ${configured.mode==='amount'?'':'hidden'}><span>Montant TTC *</span><input name="deposit_amount" type="number" min="0.01" max="${remaining}" step="0.01" value="${configured.mode==='amount'?configured.value:''}"></label><footer><button type="button" onclick="PilozDocumentViewerV2.closeModal()">Annuler</button><button type="submit">Créer le brouillon d’acompte</button></footer></form></section></div>`;
   }
   if(ui.modal.type==='progress'){
    const rows=progressRows(data,doc);
@@ -312,9 +316,12 @@
   finally{ui.busy=false;}
  }
  async function deleteComment(id){if(!confirm('Supprimer ce commentaire interne ?'))return;try{await api().rpc('delete_document_comment',{target_comment_id:id});if(ui.editingComment===id)ui.editingComment='';await app().refresh();notify('Commentaire supprimé.','success');}catch(error){notify(error.message||'Le commentaire n’a pas pu être supprimé.','error');}}
- async function convert(type){
-  const doc=activeDocument(state().data);if(!doc||doc.document_type!=='quote'||ui.busy)return;
-  if(type==='deposit_invoice'){ui.modal={type:'deposit'};renderViewer(state());return;}
+  async function convert(type){
+   const doc=activeDocument(state().data);if(!doc||doc.document_type!=='quote'||ui.busy)return;
+   const configuredDeposit=quoteDepositRequest(doc),existingDeposit=linkedDeposit(state().data,doc);
+   if(type==='invoice'&&configuredDeposit.enabled&&!existingDeposit){await runConversion('create_deposit_invoice',{target_quote_id:doc.id,deposit_percent:configuredDeposit.mode==='percent'?configuredDeposit.value:null,deposit_amount:configuredDeposit.mode==='amount'?configuredDeposit.value:null});return;}
+   if(type==='invoice'&&configuredDeposit.enabled&&existingDeposit){if(!existingDeposit.validated_at&&!existingDeposit.finalized_at&&!existingDeposit.locked_at){app().editDocument(existingDeposit.id);notify('Finalisez d’abord la facture d’acompte.','info');return;}await runConversion('create_balance_invoice',{target_quote_id:doc.id});return;}
+   if(type==='deposit_invoice'){ui.modal={type:'deposit'};renderViewer(state());return;}
   if(type==='progress_invoice'){ui.modal={type:'progress'};renderViewer(state());return;}
   if(type==='balance_invoice'){ui.modal={type:'balance'};renderViewer(state());return;}
   await runConversion('convert_quote_to_invoice',{target_quote_id:doc.id,target_invoice_type:type});
