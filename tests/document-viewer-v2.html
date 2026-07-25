@@ -152,6 +152,11 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
 
   PilozDocumentViewerV2.select('f3');await wait(30);
   check('actions facture brouillon',main.textContent.includes('Modifier le brouillon')&&main.textContent.includes('Finaliser la facture'));
+  const previewCallsBeforeInvalidation=calls.filter(call=>call[0]==='invokeBlob'&&call[2].preview?.document?.id==='f3').length;
+  PilozDocumentViewerV2.invalidateDocumentPreview('f3');PilozDocumentViewerV2.open('f3');
+  check('cache PDF explicitement vidé après sauvegarde',!document.querySelector('.document-viewer-stage iframe')&&main.textContent.includes('Préparation du PDF avec le modèle sélectionné'));
+  await wait(30);
+  check('PDF régénéré même si les dates sont identiques',calls.filter(call=>call[0]==='invokeBlob'&&call[2].preview?.document?.id==='f3').length>previewCallsBeforeInvalidation&&!!document.querySelector('.document-viewer-stage iframe'));
   state.data.documents.find(row=>row.id==='f3').updated_at='2026-07-21T12:01:00Z';
   PilozDocumentViewerV2.open('f3');
   check('ancien PDF brouillon masqué après modification',!document.querySelector('.document-viewer-stage iframe')&&main.textContent.includes('Préparation du PDF avec le modèle sélectionné'));

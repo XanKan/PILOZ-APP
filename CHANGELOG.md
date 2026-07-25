@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0-compliance.24 — 25 juillet 2026
+
+- suppression immédiate de l’ancien aperçu PDF après l’enregistrement d’un devis ou d’une facture brouillon ;
+- invalidation du rendu précédent avant et après la finalisation afin que le modèle configuré soit utilisé sans affichage transitoire de l’ancien modèle ;
+- protection contre les générations PDF déjà en cours : une réponse obsolète ne peut plus réinjecter un ancien aperçu dans la visionneuse ;
+- nouvelle version des ressources JavaScript pour forcer leur rechargement en production.
+
 ## 0.9.0-compliance.20 — 25 juillet 2026
 
 - le bouton « Facture » crée et ouvre directement une facture classique en brouillon, sans fenêtre d’avancement intermédiaire ;

@@ -20,6 +20,8 @@ const checks = [
   ['template resolved before preview', app.includes('const d=state.draft;ensureDraftDocumentTemplate(d);')],
   ['editor uses shared resolver', editor.includes('resolveDocumentTemplateId?.(d.document_type,d.template_id)')],
   ['viewer uses resolved template', viewer.includes('resolveDocumentTemplateId?.(doc.document_type,doc.template_id)')],
+  ['saved documents explicitly invalidate cached previews', app.includes('saveDocumentWithFreshPreview') && app.includes('invalidateDocumentPreview?.(savedId||previousId)')],
+  ['in-flight draft PDFs cannot restore stale templates', viewer.includes('draftPdfEpoch:new Map()') && viewer.includes("!==epoch") && viewer.includes('function invalidateDocumentPreview')],
   ['draft references repaired only before finalization', migration.includes('document.finalized_at is null')],
   ['finalized theme remains immutable', migration.includes('finalized_document_theme_is_immutable')],
   ['public document notes removed from editor', !editor.includes('Notes visibles sur le document')],

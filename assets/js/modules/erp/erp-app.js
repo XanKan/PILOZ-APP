@@ -538,6 +538,22 @@ async function previewDocument(){
  global.PilozApp.resolveFooterTokens=resolveFooterTokens;
  global.PilozApp.resolveDocumentTemplateId=resolveDocumentTemplateId;
  global.PilozApp.ensureDraftDocumentTemplate=ensureDraftDocumentTemplate;
+ const saveDocumentWithFreshPreview=global.PilozApp.saveDocument;
+ global.PilozApp.saveDocument=async function(...args){
+  const previousId=state.draft?.id||null;
+  global.PilozDocumentViewerV2?.invalidateDocumentPreview?.(previousId);
+  const savedId=await saveDocumentWithFreshPreview(...args);
+  global.PilozDocumentViewerV2?.invalidateDocumentPreview?.(savedId||previousId);
+  return savedId;
+ };
+ const finalizeDocumentWithFreshPreview=global.PilozApp.finalizeCurrentDocument;
+ global.PilozApp.finalizeCurrentDocument=async function(...args){
+  const documentId=state.draft?.id||null;
+  global.PilozDocumentViewerV2?.invalidateDocumentPreview?.(documentId);
+  const result=await finalizeDocumentWithFreshPreview(...args);
+  global.PilozDocumentViewerV2?.invalidateDocumentPreview?.(documentIdFromRpc(result)||documentId);
+  return result;
+ };
  const legacyRender=global.render;global.render=function(){if(!global.PilozRuntime?.session){global.clearPrivateShell?.();global.pageAuth?.();return;}if(managedPath()){render();return;}legacyRender();};
  const legacyTabs=global.renderTabs;global.renderTabs=function(){if(global.PilozRuntime?.session)renderNav();else document.getElementById('tabs')?.replaceChildren();};
  addEventListener('hashchange',()=>{if(global.PilozRuntime?.session&&managedPath())render();});
