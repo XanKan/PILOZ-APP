@@ -66,7 +66,9 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   check('suppression devis facturé désactivée',document.querySelector('.document-viewer-utility-actions button:last-child')?.disabled===true);
   check('statut manuel verrouillé après facturation',document.querySelector('[aria-label="Statut du devis"]')?.disabled===true);
   check('statut devis intégré une seule fois',document.querySelectorAll('[aria-label="Statut du devis"]').length===1&&!document.querySelector('.document-viewer-status-control'));
-  check('panneau devis complet',main.textContent.includes('Reste à facturer')&&main.textContent.includes('Convertir en…')&&main.textContent.includes('Modifier via une nouvelle version'));
+  check('panneau devis complet',main.textContent.includes('Reste à facturer')&&main.textContent.includes('Convertir en…')&&!main.textContent.includes('Modifier via une nouvelle version'));
+  const lockedEdit=[...document.querySelectorAll('.document-viewer-primary-actions>.document-viewer-action')].find(node=>node.textContent.trim()==='Modifier');
+  check('modification devis facturé grisée et expliquée',lockedEdit?.disabled===true&&document.querySelector('.document-viewer-quote-lock-help')?.textContent.includes('créez d’abord un avoir')&&document.querySelector('.document-viewer-quote-lock-help')?.textContent.includes('dupliquez ce devis'));
   check('statut automatique facturé visible',main.textContent.includes('Facturé'));
   check('documents liés visibles',main.textContent.includes('FAC-2026-0081'));
   check('commentaire interne visible',main.textContent.includes('Note commerciale interne')&&main.textContent.includes('Jamais inclus dans le PDF'));

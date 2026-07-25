@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0-compliance.17 — 25 juillet 2026
+
+- le devis déjà facturé affiche de nouveau l’action « Modifier », désormais grisée et désactivée ;
+- une explication indique de créer un avoir sur la facture liée puis de dupliquer le devis avant de recommencer le chiffrage ;
+- retrait de l’action trompeuse « Modifier via une nouvelle version ».
+
 ## 0.9.0-compliance.16 — 25 juillet 2026
 
 - retrait des notes publiques saisissables dans les devis, factures, préférences client et PDF ;
