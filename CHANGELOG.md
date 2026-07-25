@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0-compliance.13 — 25 juillet 2026
+
+- fermeture automatique de l’éditeur après l’enregistrement réussi d’un modèle ;
+- retour direct à la liste Paramètres > Modèles ;
+- conservation de l’éditeur et des modifications en cas d’échec d’enregistrement.
+
 ## 0.9.0-compliance.12 — 25 juillet 2026
 
 - restauration de l’éditeur historique des modèles de devis et de factures ;

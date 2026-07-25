@@ -51,6 +51,11 @@
         check('coche centrée sous son titre',getComputedStyle(table.rows[0].cells[2]).textAlign==='center'&&getComputedStyle(table.rows[1].cells[2]).textAlign==='center');
         check('actions centrées sous leur titre',getComputedStyle(table.rows[0].cells[3]).textAlign==='center'&&getComputedStyle(table.rows[1].cells[3]).textAlign==='center'&&getComputedStyle(table.rows[1].cells[3].querySelector('.erp-row-actions')).justifyContent==='center');
         check('actions des pieds de page alignées',getComputedStyle(footerTable.rows[0].cells[3]).textAlign==='center'&&getComputedStyle(footerTable.rows[1].cells[3]).textAlign==='center'&&getComputedStyle(footerTable.rows[1].cells[3].querySelector('.erp-row-actions')).justifyContent==='center');
+        PilozApp.newTemplate('quote');
+        PilozApp.getState().templateDraft.is_default=false;
+        await PilozApp.saveTemplate();
+        await wait(80);
+        check('enregistrement ferme le modèle',location.hash==='#settings/templates'&&!PilozApp.getState().templateDraft);
         check('aucune erreur javascript',!__errors.length);
       }catch(error){checks.push(['exécution',false,error.stack||error.message]);}
       const failed=checks.filter(row=>!row[1]),node=document.getElementById('result');
