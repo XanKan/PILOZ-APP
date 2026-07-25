@@ -557,6 +557,7 @@ async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[],cli
     const progressSourceLine=(await db.query("select id from public.document_lines where document_id=$1 and line_type in('item','free_item','discount') order by position limit 1",[progressQuote.id])).rows[0];
     const secondProgressSourceLine=(await db.query("select id from public.document_lines where document_id=$1 and line_type in('item','free_item','discount') order by position offset 1 limit 1",[progressQuote.id])).rows[0];
     const progressFiscalNumbers=[];
+    let latestProgressId=null;
     for(let situation=1;situation<=11;situation+=1){
       const cumulative=situation*8;
       const progressId=(await db.query('select public.create_progress_invoice($1,$2::jsonb) result',[progressQuote.id,JSON.stringify([{line_id:progressSourceLine.id,progress_percent:cumulative}])])).rows[0].result;
@@ -581,10 +582,21 @@ async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[],cli
       if(!/^FAC-\d{4}-\d+$/.test(finalizedProgress.number||''))
         throw new Error(`progress invoice: situation ${situation} did not receive a regular fiscal invoice number ${JSON.stringify(finalizedProgress)}`);
       progressFiscalNumbers.push(finalizedProgress.number);
+      latestProgressId=progressId;
     }
     const progressSequence=await db.query("select count(*)::int count,max((target.metadata->>'situation_number')::integer)::int maximum from public.document_links link join public.documents target on target.id=link.target_document_id where link.source_document_id=$1 and link.link_type='progress'",[progressQuote.id]);
     if(Number(progressSequence.rows[0]?.count)!==11||Number(progressSequence.rows[0]?.maximum)!==11||new Set(progressFiscalNumbers).size!==11)
       throw new Error(`progress invoice: unlimited sequence or fiscal numbering is invalid ${JSON.stringify({sequence:progressSequence.rows[0],progressFiscalNumbers})}`);
+    const nextProgressId=(await db.query('select public.create_next_progress_invoice_draft($1) result',[latestProgressId])).rows[0].result;
+    const nextProgressDraft=(await db.query('select status,number,metadata from public.documents where id=$1',[nextProgressId])).rows[0];
+    const nextProgressLines=await db.query("select source_line_id,quantity,cumulative_progress_percent,optional,line_metadata from public.document_lines where document_id=$1 and line_type in('item','free_item','discount') order by position",[nextProgressId]);
+    const sameNextProgressId=(await db.query('select public.create_next_progress_invoice_draft($1) result',[latestProgressId])).rows[0].result;
+    if(nextProgressDraft?.status!=='draft'||nextProgressDraft?.number!==null
+      ||Number(nextProgressDraft?.metadata?.situation_number)!==12||nextProgressLines.rows.length!==2
+      ||!nextProgressLines.rows.some(row=>row.source_line_id===progressSourceLine.id&&Number(row.quantity)===0&&Number(row.cumulative_progress_percent)===88&&row.line_metadata?.progress_placeholder===true)
+      ||!nextProgressLines.rows.some(row=>row.source_line_id===secondProgressSourceLine.id&&Number(row.quantity)===0&&Number(row.cumulative_progress_percent)===0&&row.optional===false)
+      ||sameNextProgressId!==nextProgressId)
+      throw new Error(`progress invoice: next situation draft was not created atomically from previous progress ${JSON.stringify({nextProgressId,sameNextProgressId,nextProgressDraft,nextProgressLines:nextProgressLines.rows})}`);
     await db.exec(fs.readFileSync(path.join(repoRoot,'supabase','tests','202607220045_privacy_roles_and_compliance_checks.sql'),'utf8'));
     await db.exec(fs.readFileSync(path.join(repoRoot,'supabase','tests','202607220047_payment_privacy_maintenance_checks.sql'),'utf8'));
     console.log(JSON.stringify({ok:true,quote:{...quote,convertedInvoiceId:convertedInvoiceId.rows[0].result},invoice:{id:invoice.id,draftNumber:invoice.number,number:finalized.number,total:invoice.total,status:finalized.status,finalizedAt:finalized.finalized_at},progressInvoices:{count:progressFiscalNumbers.length,lastSituation:11,fiscalNumbers:progressFiscalNumbers}}));

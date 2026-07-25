@@ -11,6 +11,7 @@ const pdf = fs.readFileSync(path.join(root, 'supabase/functions/generate-documen
 const migration = fs.readFileSync(path.join(root, 'supabase/migrations/202607250060_restore_configured_document_templates.sql'), 'utf8');
 const progressMigration = fs.readFileSync(path.join(root, 'supabase/migrations/202607250062_editable_progress_drafts.sql'), 'utf8');
 const progressModeMigration = fs.readFileSync(path.join(root, 'supabase/migrations/202607250063_invoice_progress_mode.sql'), 'utf8');
+const nextProgressMigration = fs.readFileSync(path.join(root, 'supabase/migrations/202607250065_next_progress_invoice_draft.sql'), 'utf8');
 
 const checks = [
   ['company default resolver', app.includes('function resolveDocumentTemplateId') && app.includes('default_quote_template_id')],
@@ -37,6 +38,9 @@ const checks = [
   ['progress mode is activated from the editor side panel', editor.includes('Facture de situation') && editor.includes('toggleProgressMode') && editor.includes("api().rpc('set_invoice_progress_mode'")],
   ['progress invoice totals are simplified', editor.includes('Avancement total :') && viewer.includes('Avancement total :') && pdf.includes('Avancement total :') && !editor.includes('Avancement cumulé') && !editor.includes('Sans titre')],
   ['progress mode transition is atomic and company scoped', progressModeMigration.includes('create or replace function public.set_invoice_progress_mode') && progressModeMigration.includes('public.is_company_member(target.company_id)') && progressModeMigration.includes("link_type='progress'")],
+  ['next situation opens its draft directly without obsolete popup', viewer.includes("runConversion('create_next_progress_invoice_draft'") && !viewer.includes("ui.modal={type:'progress'") && !viewer.includes("ui.modal.type==='progress'") && !viewer.includes("ui.modal?.type==='progress'")],
+  ['progress editor has a weighted progress banner', editor.includes('document-v2-progress-banner') && editor.includes('État d’avancement du devis') && editor.includes('progressTotal(d)')],
+  ['next situation creation is atomic and company scoped', nextProgressMigration.includes('create or replace function public.create_next_progress_invoice_draft') && nextProgressMigration.includes('public.is_company_member(current_situation.company_id)') && nextProgressMigration.includes("public.convert_quote_to_invoice(source_quote.id,'invoice')") && nextProgressMigration.includes('public.set_invoice_progress_mode(target_id,true)')],
 ];
 
 const failed = checks.filter(([, ok]) => !ok).map(([name]) => name);
