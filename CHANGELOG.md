@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0-compliance.16 — 25 juillet 2026
+
+- retrait des notes publiques saisissables dans les devis, factures, préférences client et PDF ;
+- acompte simplifié en une valeur suivie d’un choix `%` ou `€` ;
+- conservation de la position de défilement pendant les modifications et les filtres ;
+- fermeture des calendriers, recherches client et listes de filtres par clic extérieur ;
+- saisie d’une ligne ponctuelle conservée automatiquement sans bouton de confirmation.
+
 ## 0.9.0-compliance.15 — 25 juillet 2026
 
 - Corrige l’association du modèle configuré lors de la création et de l’enregistrement d’un devis ou d’une facture.

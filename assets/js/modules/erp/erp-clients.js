@@ -1038,7 +1038,6 @@
           .map((x) => option(x.id, pref.invoice_template_id, x.name))
           .join("")}</select></label>
         <label><span>Pied de page préféré</span><select name="footer_id"><option value="">Pied de page du modèle</option>${footers.map((x) => option(x.id, pref.footer_id, x.name || "Pied de page")).join("")}</select></label>
-        <label class="full"><span>Notes visibles dans les nouveaux documents</span><textarea name="document_notes">${esc(pref.document_notes || "")}</textarea></label>
         <label class="full"><span>Notes internes des préférences</span><textarea name="internal_notes">${esc(pref.internal_notes || "")}</textarea></label>
       </div>
     </form>`;
@@ -1245,7 +1244,7 @@
         shipping_address_id: raw.shipping_address_id || null,
         service_address_id: raw.service_address_id || null,
         footer_id: raw.footer_id || null,
-        document_notes: raw.document_notes || null,
+        document_notes: pref.document_notes || null,
         internal_notes: raw.internal_notes || null,
       };
     setBusy(true);
@@ -1826,7 +1825,6 @@
         d.document_type === "quote"
           ? pref.quote_template_id || d.template_id
           : pref.invoice_template_id || d.template_id,
-      public_notes: pref.document_notes || d.public_notes,
     });
     return d;
   }

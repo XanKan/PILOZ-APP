@@ -54,7 +54,7 @@ jobs:
           node tests/site-offer-static.cjs
       - name: Run browser suites
         run: |
-          tests=(browser-tests.html api-response.html fiscal-domain.html electronic-invoice.html erp-smoke.html production-regression.html)
+          tests=(browser-tests.html api-response.html fiscal-domain.html electronic-invoice.html erp-smoke.html production-regression.html document-viewer-v2.html commercial-workspace.html)
           for test in "${tests[@]}"; do
             output=$(google-chrome --headless --no-sandbox --disable-gpu --virtual-time-budget=10000 --user-data-dir="$RUNNER_TEMP/chrome-${test}" --dump-dom "file://$PWD/tests/${test}")
             echo "$output" | grep 'data-status="passed"'

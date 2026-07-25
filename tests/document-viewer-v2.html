@@ -81,6 +81,9 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   check('libellé date de validité explicite',main.textContent.includes('Date de validité'));
   PilozDocumentViewerV2.openClientSearch();
   check('filtre client avec recherche limitée',!!document.querySelector('[data-client-filter-search]')&&document.querySelectorAll('[data-client-suggestion]').length===6&&!document.querySelector('datalist'));
+  await wait(20);PilozDocumentViewerV2.dismissTransientUi(document.querySelector('.document-viewer-preview'));await wait(10);
+  check('filtres ponctuels fermés par clic extérieur',!document.querySelector('.document-viewer-client-suggestions')&&!document.querySelector('.document-viewer-date-range-popover'));
+  PilozDocumentViewerV2.toggleDateRange('issue');
   check('filtre montant TTC',main.textContent.includes('Montant TTC min.')&&main.textContent.includes('Montant TTC max.'));
   check('boutons appliquer et réinitialiser',main.textContent.includes('Appliquer')&&main.textContent.includes('Réinitialiser'));
   PilozDocumentViewerV2.selectCalendarDay('issue','2026-07-10');PilozDocumentViewerV2.selectCalendarDay('issue','2026-07-21');

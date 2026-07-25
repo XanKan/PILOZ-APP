@@ -535,7 +535,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     legalContact = [issuer.phone_e164 || issuer.phone, issuer.email, issuer.website].filter(Boolean).map(text).join(" - ");
     if (!referenceLayout && legalIdentity) footerLines.push(legalIdentity);
     if (!referenceLayout && legalContact) footerLines.push(legalContact);
-    [doc.public_notes, settings.visible_mention, settings.legal_notice].filter(Boolean).forEach(value => footerLines.push(String(value)));
+    [settings.visible_mention, settings.legal_notice].filter(Boolean).forEach(value => footerLines.push(String(value)));
   }
   if (showLatePenalties && settings.collection_fee_notice) footerLines.push(String(settings.collection_fee_notice));
   const footerNote = footerLines.join(" | ");
