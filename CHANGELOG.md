@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.0-compliance.11 — 25 juillet 2026
+
+- remplacement de la page « Modèles » par une bibliothèque visuelle de thèmes documentaires, sans suppression des modèles existants ;
+- création vierge ou par copie, renommage, duplication, archivage et suppression sûre ;
+- éditeur plein écran à dix rubriques : structure, logo, couleurs, typographie, tableau, décoration, pieds de page, espacement, liens et assignation ;
+- six structures réelles, aperçu A4 avec filigrane `SPECIMEN` réservé à l’éditeur, import privé d’assets et assignations par type de document ;
+- configuration canonique versionnée, thème figé dans le snapshot fiscal et reprise par le générateur PDF ;
+- trois thèmes système distincts pour les entreprises existantes et futures ;
+- migration additive avec RLS, politiques Storage et 143 assertions dédiées.
+
 ## 0.9.0-compliance.10 — 24 juillet 2026
 
 - carte bancaire collectée par Stripe avant la création du compte, sans débit pendant les 14 jours d’essai ;
