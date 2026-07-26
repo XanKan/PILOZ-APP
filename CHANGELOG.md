@@ -2,6 +2,8 @@
 
 ## 0.9.0-compliance.29 — 26 juillet 2026
 
+- alignement automatique des brouillons à 0 % de TVA lorsqu’une entreprise est déclarée non assujettie, afin d’autoriser leur finalisation sans produire de TVA incohérente ;
+- masquage immédiat des paramètres TVA devenus inutiles lorsque l’assujettissement est désactivé ;
 - simplification des listes de TVA dans les devis et factures : seuls les pourcentages configurés sont affichés ;
 - affichage de la déduction d’acompte dans le récapitulatif des factures et des PDF ;
 - choix de la déduction complète, au prorata de l’avancement ou d’un montant fixe sur les factures de situation ;
