@@ -1,4 +1,4 @@
-# Politique de calcul financier — version `financial-v1`
+# Politique de calcul financier — version `financial-v2-deposit-deduction`
 
 ## Autorité
 
@@ -14,6 +14,16 @@ Le calcul PostgreSQL exécuté par `recalculate_document_amounts_v1` est autorit
 - remise globale : appliquée aux sommes HT et TVA, puis chaque somme est arrondie à deux décimales ;
 - TTC : HT arrondi + TVA arrondie ;
 - mode PostgreSQL utilisé : `round(numeric, 2)`, soit arrondi au plus proche avec les demis éloignés de zéro.
+
+## Déduction des acomptes
+
+- les totaux HT, TVA et TTC bruts sont conservés dans les métadonnées du document ;
+- l’acompte déductible provient uniquement de factures d’acompte finalisées liées au même devis ;
+- les déductions déjà figées sur les situations précédentes sont retranchées du solde disponible ;
+- la méthode peut être complète, proportionnelle à l’avancement cumulé ou limitée à un montant TTC fixe ;
+- la déduction ne peut dépasser ni le solde d’acompte disponible ni le montant brut de la facture ;
+- le total TTC stocké et exigible est le total brut diminué de la déduction ;
+- le serveur PostgreSQL recalcule ces montants avant toute finalisation et les fige dans l’instantané légal.
 
 ## Cohérence
 

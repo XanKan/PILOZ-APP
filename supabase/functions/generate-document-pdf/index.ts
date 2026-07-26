@@ -254,6 +254,14 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   const displayedClientAddress = Object.keys(billingAddress).length ? billingAddress : client;
   const settings = payload.document_settings || {};
   const metadata = record(doc.metadata);
+  const depositDeductionTtc = Math.max(0, Number(metadata.deposit_deduction_ttc) || 0);
+  const grossTotalExclTax = Number(metadata.gross_total_excl_tax ?? doc.total_excl_tax) || 0;
+  const grossTotalTax = Number(metadata.gross_total_tax ?? doc.total_tax) || 0;
+  const grossTotalInclTax = Number(metadata.gross_total_incl_tax ?? (grossTotalExclTax + grossTotalTax)) || 0;
+  const storedTotalInclTax = Number(doc.total_incl_tax) || 0;
+  const netTotalInclTax = depositDeductionTtc > 0 && Math.abs(storedTotalInclTax - grossTotalInclTax) < 0.01
+    ? Math.max(0, grossTotalInclTax - depositDeductionTtc)
+    : storedTotalInclTax;
   const marketSummary = record(payload.market_summary || metadata.market_summary);
   const marketRows = Array.isArray(marketSummary.rows)
     ? marketSummary.rows.map(record)
@@ -262,6 +270,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
 
   const templateInfo = record(payload.template);
   const templateVersion = record(templateInfo.version);
+  const termsConditions = text(templateVersion.terms_conditions || "").slice(0, 30000);
   const templateFooter = record(templateInfo.footer);
   const layoutKey = resolveLayoutKey(templateVersion.layout_key);
   const colors = resolveColors(layoutKey, record(templateVersion.color_settings));
@@ -562,31 +571,37 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   });
   const showPaymentBalance = doc.document_type !== "quote";
   const progressRowOffset = isProgressInvoice ? 16 : 0;
-  const totalsBoxHeight = (showPaymentBalance ? 115 : (layoutKey === "modern" ? 91 : 83)) + progressRowOffset;
+  const depositRowOffset = depositDeductionTtc > 0 ? 16 : 0;
+  const totalsBoxHeight = (showPaymentBalance ? 115 : (layoutKey === "modern" ? 91 : 83)) + progressRowOffset + depositRowOffset;
   if (!referenceLayout) page.drawRectangle({ x: 354, y: totalsY - totalsBoxHeight + 12, width: 199, height: totalsBoxHeight, color: layoutKey === "modern" ? colors.totals : colors.tableBackground });
   const totalsTextColor = layoutKey === "modern" ? rgb(1, 1, 1) : colors.text;
   if (!referenceLayout) page.drawText("Récapitulatif", { x: 374, y: totalsY + 3, size: 9, font: bold, color: totalsTextColor });
   page.drawText("Total HT", { x: referenceLayout ? 354 : 374, y: totalsY - 14, size: referenceLayout ? 8 : 9, font: bold, color: totalsTextColor });
-  right(page, regular, amount(doc.total_excl_tax, currency), 538, totalsY - 14, 9, totalsTextColor);
+  right(page, regular, amount(grossTotalExclTax, currency), 538, totalsY - 14, 9, totalsTextColor);
   page.drawText("Total TVA", { x: referenceLayout ? 354 : 374, y: totalsY - 30, size: referenceLayout ? 8 : 9, font: bold, color: totalsTextColor });
-  right(page, regular, amount(doc.total_tax, currency), 538, totalsY - (referenceLayout ? 30 : 34), 9, totalsTextColor);
+  right(page, regular, amount(grossTotalTax, currency), 538, totalsY - (referenceLayout ? 30 : 34), 9, totalsTextColor);
   const grandTotalColor = layoutKey === "modern" ? rgb(1, 1, 1) : colors.totals;
   if (isProgressInvoice) {
     const progressY = totalsY - (referenceLayout ? 46 : 50);
     page.drawText("Avancement total :", { x: referenceLayout ? 354 : 374, y: progressY, size: referenceLayout ? 8 : 9, font: bold, color: totalsTextColor });
     right(page, regular, `${progressTotalPercent(payload.lines || []).toLocaleString("fr-FR", { maximumFractionDigits: 2 })} %`, 538, progressY, 9, totalsTextColor);
   }
-  if (referenceLayout) page.drawRectangle({ x: 350, y: totalsY - 53 - progressRowOffset, width: 203, height: 17, color: colors.tableBackground });
-  else page.drawLine({ start: { x: 370, y: totalsY - 44 - progressRowOffset }, end: { x: 538, y: totalsY - 44 - progressRowOffset }, thickness: 1, color: grandTotalColor });
-  page.drawText("Total TTC", { x: referenceLayout ? 354 : 374, y: totalsY - (referenceLayout ? 48 : 61) - progressRowOffset, size: referenceLayout ? 8 : 10, font: bold, color: grandTotalColor });
-  right(page, bold, amount(doc.total_incl_tax, currency), 538, totalsY - (referenceLayout ? 48 : 61) - progressRowOffset, referenceLayout ? 8 : 10, grandTotalColor);
+  if (depositDeductionTtc > 0) {
+    const deductionY = totalsY - (referenceLayout ? 46 : 50) - progressRowOffset;
+    page.drawText("Déduction acompte", { x: referenceLayout ? 354 : 374, y: deductionY, size: referenceLayout ? 8 : 9, font: bold, color: totalsTextColor });
+    right(page, regular, `- ${amount(depositDeductionTtc, currency)}`, 538, deductionY, 9, totalsTextColor);
+  }
+  if (referenceLayout) page.drawRectangle({ x: 350, y: totalsY - 53 - progressRowOffset - depositRowOffset, width: 203, height: 17, color: colors.tableBackground });
+  else page.drawLine({ start: { x: 370, y: totalsY - 44 - progressRowOffset - depositRowOffset }, end: { x: 538, y: totalsY - 44 - progressRowOffset - depositRowOffset }, thickness: 1, color: grandTotalColor });
+  page.drawText("Total TTC", { x: referenceLayout ? 354 : 374, y: totalsY - (referenceLayout ? 48 : 61) - progressRowOffset - depositRowOffset, size: referenceLayout ? 8 : 10, font: bold, color: grandTotalColor });
+  right(page, bold, amount(netTotalInclTax, currency), 538, totalsY - (referenceLayout ? 48 : 61) - progressRowOffset - depositRowOffset, referenceLayout ? 8 : 10, grandTotalColor);
   if (showPaymentBalance) {
     const paidAmount = Number(doc.amount_paid || doc.paid_amount || 0);
-    const remainingAmount = Math.max(0, Number(doc.total_incl_tax || 0) - paidAmount);
-    page.drawText("Encaissé", { x: 374, y: totalsY - 79 - progressRowOffset, size: 8, font: regular, color: totalsTextColor });
-    right(page, regular, amount(paidAmount, currency), 538, totalsY - 79 - progressRowOffset, 8, totalsTextColor);
-    page.drawText("Reste à payer", { x: 374, y: totalsY - 95 - progressRowOffset, size: 8, font: bold, color: grandTotalColor });
-    right(page, bold, amount(remainingAmount, currency), 538, totalsY - 95 - progressRowOffset, 8, grandTotalColor);
+    const remainingAmount = Math.max(0, netTotalInclTax - paidAmount);
+    page.drawText("Encaissé", { x: 374, y: totalsY - 79 - progressRowOffset - depositRowOffset, size: 8, font: regular, color: totalsTextColor });
+    right(page, regular, amount(paidAmount, currency), 538, totalsY - 79 - progressRowOffset - depositRowOffset, 8, totalsTextColor);
+    page.drawText("Reste à payer", { x: 374, y: totalsY - 95 - progressRowOffset - depositRowOffset, size: 8, font: bold, color: grandTotalColor });
+    right(page, bold, amount(remainingAmount, currency), 538, totalsY - 95 - progressRowOffset - depositRowOffset, 8, grandTotalColor);
   }
   if (marketRows.length) {
     const rowHeight = 14;
@@ -674,6 +689,28 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     limitedLines(regular, [legalIdentity, legalContact].filter(Boolean).join(" - "), 5.5, 245, 2).forEach((line, index) => {
       page.drawText(line, { x: 303, y: 60 - index * 7, size: 5.5, font: regular, color: colors.muted });
     });
+  }
+  if (termsConditions) {
+    let termsPage: PDFPage;
+    let termsY = 0;
+    const addTermsPage = (continuation = false) => {
+      termsPage = pdf.addPage(A4);
+      pages.push(termsPage);
+      if (!referenceLayout) termsPage.drawRectangle({ x: 0, y: A4[1] - metrics.bandHeight, width: A4[0], height: metrics.bandHeight, color: colors.primary });
+      if (draftDocument) termsPage.drawText(draftWatermark, { x: 58, y: 330, size: 48, font: bold, color: rgb(0.33, 0.4, 0.5), opacity: 0.12, rotate: degrees(38) });
+      termsPage.drawText(continuation ? "Conditions générales de vente (suite)" : "Conditions générales de vente", { x: 42, y: 788, size: 14, font: bold, color: colors.heading });
+      termsPage.drawLine({ start: { x: 42, y: 774 }, end: { x: 553, y: 774 }, thickness: 1, color: colors.border });
+      termsY = 754;
+    };
+    addTermsPage(false);
+    for (const paragraph of termsConditions.split(/\r?\n/)) {
+      const termLines = paragraph.trim() ? wrap(regular, paragraph, 8, 511) : [""];
+      for (const termLine of termLines) {
+        if (termsY < 62) addTermsPage(true);
+        if (termLine) termsPage!.drawText(termLine, { x: 42, y: termsY, size: 8, font: regular, color: colors.text });
+        termsY -= termLine ? 11 : 7;
+      }
+    }
   }
   pages.forEach((current, index) => {
     if (footerBody) {

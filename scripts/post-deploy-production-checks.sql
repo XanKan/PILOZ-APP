@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607260067' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607260068' ok
   union all
   select 'invoice_legal_validator',coalesce(to_regprocedure('public.validate_invoice_for_finalization(uuid)')::text,'missing'),
     to_regprocedure('public.validate_invoice_for_finalization(uuid)') is not null
@@ -26,6 +26,17 @@ with controls as(
   union all
   select 'next_progress_draft_rpc',coalesce(to_regprocedure('public.create_next_progress_invoice_draft(uuid)')::text,'missing'),
     to_regprocedure('public.create_next_progress_invoice_draft(uuid)') is not null
+  union all
+  select 'deposit_deduction_rpc',coalesce(to_regprocedure('public._piloz_document_deposit_deduction(uuid,jsonb,numeric,numeric,numeric)')::text,'missing'),
+    to_regprocedure('public._piloz_document_deposit_deduction(uuid,jsonb,numeric,numeric,numeric)') is not null
+  union all
+  select 'template_terms_column',count(*)::text,count(*)=1
+  from information_schema.columns where table_schema='public' and table_name='document_template_versions'
+    and column_name='terms_conditions'
+  union all
+  select 'deposit_calculation_version',
+    (position('financial-v2-deposit-deduction' in pg_get_functiondef(to_regprocedure('public.finalize_document(uuid)')))>0)::text,
+    position('financial-v2-deposit-deduction' in pg_get_functiondef(to_regprocedure('public.finalize_document(uuid)')))>0
   union all
   select 'document_theme_assignments_rls',coalesce((select relrowsecurity::text from pg_class where oid='public.document_theme_assignments'::regclass),'missing'),
     coalesce((select relrowsecurity from pg_class where oid='public.document_theme_assignments'::regclass),false)
@@ -196,7 +207,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607260067',
+  'schema_version','202607260068',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;

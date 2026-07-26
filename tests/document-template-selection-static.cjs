@@ -13,6 +13,8 @@ const progressMigration = fs.readFileSync(path.join(root, 'supabase/migrations/2
 const progressModeMigration = fs.readFileSync(path.join(root, 'supabase/migrations/202607250063_invoice_progress_mode.sql'), 'utf8');
 const nextProgressMigration = fs.readFileSync(path.join(root, 'supabase/migrations/202607250065_next_progress_invoice_draft.sql'), 'utf8');
 const marketMigration = fs.readFileSync(path.join(root, 'supabase/migrations/202607260067_deposit_followup_market_summary.sql'), 'utf8');
+const depositDeductionMigration = fs.readFileSync(path.join(root, 'supabase/migrations/202607260068_deposit_deduction_and_template_terms.sql'), 'utf8');
+const templateFunction = fs.readFileSync(path.join(root, 'supabase/functions/save-document-template/index.ts'), 'utf8');
 
 const checks = [
   ['company default resolver', app.includes('function resolveDocumentTemplateId') && app.includes('default_quote_template_id')],
@@ -51,6 +53,11 @@ const checks = [
   ['market summary is rendered in final PDFs', pdf.includes('Récapitulatif du marché') && pdf.includes('marketSummary.previous_total_incl_tax')],
   ['market summary is frozen in legal snapshots', marketMigration.includes('document_snapshots_market_summary') && marketMigration.includes("'{market_summary}'") && marketMigration.includes('payload_hash:=encode')],
   ['linked invoices cannot exceed the quote amount', marketMigration.includes('documents_quote_billing_cap') && marketMigration.includes('total des factures depasse le montant du devis')],
+  ['deposit deduction is visible and editable on progress invoices', editor.includes('openDepositDeductionModal') && editor.includes('value="complete"') && editor.includes('value="prorata"') && editor.includes('value="fixed"')],
+  ['deposit deduction is enforced by the database totals trigger', depositDeductionMigration.includes('_piloz_document_deposit_deduction') && depositDeductionMigration.includes('deposit_deduction_ttc') && depositDeductionMigration.includes('financial-v2-deposit-deduction')],
+  ['deposit deduction is rendered in final PDFs', pdf.includes('depositDeductionTtc') && pdf.includes('deposit_deduction_ttc')],
+  ['template terms are limited and persisted', app.includes('maxlength="30000"') && app.includes('setTemplateTerms') && templateFunction.includes('target_terms_conditions') && depositDeductionMigration.includes('char_length(terms_conditions)<=30000')],
+  ['template terms are appended to generated PDFs', pdf.includes('termsConditions') && pdf.includes('addTermsPage')],
 ];
 
 const failed = checks.filter(([, ok]) => !ok).map(([name]) => name);

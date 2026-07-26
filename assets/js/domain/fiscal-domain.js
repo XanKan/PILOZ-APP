@@ -1,5 +1,5 @@
 (function(global){
-  const VERSION=Object.freeze({application:'2026.07-compliance',validator:'invoice-validator-v1',calculation:'financial-v1',canonicalization:'json-c14n-draft-v1'});
+  const VERSION=Object.freeze({application:'2026.07-compliance',validator:'invoice-validator-v1',calculation:'financial-v2-deposit-deduction',canonicalization:'json-c14n-draft-v1'});
   const POW10=[1n,10n,100n,1000n,10000n,100000n,1000000n,10000000n,100000000n,1000000000n,10000000000n];
   function scaled(value,scale){
     const input=String(value??0).trim().replace(',','.');

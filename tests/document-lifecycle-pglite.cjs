@@ -305,7 +305,8 @@ async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[],cli
     if(allocation.rows.length!==1||allocation.rows[0].full_number!==finalized.number||Number(allocation.rows[0].sequence_value)!==1)
       throw new Error(`invoice: number allocation is not traceable ${JSON.stringify(allocation.rows)}`);
     const versioned=await db.query('select fiscal_security_status,application_version,database_schema_version,calculation_version,legal_mentions_snapshot from public.documents where id=$1',[invoice.id]);
-    if(versioned.rows[0].fiscal_security_status!=='legacy_unsecured'||!versioned.rows[0].application_version||versioned.rows[0].calculation_version!=='financial-v1')
+    if(versioned.rows[0].fiscal_security_status!=='legacy_unsecured'||versioned.rows[0].application_version!=='0.9.0-compliance.29'
+      ||versioned.rows[0].database_schema_version!=='202607260068'||versioned.rows[0].calculation_version!=='financial-v2-deposit-deduction')
       throw new Error(`invoice: version manifest is incomplete ${JSON.stringify(versioned.rows[0])}`);
     const legalRetention=await db.query('select legal_retention_until,legal_validation_report from public.documents where id=$1',[invoice.id]);
     if(!new Date(legalRetention.rows[0]?.legal_retention_until).toISOString().startsWith('2037-03-31')||legalRetention.rows[0]?.legal_validation_report?.validator_version!=='invoice-validator-v3-fr-2026')
@@ -581,6 +582,38 @@ async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[],cli
     // Les factures de situation suivent une suite N°1, N°2, ... indépendante
     // du numéro fiscal. Onze situations successives prouvent notamment qu'il
     // n'existe pas de plafond fonctionnel à dix documents.
+    // A finalized deposit is deducted from progress invoices. The gross amount
+    // remains traceable in metadata while the document total is the amount due.
+    const depositQuote=await saveDraft(db,'quote',null,1000);
+    await db.query("select public.transition_document_status($1,'pending') result",[depositQuote.id]);
+    const depositDraftId=(await db.query('select public.create_deposit_invoice($1,30,null) result',[depositQuote.id])).rows[0].result;
+    const finalizedDeposit=(await db.query('select public.finalize_document($1) result',[depositDraftId])).rows[0].result;
+    const finalizedDepositTotals=(await db.query('select total_excl_tax,total_tax,total_incl_tax from public.documents where id=$1',[depositDraftId])).rows[0];
+    if(Number(finalizedDepositTotals.total_incl_tax)!==360)throw new Error(`deposit deduction: expected a 360 EUR deposit ${JSON.stringify({finalizedDeposit,finalizedDepositTotals})}`);
+    const depositSourceLine=(await db.query("select id from public.document_lines where document_id=$1 and line_type in('item','free_item','discount') order by position limit 1",[depositQuote.id])).rows[0];
+    const depositProgressId=(await db.query('select public.create_progress_invoice($1,$2::jsonb) result',[depositQuote.id,JSON.stringify([{line_id:depositSourceLine.id,progress_percent:50}])])).rows[0].result;
+    const prorataSituation=(await db.query('select total_excl_tax,total_tax,total_incl_tax,metadata from public.documents where id=$1',[depositProgressId])).rows[0];
+    if(Number(prorataSituation.metadata?.gross_total_incl_tax)!==600
+      ||Number(prorataSituation.metadata?.deposit_deduction_ttc)!==180
+      ||Number(prorataSituation.total_incl_tax)!==420)
+      throw new Error(`deposit deduction: invalid prorata totals ${JSON.stringify(prorataSituation)}`);
+    await db.exec('reset role');
+    await db.query("update public.documents set metadata=metadata||jsonb_build_object('deposit_deduction_mode','fixed','deposit_deduction_fixed_ttc',120) where id=$1",[depositProgressId]);
+    await db.exec(`set request.jwt.claim.sub='${actor}'; set role authenticated;`);
+    await db.query('select public.recalculate_document_amounts_v1($1) result',[depositProgressId]);
+    const fixedSituation=(await db.query('select total_excl_tax,total_tax,total_incl_tax,metadata from public.documents where id=$1',[depositProgressId])).rows[0];
+    if(Number(fixedSituation.metadata?.deposit_deduction_ttc)!==120||Number(fixedSituation.total_incl_tax)!==480)
+      throw new Error(`deposit deduction: invalid fixed totals ${JSON.stringify(fixedSituation)}`);
+    await db.query('select public.finalize_document($1) result',[depositProgressId]);
+    const secondDepositProgressId=(await db.query('select public.create_progress_invoice($1,$2::jsonb) result',[depositQuote.id,JSON.stringify([{line_id:depositSourceLine.id,progress_percent:100}])])).rows[0].result;
+    const secondProrataSituation=(await db.query('select total_excl_tax,total_tax,total_incl_tax,metadata from public.documents where id=$1',[secondDepositProgressId])).rows[0];
+    if(Number(secondProrataSituation.metadata?.gross_total_incl_tax)!==600
+      ||Number(secondProrataSituation.metadata?.deposit_deduction_ttc)!==240
+      ||Number(secondProrataSituation.total_incl_tax)!==360)
+      throw new Error(`deposit deduction: previous deductions are not carried forward ${JSON.stringify(secondProrataSituation)}`);
+    await db.exec('reset role');
+    await db.query('select terms_conditions from public.document_template_versions limit 0');
+    await db.exec(`set request.jwt.claim.sub='${actor}'; set role authenticated;`);
     const progressQuote=await saveDraft(db,'quote',null,1000,[{
       id:crypto.randomUUID(),position:2,line_type:'free_item',reference:'SITUATION-2',name:'Deuxième ligne modifiable',
       description:'Ligne conservée dans chaque situation',quantity:1,unit:'unité',unit_cost_snapshot:50,

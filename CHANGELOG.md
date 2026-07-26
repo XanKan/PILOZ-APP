@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.0-compliance.29 — 26 juillet 2026
+
+- affichage de la déduction d’acompte dans le récapitulatif des factures et des PDF ;
+- choix de la déduction complète, au prorata de l’avancement ou d’un montant fixe sur les factures de situation ;
+- calcul serveur autoritaire du montant net exigible avec conservation des totaux bruts et de la méthode choisie ;
+- report automatique du solde d’acompte entre les situations successives ;
+- ajout de CGV versionnées dans les modèles, limitées à 30 000 caractères et ajoutées automatiquement après le devis ou la facture ;
+- génération multi-pages des CGV dans les aperçus et PDF définitifs.
+
 ## 0.9.0-compliance.28 — 26 juillet 2026
 
 - conservation de la quantité contractuelle dans l’éditeur des factures de situation ;
