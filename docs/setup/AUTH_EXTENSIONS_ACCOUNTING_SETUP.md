@@ -16,7 +16,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
   -BackupConfirmed
 ```
 
-Les migrations `202607260070` à `202607260075` sont additives. Elles installent
+Les migrations `202607260070` à `202607260076` sont additives. Elles installent
 le parcours Stripe vérifié, les connexions externes, les CGV versionnées, le
 moteur de pré-comptabilité, les exports figés et l'observabilité des tâches.
 
@@ -142,7 +142,7 @@ Avant une utilisation réelle, faire valider par l'expert-comptable :
 Après le déploiement :
 
 1. exécuter `scripts/post-deploy-production-checks.sql` dans l'éditeur SQL ;
-2. vérifier que la dernière migration est `202607260075` ;
+2. vérifier que la dernière migration est `202607260076` ;
 3. tester une entreprise A et une entreprise B ;
 4. vérifier qu'aucun token OAuth n'apparaît dans les réponses réseau ;
 5. vérifier un paiement, sa correction append-only et les soldes ;

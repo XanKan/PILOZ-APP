@@ -856,6 +856,20 @@ async function buildPreviewPayload(
     .eq("template_id", templateId).eq("company_id", companyId).eq("version", templateVersion).maybeSingle();
   if (versionError || !versionData) throw previewFailure("La version du modele est introuvable", 409);
   const version = record(versionData);
+  const configuredTermsId = String(record(version.issuer_profile).sales_terms_id || "");
+  if (UUID.test(configuredTermsId)) {
+    const { data: configuredTerms } = await userClient.from("sales_terms")
+      .select("id,name,current_version")
+      .eq("id", configuredTermsId).eq("company_id", companyId).eq("status", "active").maybeSingle();
+    if (configuredTerms) {
+      const { data: configuredVersion } = await userClient.from("sales_terms_versions")
+        .select("source_type,body")
+        .eq("sales_terms_id", configuredTerms.id).eq("version", configuredTerms.current_version).maybeSingle();
+      version.terms_conditions = configuredVersion?.source_type === "manual"
+        ? configuredVersion.body
+        : `CGV « ${configuredTerms.name} » : le fichier PDF sélectionné sera joint au document final.`;
+    }
+  }
 
   let footer: Record<string, unknown> = {};
   const footerId = String(version.footer_id || "");
@@ -1086,7 +1100,7 @@ async function appendFrozenSalesTerms(
   let data = snapshot;
   if (!data) {
     const { data: document } = await admin.from("documents")
-      .select("company_id,client_id,document_type,selected_sales_terms_id")
+      .select("company_id,client_id,document_type,template_id,selected_sales_terms_id")
       .eq("id", documentId)
       .maybeSingle();
     if (document) {
@@ -1098,6 +1112,24 @@ async function appendFrozenSalesTerms(
         ? "invoice"
         : document.document_type;
       let termsId = document.selected_sales_terms_id || null;
+      if (!termsId && document.template_id) {
+        const { data: template } = await admin.from("document_templates")
+          .select("id,current_version")
+          .eq("id", document.template_id)
+          .eq("company_id", document.company_id)
+          .maybeSingle();
+        if (template) {
+          const { data: templateVersion } = await admin.from("document_template_versions")
+            .select("issuer_profile")
+            .eq("template_id", template.id)
+            .eq("version", template.current_version)
+            .maybeSingle();
+          const configuredId = String((templateVersion?.issuer_profile as Record<string, unknown> | null)?.sales_terms_id || "");
+          if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(configuredId)) {
+            termsId = configuredId;
+          }
+        }
+      }
       if (!termsId) {
         const clientFilter = document.client_id
           ? `client_id.eq.${document.client_id},client_id.is.null`

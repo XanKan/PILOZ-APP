@@ -317,7 +317,7 @@ body.auth-checking #auth-loading{display:flex}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <link rel="stylesheet" href="assets/css/phase1-foundation.css?v=20260725.12">
-<link rel="stylesheet" href="assets/css/modern-erp.css?v=20260726.5">
+<link rel="stylesheet" href="assets/css/modern-erp.css?v=20260726.6">
 <link rel="stylesheet" href="assets/css/dashboard-cockpit.css?v=20260724.4">
 <link rel="stylesheet" href="assets/css/document-viewer-v2.css?v=20260726.1">
 <link rel="stylesheet" href="assets/css/clients-workspace.css?v=20260723.1">
@@ -338,7 +338,8 @@ body.auth-checking #auth-loading{display:flex}
       <div><div class="disp" style="font-size:1rem">PILOZ</div></div>
     </div>
     <div class="tabs" id="tabs"></div>
-    <button class="plier" onclick="ouvrirPalette()" style="margin-top:auto" title="Recherche globale (Ctrl+K)" aria-label="Recherche globale"><span class="nav-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg></span><span class="lbl">Rechercher <span class="mono" style="font-size:.68rem;opacity:.7">Ctrl+K</span></span></button>
+    <button class="plier accounting-shortcut" id="accounting-shortcut" onclick="PilozModern.openArea('accounting')" title="Comptabilité" aria-label="Comptabilité"><span class="nav-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M8 7h8M8 11h2m4 0h2M8 15h2m4 0h2M8 18h2m4 0h2"></path></svg></span><span class="lbl">Comptabilité</span></button>
+    <button class="plier" onclick="ouvrirPalette()" title="Recherche globale (Ctrl+K)" aria-label="Recherche globale"><span class="nav-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg></span><span class="lbl">Rechercher <span class="mono" style="font-size:.68rem;opacity:.7">Ctrl+K</span></span></button>
     <button class="plier" id="plierbtn" onclick="basculerRail()" title="Réduire le menu" aria-label="Réduire le menu" aria-expanded="true"><span class="nav-control-icon" id="plieric" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"></path></svg></span><span class="lbl" id="plierlbl">Réduire le menu</span></button>
     <div class="rail-foot" id="syncfoot"></div>
   </nav>
@@ -2915,12 +2916,12 @@ function adminCreerCompte(){
 <script src="assets/js/modules/subscription/entitlements.js?v=20260721.10"></script>
 <script src="assets/js/modules/onboarding/company-search.js?v=20260721.10"></script>
 <script src="assets/js/modules/onboarding/professional-onboarding.js?v=20260721.10"></script>
-<script src="assets/js/modules/erp/erp-app.js?v=20260726.11"></script>
-<script src="assets/js/modules/erp/erp-modern.js?v=20260726.3"></script>
+<script src="assets/js/modules/erp/erp-app.js?v=20260726.12"></script>
+<script src="assets/js/modules/erp/erp-modern.js?v=20260726.4"></script>
 <script src="assets/js/modules/erp/erp-compliance.js?v=20260726.2"></script>
 <script src="assets/js/modules/erp/erp-commercial-v2.js?v=20260726.2"></script>
 <script src="assets/js/modules/erp/erp-dashboard-cockpit.js?v=20260724.4"></script>
-<script src="assets/js/modules/erp/erp-accounting-extensions.js?v=20260726.1"></script>
+<script src="assets/js/modules/erp/erp-accounting-extensions.js?v=20260726.2"></script>
 <script src="assets/js/modules/erp/erp-commercial-workspace.js?v=20260724.2"></script>
 <script src="assets/js/modules/erp/erp-document-editor-v2.js?v=20260726.14"></script>
 <script src="assets/js/modules/erp/erp-document-viewer-v2.js?v=20260726.7"></script>
