@@ -92,8 +92,8 @@ textarea:focus-visible,
   border:0!important;
   color:#dcebf1!important;
   background:
-    radial-gradient(320px 260px at 18% 8%,rgba(37,222,204,.16),transparent 60%),
-    linear-gradient(168deg,#0c2948 0%,var(--piloz-void) 46%,#071527 100%)!important;
+    radial-gradient(320px 260px at 18% 8%,rgba(37,222,204,.07),transparent 60%),
+    linear-gradient(168deg,#0d1d29 0%,#081621 48%,#07131d 100%)!important;
   box-shadow:14px 0 44px rgba(4,24,45,.11)!important;
 }
 .rail::after{
@@ -136,11 +136,11 @@ textarea:focus-visible,
 }
 .modern-primary-item.active{
   color:#fff!important;
-  border-color:rgba(86,238,224,.28)!important;
-  background:linear-gradient(92deg,rgba(17,191,174,.24),rgba(17,191,174,.1))!important;
-  box-shadow:inset 3px 0 0 var(--piloz-signal-bright),0 9px 26px rgba(0,0,0,.11);
+  border-color:rgba(86,238,224,.18)!important;
+  background:linear-gradient(92deg,rgba(17,191,174,.16),rgba(17,191,174,.055))!important;
+  box-shadow:inset 3px 0 0 var(--piloz-signal),0 9px 26px rgba(0,0,0,.09);
 }
-.modern-primary-item.active svg{color:var(--piloz-signal-bright)!important;filter:drop-shadow(0 0 8px rgba(66,221,207,.28))}
+.modern-primary-item.active svg{color:#54d7cb!important;filter:none}
 .rail>.plier{
   width:calc(100% - 24px);
   margin:4px 12px!important;

@@ -2,6 +2,11 @@
 
 ## 0.9.0-compliance.29 — 26 juillet 2026
 
+- ajout d’une confirmation explicite « Oui / Non » avant la validation d’un devis ;
+- remplacement de la confirmation de facture par un formulaire de finalisation : date de facture du jour non modifiable, date de situation conditionnelle et date d’échéance sélectionnable ;
+- contrôle visuel de la chronologie par rapport à la dernière facture définitive, en complément du verrou serveur déjà actif ;
+- suppression des attentes PDF bloquantes et d’un rechargement complet redondant afin d’ouvrir la consultation plus rapidement, pendant que le PDF définitif se prépare en arrière-plan ;
+- adoucissement du bandeau de navigation gauche avec un fond bleu nuit moins saturé et un état actif plus discret ;
 - sécurisation de l’inscription après paiement : seul un événement Stripe signé et traité de façon idempotente ouvre le droit temporaire à l’onboarding ;
 - ajout de la connexion Google et Microsoft via Supabase Auth, sans exposer de secret ni de jeton dans le navigateur ;
 - ajout des Extensions Google Agenda, Outlook Calendar, Gmail et Outlook Mail avec OAuth PKCE, synchronisation incrémentale, webhooks, reprise sur erreur et périmètre personnel, partagé ou entreprise ;
