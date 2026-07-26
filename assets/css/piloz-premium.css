@@ -478,6 +478,61 @@ input:focus,select:focus,textarea:focus{
 .auth-point{border-color:rgba(255,255,255,.1)!important;background:rgba(255,255,255,.06)!important;backdrop-filter:blur(12px)}
 .auth-panel{padding:clamp(26px,4vw,48px)!important}
 
+/* Motion system — presentation only, never changes data or business state */
+body::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  background:radial-gradient(440px circle at var(--piloz-pointer-x,78vw) var(--piloz-pointer-y,12vh),rgba(17,191,174,.075),transparent 70%);
+  opacity:0;
+  transition:opacity .7s ease;
+}
+.piloz-motion-ready body::after{opacity:1}
+
+.piloz-view-enter{animation:piloz-view-enter .52s var(--piloz-ease) both}
+@keyframes piloz-view-enter{from{opacity:0;transform:translateY(9px);filter:saturate(.85)}to{opacity:1;transform:none;filter:none}}
+.piloz-view-enter .piloz-motion-item{animation:piloz-item-enter .58s var(--piloz-ease) both;animation-delay:calc(var(--piloz-order,0) * 34ms)}
+@keyframes piloz-item-enter{from{opacity:0;transform:translateY(13px) scale(.992)}to{opacity:1;transform:none}}
+
+.piloz-motion-item{--piloz-spot-x:50%;--piloz-spot-y:50%;position:relative;isolation:isolate;transition:transform .28s var(--piloz-ease),border-color .28s ease,box-shadow .28s ease!important}
+.piloz-motion-item:hover{transform:translateY(-2px);border-color:rgba(17,191,174,.28)!important;box-shadow:0 18px 46px rgba(10,38,66,.09),0 0 0 1px rgba(17,191,174,.045)!important}
+.modern-kpi.piloz-motion-item:hover{transform:translateY(-4px)}
+.commercial-kanban-card.piloz-motion-item:hover{transform:translateY(-3px)}
+
+.modern-primary-item.is-active,.modern-primary-item.active,.tab.active{
+  animation:piloz-active-signal 3.4s ease-in-out infinite;
+}
+@keyframes piloz-active-signal{0%,100%{box-shadow:0 9px 24px rgba(17,191,174,.12)}50%{box-shadow:0 12px 34px rgba(17,191,174,.24),inset 0 0 0 1px rgba(90,240,226,.12)}}
+
+.modern-kpi strong,.kpi-value,.stat-value{display:inline-block;animation:piloz-value-in .55s .12s var(--piloz-ease) both}
+@keyframes piloz-value-in{from{opacity:0;transform:translateY(7px);letter-spacing:.025em}to{opacity:1;transform:none;letter-spacing:inherit}}
+
+.piloz-view-enter canvas,.piloz-view-enter svg.chart,.piloz-view-enter .chart-card,.piloz-view-enter .modern-chart{
+  transform-origin:center bottom;
+  animation:piloz-chart-in .72s .18s var(--piloz-ease) both;
+}
+@keyframes piloz-chart-in{from{opacity:.3;transform:scaleY(.94) translateY(6px)}to{opacity:1;transform:none}}
+
+.btn.primary,.modern-primary-button,.erp-primary-btn{position:relative;overflow:hidden}
+.btn.primary::after,.modern-primary-button::after,.erp-primary-btn::after{content:"";position:absolute;inset:-60% -30%;pointer-events:none;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.32) 48%,transparent 58%);transform:translateX(-120%) rotate(5deg);transition:transform .65s var(--piloz-ease)}
+.btn.primary:hover::after,.modern-primary-button:hover::after,.erp-primary-btn:hover::after{transform:translateX(120%) rotate(5deg)}
+.btn:active,.modern-button:active,.erp-button:active{transform:translateY(1px) scale(.985)!important}
+
+.modern-table tbody tr,.table tbody tr{transition:background-color .2s ease,box-shadow .2s ease,transform .2s var(--piloz-ease)}
+.modern-table tbody tr:hover,.table tbody tr:hover{position:relative;z-index:1;box-shadow:inset 3px 0 var(--piloz-signal)}
+
+.status-dot,.presence-dot,.modern-status-dot{animation:piloz-status-breathe 2.8s ease-in-out infinite}
+@keyframes piloz-status-breathe{50%{opacity:.68;box-shadow:0 0 0 5px rgba(17,191,174,.08)}}
+
+.empty-state svg,.modern-empty-icon{animation:piloz-empty-float 5.5s ease-in-out infinite}
+@keyframes piloz-empty-float{50%{transform:translateY(-5px) rotate(-1deg)}}
+
+.skeleton,.loading-skeleton,[class*="skeleton"]{position:relative;overflow:hidden}
+.skeleton::after,.loading-skeleton::after,[class*="skeleton"]::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 25%,rgba(255,255,255,.72) 48%,transparent 72%);transform:translateX(-100%);animation:piloz-shimmer 1.5s ease-in-out infinite}
+@keyframes piloz-shimmer{to{transform:translateX(100%)}}
+
 /* Responsive */
 @media(max-width:1180px){
   .main{padding-inline:24px!important}
@@ -514,6 +569,8 @@ input:focus,select:focus,textarea:focus{
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.001ms!important}
+  body::after{display:none}
+  .piloz-view-enter,.piloz-view-enter .piloz-motion-item{opacity:1!important;transform:none!important;filter:none!important}
 }
 
 @media print{
