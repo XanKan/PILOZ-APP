@@ -22,11 +22,12 @@
 
  const secondary={
   crm:{label:'Suivi commercial',items:[['crm/pipeline','Pipeline'],['crm/activities','Activités'],['crm/prospects','Prospects']]},
-  sales:{label:'Ventes',items:[['sales/quotes','Devis'],['sales/invoices','Factures'],['sales/clients','Clients'],['sales/catalog','Articles & services'],['sales/due-dates','Échéances clients']]},
-  purchases:{label:'Achats',items:[['purchases/suppliers','Fournisseurs'],['purchases/orders','Commandes fournisseurs'],['purchases/receipts','Réceptions'],['purchases/invoices','Factures fournisseurs']]},
+  sales:{label:'Ventes',items:[['sales/quotes','Devis'],['sales/invoices','Factures'],['sales/due-dates','Échéances clients']]},
+  purchases:{label:'Achats',items:[['purchases/orders','Commandes fournisseurs'],['purchases/receipts','Réceptions'],['purchases/invoices','Factures fournisseurs']]},
+  library:{label:'Bibliothèque',items:[['sales/clients','Clients'],['purchases/suppliers','Fournisseurs'],['sales/catalog','Articles & services']]},
   stock:{label:'Stock',items:[['stock/items','Articles en stock'],['stock/movements','Mouvements'],['stock/inventories','Inventaires'],['stock/warehouses','Entrepôts']]}
  };
- function areaFor(path){if(path.startsWith('crm/'))return'crm';if(path.startsWith('sales/'))return'sales';if(path.startsWith('purchases/'))return'purchases';if(path.startsWith('stock/'))return'stock';return'';}
+ function areaFor(path){if(['sales/clients','purchases/suppliers','sales/catalog'].some(item=>path===item||path.startsWith(item+'/')))return'library';if(path.startsWith('crm/'))return'crm';if(path.startsWith('sales/'))return'sales';if(path.startsWith('purchases/'))return'purchases';if(path.startsWith('stock/'))return'stock';return'';}
  function secondaryActive(path,item){return path===item||path.startsWith(item+'/');}
  function renderNavigation(node,s,current){
   base.renderNavigation(node,s,current);
@@ -35,7 +36,7 @@
   const body=panel.querySelector('.modern-secondary-items'),title=panel.querySelector('h2');if(title)title.textContent=data.label;
   if(body)body.innerHTML=data.items.map(([itemPath,label])=>`<button class="modern-secondary-item ${secondaryActive(path,itemPath)?'active':''}" onclick="PilozApp.go('${itemPath}')"><span>${esc(label)}</span></button>`).join('');
  }
- function openArea(area){const target={crm:'crm/pipeline',sales:'sales/quotes',purchases:'purchases/suppliers',stock:'stock/items',settings:'settings/overview',dashboard:'dashboard',reports:'reports'}[area]||'dashboard';base.openArea(area,target);}
+ function openArea(area){const target={crm:'crm/pipeline',sales:'sales/quotes',purchases:'purchases/orders',library:'sales/clients',stock:'stock/items',settings:'settings/overview',dashboard:'dashboard',reports:'reports'}[area]||'dashboard';base.openArea(area,target);}
 
  const defaultBlocks=['revenue','collected','outstanding','overdue','quotes','activities','pipeline','recent'];
  const optionalBlocks=['topClients','topItems','margin','comparison','stock','supplierOrders','receipts'];

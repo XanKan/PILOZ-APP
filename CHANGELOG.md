@@ -2,6 +2,9 @@
 
 ## 0.9.0-compliance.29 — 26 juillet 2026
 
+- ajout de la rubrique principale « Bibliothèque » regroupant Clients, Fournisseurs et Articles & services ;
+- retrait temporaire de Stock de la navigation principale, sans suppression des données ni des fonctions existantes ;
+- accès direct à « Créer un nouveau client » dès l’ouverture du sélecteur client des devis et factures ;
 - suppression de l’ancien « aperçu figé » après l’enregistrement ou la validation : seul le PDF utilisant le modèle sélectionné peut désormais être affiché ;
 - préparation du bon aperçu avant l’ouverture de la consultation d’un devis ou d’une facture ;
 - blocage de la création d’une situation suivante lorsque l’avancement cumulé atteint 100 %, dans l’interface comme dans la fonction Supabase ;
