@@ -34,6 +34,14 @@ jobs:
         env:
           PILOZ_PGLITE_ROOT: ${{ runner.temp }}/piloz-pglite/node_modules/@electric-sql/pglite
         run: node tests/platform-admin-pglite.cjs
+      - name: Verify accounting fiscal maintenance and closure
+        env:
+          PILOZ_PGLITE_ROOT: ${{ runner.temp }}/piloz-pglite/node_modules/@electric-sql/pglite
+        run: node tests/accounting-fiscal-maintenance-pglite.cjs
+      - name: Verify balanced accounting and multi-rate VAT
+        env:
+          PILOZ_PGLITE_ROOT: ${{ runner.temp }}/piloz-pglite/node_modules/@electric-sql/pglite
+        run: node tests/accounting-engine-pglite.cjs
       - name: Verify dashboard metrics, RLS and preferences
         env:
           PILOZ_PGLITE_ROOT: ${{ runner.temp }}/piloz-pglite/node_modules/@electric-sql/pglite

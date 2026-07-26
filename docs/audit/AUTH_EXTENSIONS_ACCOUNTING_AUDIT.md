@@ -1,7 +1,8 @@
 # Audit auth, extensions et comptabilité
 
-Date de l'audit : 26 juillet 2026  
-Dépôt : `XanKan/PILOZ-APP`  
+Date de l'audit : 26 juillet 2026
+
+Dépôt : `XanKan/PILOZ-APP`
 Branche : `main`
 
 ## Périmètre et méthode

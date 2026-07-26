@@ -37,8 +37,8 @@
     try{
       PilozModern.renderNavigation(document.getElementById('tabs'),state,'sales/quotes');
       const rail=document.querySelector('.rail'),items=[...document.querySelectorAll('.modern-primary-item')],secondary=document.querySelector('.modern-secondary-panel');
-      checks.push(['sept rubriques',items.length===7]);
-      checks.push(['rubriques attendues',items.map(x=>x.textContent.trim()).join('|')==='Tableau de bord|Suivi commercial|Ventes|Achats|Bibliothèque|Rapports|Paramètres']);
+      checks.push(['huit rubriques',items.length===8]);
+      checks.push(['rubriques attendues',items.map(x=>x.textContent.trim()).join('|')==='Tableau de bord|Suivi commercial|Ventes|Achats|Bibliothèque|Comptabilité|Rapports|Paramètres']);
       checks.push(['stock masqué de la navigation',!items.some(x=>x.textContent.trim()==='Stock')]);
       checks.push(['ventes active',document.querySelector('.modern-primary-item.active')?.textContent.trim()==='Ventes']);
       checks.push(['sous-menu visible',!!secondary&&secondary.textContent.includes('Devis')&&secondary.textContent.includes('Factures')]);
@@ -85,7 +85,7 @@
       PilozModern.renderNavigation(document.getElementById('tabs'),state,'crm/pipeline');
       const crmItems=[...document.querySelectorAll('.modern-secondary-item')].map(x=>x.textContent.trim());
       checks.push(['sous-menu commercial simplifié',crmItems.join('|')==='Pipeline|Activités|Prospects']);
-      checks.push(['opportunités retirées de la navigation',!crmItems.includes('Opportunités')]);
+      checks.push(['opportunités regroupées dans le pipeline',!crmItems.includes('Opportunités')]);
     }catch(error){checks.push(['exécution',false,error.message]);}
     const failed=checks.filter(([,ok])=>!ok),result=document.getElementById('result');
     result.dataset.status=failed.length?'failed':'passed';
