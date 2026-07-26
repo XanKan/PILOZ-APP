@@ -4,6 +4,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
 const migration = read('supabase/migrations/202607260081_company_access_control.sql');
+const roadmapMigration = read('supabase/migrations/202607260082_hide_stock_permissions_from_roles.sql');
 const accessUi = read('assets/js/modules/erp/erp-access-control.js');
 const app = read('assets/js/modules/erp/erp-app.js');
 const edge = read('supabase/functions/company-access/index.ts');
@@ -80,6 +81,8 @@ expect('pagination utilisateurs côté serveur', /create or replace function pub
 
 expect('interface quatre onglets', ['Utilisateurs', 'Rôles', 'Invitations', 'Journal des accès'].every(label => accessUi.includes(label)));
 expect('éditeur de permissions en deux colonnes', accessUi.includes('access-permission-grid'));
+expect('Stock masqué du catalogue des rôles', /editor_visible=false/.test(roadmapMigration) && /module_key='stock'/.test(roadmapMigration));
+expect('Stock filtré de l’éditeur et des compteurs', accessUi.includes('isRoadmapPermission') && accessUi.includes('visiblePermissions'));
 expect('message rôle système exact côté interface', accessUi.includes('Ce rôle n’est pas modifiable, il fait partie des rôles par défaut du logiciel.'));
 expect('garde interface finalisation facture', accessUi.includes("'sales.invoices.finalize'"));
 expect('navigation filtrée par permissions', accessUi.includes('routePermissions'));

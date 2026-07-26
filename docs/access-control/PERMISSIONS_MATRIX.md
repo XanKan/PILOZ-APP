@@ -61,3 +61,5 @@ L’Expert-comptable n’a aucun droit d’écriture commercial, de finalisation
 Un rôle personnalisé peut partir d’un rôle vide ou de la copie d’un rôle existant. Chaque permission est activée séparément et, lorsque le catalogue le permet, associée à une portée `own`, `team` ou `company`.
 
 Les changements sont appliqués immédiatement, journalisés et protégés côté base de données. Une simple réapparition visuelle d’un bouton ne suffit donc pas à contourner une interdiction.
+
+Le module Stock et ses autorisations sont volontairement absents de l’éditeur de rôles. Ils sont conservés techniquement pour une future version inscrite à la roadmap.

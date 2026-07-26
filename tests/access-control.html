@@ -20,7 +20,8 @@
       { permission_key: 'company.users.read', category_label: 'Administration', label: 'Consulter les utilisateurs', description: '', allowed_scopes: ['company'] },
       { permission_key: 'company.users.manage', category_label: 'Administration', label: 'Gérer les utilisateurs', description: '', allowed_scopes: ['company'] },
       { permission_key: 'sales.quotes.read', category_label: 'Devis et factures', label: 'Consulter les devis', description: '', allowed_scopes: ['own', 'team', 'company'] },
-      { permission_key: 'sales.invoices.finalize', category_label: 'Devis et factures', label: 'Finaliser les factures', description: '', allowed_scopes: ['own', 'team', 'company'] }
+      { permission_key: 'sales.invoices.finalize', category_label: 'Devis et factures', label: 'Finaliser les factures', description: '', allowed_scopes: ['own', 'team', 'company'] },
+      { permission_key: 'stock.write', module_key: 'stock', category_key: 'stock', category_label: 'Stock', label: 'Gestion des stocks', description: '', allowed_scopes: ['company'] }
     ];
     const roles = [
       role('administrator', 'Administrateur', 'administrator', permissions.map(item => ({ permission_key: item.permission_key, scope: 'company' }))),
@@ -66,6 +67,7 @@
       PilozAccess.openRole('commercial');
       check('message système exact', document.body.textContent.includes('Ce rôle n’est pas modifiable, il fait partie des rôles par défaut du logiciel.'));
       check('éditeur groupé', document.querySelectorAll('.access-permission-grid section').length === 2);
+      check('Stock absent de l’éditeur', !document.querySelector('[data-permission="stock.write"]'));
       const columnCount = getComputedStyle(document.querySelector('.access-permission-grid')).gridTemplateColumns.split(' ').length;
       check(innerWidth < 900 ? 'éditeur responsive une colonne' : 'éditeur deux colonnes bureau', columnCount === (innerWidth < 900 ? 1 : 2));
       const failed = assertions.filter(item => !item.ok);
