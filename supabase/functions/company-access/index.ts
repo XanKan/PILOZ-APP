@@ -51,7 +51,7 @@ Deno.serve(async req=>{
       let existingUser:null|{id:string;email?:string}=null;
       for(let page=1;page<=20&&!existingUser;page++){const {data,error}=await admin.auth.admin.listUsers({page,perPage:1000});if(error)throw error;existingUser=(data.users.find(candidate=>candidate.email?.toLowerCase()===targetEmail) as typeof existingUser)||null;if(data.users.length<1000)break;}
       if(existingUser&&members?.some(member=>member.user_id===existingUser!.id))throw new Error("Cet utilisateur appartient déjà à l’entreprise.");
-      let invitedUserId=existingUser?.id||null,deliveryStatus="not_configured",invitationSent=false,deliveryError:null as string|null;
+      let invitedUserId=existingUser?.id||null,deliveryStatus="not_configured",invitationSent=false,deliveryError:string|null=null;
       if(!existingUser){
         const {data,error}=await admin.auth.admin.inviteUserByEmail(targetEmail,{data:{first_name:firstName,last_name:lastName,full_name:`${firstName} ${lastName}`},redirectTo:"https://app.piloz.fr/#dashboard"});
         if(error||!data.user){deliveryStatus="failed";deliveryError=error?.message||"Invitation Auth impossible";}else{invitedUserId=data.user.id;deliveryStatus="sent";invitationSent=true;}
