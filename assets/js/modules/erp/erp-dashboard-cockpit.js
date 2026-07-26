@@ -41,7 +41,7 @@
   ];
   const blockDefinitions={
     receivables:{label:'Échéances clients',description:'Balance âgée et factures à traiter'},
-    commercial:{label:'Activité commerciale',description:'Parcours et conversion des devis'},
+    commercial:{label:'Pipeline commercial',description:'Opportunités ouvertes, valeur et prévision pondérée'},
     recent_documents:{label:'Documents récents',description:'Devis, factures, avoirs et achats'},
     customers:{label:'Clients',description:'Nouveaux clients et principaux contributeurs'},
     catalog:{label:'Articles et services',description:'Ventes et marge du catalogue'},
@@ -59,6 +59,7 @@
     quote_count:{label:'Devis émis',short:'Devis émis',definition:'Nombre de devis créés sur la période.',route:'sales/quotes'},
     accepted_quote_count:{label:'Devis acceptés',short:'Devis acceptés',definition:'Devis acceptés ou déjà facturés sur la période.',route:'sales/quotes'},
     conversion_rate:{label:'Taux de transformation',short:'Transformation',definition:'Devis acceptés divisés par les devis ayant reçu une réponse.',route:'crm/pipeline'},
+    pipeline_weighted:{label:'Pipeline pondéré',short:'Pipeline pondéré',definition:'Somme des opportunités ouvertes pondérée par leur probabilité de réussite.',route:'crm/pipeline'},
     average_invoice_ht:{label:'Panier moyen',short:'Panier moyen',definition:'Chiffre d’affaires net divisé par le nombre de factures.',route:'sales/invoices'},
     overdue_count:{label:'Factures en retard',short:'En retard',definition:'Factures ouvertes dont l’échéance est dépassée.',route:'sales/due-dates'},
     new_clients:{label:'Nouveaux clients',short:'Nouveaux clients',definition:'Clients créés pendant la période dans votre périmètre autorisé.',route:'sales/clients'},
@@ -67,7 +68,7 @@
     gross_result:{label:'Résultat brut estimé',short:'Résultat brut',definition:'Chiffre d’affaires HT net moins coûts mémorisés, avant charges de structure.',route:'reports'}
   };
   const allBlocks=Object.keys(blockDefinitions);
-  const defaultMetrics=['revenue_ht','collected','outstanding','gross_margin'];
+  const defaultMetrics=['revenue_ht','collected','pipeline_weighted','outstanding'];
   const roleBlocks={
     owner:['receivables','commercial','recent_documents','customers','catalog','agenda','stock','purchases','notifications'],
     admin:['receivables','commercial','recent_documents','customers','catalog','agenda','stock','purchases','notifications'],
@@ -137,7 +138,9 @@
     ui.controller?.abort();const controller=new AbortController(),requestId=++ui.requestId;
     ui.controller=controller;ui.loading=true;ui.error='';render(state);
     try{
-      const payload=await api().rpc('get_dashboard_cockpit',rpcArgs(),{signal:controller.signal});
+      let payload;
+      try{payload=await api().rpc('get_dashboard_command_center',rpcArgs(),{signal:controller.signal});}
+      catch(error){if(!['PGRST202','42883'].includes(String(error?.code||'')))throw error;payload=await api().rpc('get_dashboard_cockpit',rpcArgs(),{signal:controller.signal});}
       if(requestId!==ui.requestId||controller.signal.aborted)return;
       if(!payload||!payload.summary)throw Object.assign(new Error('Réponse analytique incomplète.'),{code:'invalid_dashboard_response'});
       if(applyServerPreferences(payload)){
@@ -171,7 +174,7 @@
     const numeric=Number(value),tone=numeric>0?'positive':numeric<0?'negative':'neutral';
     return`<span class="cockpit-variation ${tone}">${numeric>0?'↗':numeric<0?'↘':'→'} ${Math.abs(numeric).toLocaleString('fr-FR',{maximumFractionDigits:1})} %</span>`;
   }
-  function metricRaw(key,payload){const summary=payload.summary||{};if(key==='new_clients')return payload.customers?.new_clients;if(key==='purchases_ht')return payload.purchases?.period_amount;if(key==='stock_value')return payload.stock?.value;if(key==='gross_result')return summary.gross_margin;return summary[key];}
+  function metricRaw(key,payload){const summary=payload.summary||{};if(key==='new_clients')return payload.customers?.new_clients;if(key==='purchases_ht')return payload.purchases?.period_amount;if(key==='stock_value')return payload.stock?.value;if(key==='gross_result')return summary.gross_margin;if(key==='pipeline_weighted')return payload.crm?.pipeline_weighted;return summary[key];}
   function metricValue(key,payload){
     const summary=payload.summary||{},value=metricRaw(key,payload);
     if(key==='conversion_rate')return value===null||value===undefined?'—':`${number(value).toLocaleString('fr-FR',{maximumFractionDigits:1})} %`;
@@ -190,6 +193,7 @@
     if(key==='purchases_ht')return`${number(payload.purchases?.open_orders)} commande(s) ouverte(s)`;
     if(key==='stock_value')return`${number(payload.stock?.count)} article(s) sous seuil`;
     if(key==='gross_result')return summary.margin_rate===null?'Coûts indisponibles':`${number(summary.margin_rate).toLocaleString('fr-FR',{maximumFractionDigits:1})} % du CA HT`;
+    if(key==='pipeline_weighted')return`${number(payload.crm?.open_opportunities)} opportunité(s) ouverte(s)`;
     return metricDefinitions[key]?.definition||'';
   }
   function visibleMetrics(payload){
@@ -249,7 +253,7 @@
     const buckets=forecast?.buckets||[],max=Math.max(1,...buckets.map(row=>number(row.amount))),highlights=forecast?.highlights||{};
     return`<aside class="cockpit-forecast"><header><span>Prévision</span><h2>Encaissements à venir</h2><p>Montants attendus, non garantis · échéances et plans ouverts</p></header><strong>${money(forecast?.total,currency)}</strong><div class="cockpit-forecast-highlights">${[['this_week','Cette semaine'],['next_week','Semaine prochaine'],['this_month','Ce mois'],['next_month','Mois prochain']].map(([key,label])=>`<button onclick="PilozDashboardCockpit.navigate('sales/due-dates','${key}')"><span>${label}</span><b>${money(highlights[key],currency)}</b></button>`).join('')}</div><div class="cockpit-forecast-bars">${buckets.map(row=>`<button onclick="PilozDashboardCockpit.navigate('sales/due-dates','${esc(row.key)}')"><span>${esc(forecastLabel(row.key))}<small>${number(row.count)} échéance(s)</small></span><b>${money(row.amount,currency)}</b><i style="--forecast-width:${Math.max(4,number(row.amount)/max*100)}%"></i></button>`).join('')||'<p>Aucune échéance ouverte à prévoir.</p>'}</div><button class="cockpit-text-action" onclick="PilozDashboardCockpit.navigate('sales/due-dates')">Voir les échéances →</button></aside>`;
   }
-  function actionLabel(kind){return{overdue_invoice:'Relancer',expiring_quote:'Ouvrir',overdue_activity:'Terminer',accepted_quote:'Convertir',incomplete_draft:'Compléter',low_stock:'Commander'}[kind]||'Ouvrir';}
+  function actionLabel(kind){return{overdue_invoice:'Relancer',expiring_quote:'Ouvrir',overdue_activity:'Terminer',accepted_quote:'Convertir',incomplete_draft:'Compléter',low_stock:'Commander',stale_opportunity:'Ouvrir',hot_prospect:'Qualifier'}[kind]||'Ouvrir';}
   function assigneeLabel(id){if(!id)return'Non attribué';return id===global.PilozRuntime?.session?.user_id?'Moi':`Responsable ${String(id).slice(0,8)}`;}
   function renderPriority(actions,currency,canWrite){
     const rows=(actions||[]).slice(0,6);
@@ -270,6 +274,10 @@
   function renderFunnel(data,summary){
     const rows=data?.stages||[],max=Math.max(1,...rows.map(row=>number(row.count)));
     return rows.length?`<div class="cockpit-funnel">${rows.map(row=>`<button onclick="PilozDashboardCockpit.navigate('sales/quotes','${row.key}')"><i style="--funnel:${Math.max(14,number(row.count)/max*100)}%"></i><span>${esc(funnelLabel(row.key))}</span><b>${number(row.count)}</b><small>${money(row.amount,summary.currency)}</small></button>`).join('')}</div><footer><span>Taux de transformation <b>${data.conversion_rate===null?'—':number(data.conversion_rate).toLocaleString('fr-FR',{maximumFractionDigits:1})+' %'}</b></span><span>En attente <b>${money(data.pending_amount,summary.currency)}</b></span><span>Acceptés <b>${money(data.accepted_amount,summary.currency)}</b></span><span>Expirent bientôt <b>${number(data.expiring_soon)}</b></span></footer>`:emptyBlock('Aucun devis sur cette période.');
+  }
+  function renderCrmPipeline(data,summary){
+    const rows=data?.stages||[],max=Math.max(1,...rows.map(row=>number(row.amount)));
+    return rows.length?`<div class="cockpit-funnel">${rows.map(row=>`<button onclick="PilozDashboardCockpit.navigate('crm/pipeline')"><i style="--funnel:${Math.max(14,number(row.amount)/max*100)}%;background:${esc(row.color||'var(--primary)')}"></i><span>${esc(row.name)}</span><b>${number(row.count)}</b><small>${money(row.weighted,summary.currency)} pondéré</small></button>`).join('')}</div><footer><span>Pipeline total <b>${money(data.pipeline_total,summary.currency)}</b></span><span>Pipeline pondéré <b>${money(data.pipeline_weighted,summary.currency)}</b></span><span>Opportunités <b>${number(data.open_opportunities)}</b></span><span>À clôturer ce mois <b>${number(data.closing_this_month)}</b></span></footer>`:emptyBlock('Aucune opportunité ouverte.',`<button onclick="PilozDashboardCockpit.quick('opportunity')">Créer une opportunité</button>`);
   }
   function documentTabs(data){
     const tabs=[['quote','Devis'],['invoice','Factures'],['credit_note','Avoirs'],['purchase_invoice','Achats']];
@@ -311,7 +319,7 @@
   function blockContent(key,payload){
     const summary=payload.summary;
     if(key==='receivables')return renderReceivables(payload.receivables,summary);
-    if(key==='commercial')return renderFunnel(payload.funnel,summary);
+    if(key==='commercial')return payload.crm?renderCrmPipeline(payload.crm,summary):renderFunnel(payload.funnel,summary);
     if(key==='recent_documents')return documentTabs(payload.recent_documents);
     if(key==='customers')return renderCustomers(payload.customers,summary);
     if(key==='catalog')return renderCatalog(payload.catalog,summary);
@@ -349,6 +357,8 @@
     if(permission.customers)secondary.push(`<button onclick="PilozDashboardCockpit.quick('client')">Ajouter un client</button>`);
     if(permission.payments)secondary.push(`<button onclick="PilozDashboardCockpit.quick('payment')">Saisir un règlement</button>`);
     if(permission.activities)secondary.push(`<button onclick="PilozDashboardCockpit.quick('activity')">Ajouter une activité</button>`);
+    if(permission.customers)secondary.push(`<button onclick="PilozDashboardCockpit.quick('prospect')">Ajouter un prospect</button>`);
+    if(permission.activities)secondary.push(`<button onclick="PilozDashboardCockpit.quick('opportunity')">Créer une opportunité</button>`);
     if(permission.catalog_write)secondary.push(`<button onclick="PilozDashboardCockpit.quick('item')">Créer un article ou service</button>`);
     if(permission.purchases)secondary.push(`<button onclick="PilozDashboardCockpit.quick('purchase')">Enregistrer un achat</button>`);
     if(!primary.length&&!secondary.length)return'';
@@ -358,7 +368,7 @@
     const first=String(payload.first_name||'').trim(),title=first?`Bonjour ${first}, voici où en est votre activité.`:'Bonjour, voici où en est votre activité.';
     return`<header class="cockpit-header"><div class="cockpit-welcome"><span>${esc(todayLabel())}</span><h1>${esc(title)}</h1><p>${esc(periodLabel(payload.summary))}</p></div><div class="cockpit-header-actions"><div class="cockpit-period"><label><span>Période analysée</span><select onchange="PilozDashboardCockpit.setPeriod(this.value)">${periods.map(([key,label])=>`<option value="${key}" ${ui.period===key?'selected':''}>${esc(label)}</option>`).join('')}</select></label><label><span>Comparer les résultats avec</span><select onchange="PilozDashboardCockpit.setComparison(this.value)">${comparisons.map(([key,label])=>`<option value="${key}" ${ui.comparison===key?'selected':''}>${esc(label)}</option>`).join('')}</select></label></div><p class="cockpit-comparison-help">${esc(comparisonHelp(payload.summary))}</p>${ui.period==='custom'?`<div class="cockpit-custom-dates"><label>Du<input type="date" value="${esc(ui.customStart)}" max="${esc(ui.customEnd||'')}" onchange="PilozDashboardCockpit.setCustomDate('start',this.value)"></label><label>Au<input type="date" value="${esc(ui.customEnd)}" min="${esc(ui.customStart||'')}" onchange="PilozDashboardCockpit.setCustomDate('end',this.value)"></label></div>`:''}<div class="cockpit-header-buttons"><button onclick="PilozDashboardCockpit.refresh()" aria-label="Actualiser le tableau de bord">↻ Actualiser</button><button onclick="PilozDashboardCockpit.startCustomize()">Personnaliser</button></div></div>${quickActions(payload.summary)}</header>`;
   }
-  function isNewCompany(payload,state){return number(payload.summary?.invoice_count)===0&&number(payload.summary?.quote_count)===0&&number(payload.activity?.today)===0&&number(payload.activity?.upcoming)===0&&(state.data.clients||[]).length===0;}
+  function isNewCompany(payload,state){return number(payload.summary?.invoice_count)===0&&number(payload.summary?.quote_count)===0&&number(payload.activity?.today)===0&&number(payload.activity?.upcoming)===0&&number(payload.crm?.open_opportunities)===0&&(state.data.clients||[]).length===0;}
   function renderOnboarding(){
     return`<section class="cockpit-onboarding"><div><span>Premiers pas</span><h2>Bienvenue dans Piloz</h2><p>Commencez par créer votre premier client, puis transformez votre activité en devis et en factures.</p></div><div><button onclick="PilozDashboardCockpit.quick('client')">Ajouter un client</button><button class="primary" onclick="PilozDashboardCockpit.quick('quote')">Créer un devis</button><button onclick="PilozDashboardCockpit.quick('item')">Ajouter un article ou service</button></div></section>`;
   }
@@ -508,12 +518,14 @@
   function openActivity(id,type='task'){global.PilozCommercialWorkspace?.openActivity?.('',type,id);}
   function completeActivity(id){global.PilozCommercialWorkspace?.quickActivity?.(id,'complete');}
   function showNotifications(){global.PilozCommercialWorkspace?.showNotifications?.();}
-  function openPriority(kind,id){if(kind==='overdue_invoice'&&global.PilozCommercialWorkspace?.openDueEmail)global.PilozCommercialWorkspace.openDueEmail(id);else if(['expiring_quote','accepted_quote','incomplete_draft'].includes(kind))openDocument(id);else if(kind==='overdue_activity')global.PilozCommercialWorkspace?.quickActivity?.(id,'complete');else if(kind==='low_stock'){if(app().newPurchaseOrder)app().newPurchaseOrder();else openItem(id);}}
+  function openPriority(kind,id){if(kind==='overdue_invoice'&&global.PilozCommercialWorkspace?.openDueEmail)global.PilozCommercialWorkspace.openDueEmail(id);else if(['expiring_quote','accepted_quote','incomplete_draft'].includes(kind))openDocument(id);else if(kind==='overdue_activity')global.PilozCRM?.completeActivity?.(id);else if(kind==='stale_opportunity')global.PilozCRM?.openOpportunity?.(id);else if(kind==='hot_prospect')global.PilozCRM?.openProspect?.(id);else if(kind==='low_stock'){if(app().newPurchaseOrder)app().newPurchaseOrder();else openItem(id);}}
   function quick(kind){
     if(kind==='quote'||kind==='invoice'){app().newDocument(kind);return;}
     if(kind==='client'){if(global.PilozClients?.openClientCreator)global.PilozClients.openClientCreator();else app().openPartnerForm('clients',true);return;}
     if(kind==='payment'){navigate('sales/due-dates','unpaid');return;}
-    if(kind==='activity'){global.PilozCommercialWorkspace?.openActivity?.('','task','');return;}
+    if(kind==='activity'){global.PilozCRM?.openActivityForm?.();return;}
+    if(kind==='prospect'){global.PilozCRM?.openProspectForm?.();return;}
+    if(kind==='opportunity'){global.PilozCRM?.openOpportunityForm?.();return;}
     if(kind==='item'){navigate('sales/catalog/new');return;}
     if(kind==='purchase'){app().newPurchaseOrder?.();}
   }
