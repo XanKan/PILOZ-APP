@@ -60,8 +60,10 @@ async function main(){
   await db.exec('reset role');
   await db.query("update public.company_document_settings set quote_next_number=2 where company_id=$1",[company]);
   await db.query("update public.document_sequences set next_value=2 where company_id=$1 and document_type='quote' and year=2026",[company]);
+  await db.exec('alter table public.documents disable trigger user');
   await db.query(`insert into public.documents(company_id,document_type,number,client_id,status,issue_date,validity_date,currency,language,total_excl_tax,total_tax,total_incl_tax,created_by)
     values($1,'quote','DEV-2026-0077',$2,'pending','2026-07-26','2026-08-25','EUR','fr',100,20,120,$3)`,[company,client,actor]);
+  await db.exec('alter table public.documents enable trigger user');
   await db.exec("set session_replication_role='replica'");
   await db.query("update public.documents set number='DEV-2026-0077' where company_id=$1 and document_type='quote'",[company]);
   await db.exec("set session_replication_role='origin'");
