@@ -296,6 +296,7 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
   const issuerAddressText = issuerProfile.address ? text(issuerProfile.address) : address(issuer);
   const issuerEmail = text(issuerProfile.email || issuer.email || "");
   const issuerPhone = text(issuerProfile.phone || issuer.phone_e164 || issuer.phone || "");
+  const issuerWebsite = text(issuerProfile.website || issuer.website || "");
   const saleTypeLabels: Record<string, string> = { goods: "Livraison de biens", services: "Prestation de services", goods_and_services: "Livraison de biens et prestation de services" };
   const saleTypeLabel = saleTypeLabels[String(doc.operation_category || doc.sale_type || issuerProfile.sale_type || "")] || "";
 
@@ -443,8 +444,9 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
       limitedLines(regular, issuerAddressText, 8, 208, 2).forEach((line, index) => right(page, regular, line, 553, 786 - index * 11, 8, colors.text, 208));
       if (issuerEmail) right(page, regular, issuerEmail, 553, 764, 8, colors.text, 208);
       if (issuerPhone) right(page, regular, issuerPhone, 553, 752, 8, colors.text, 208);
-      if (issuer.siret) right(page, regular, `SIRET ${issuer.siret}`, 553, 740, 8, colors.text, 208);
-      if (issuer.vat_number) right(page, regular, `TVA ${issuer.vat_number}`, 553, 728, 8, colors.text, 208);
+      if (issuerWebsite) right(page, regular, issuerWebsite, 553, 740, 8, colors.text, 208);
+      if (issuer.siret) right(page, regular, `SIRET ${issuer.siret}`, 553, 728, 8, colors.text, 208);
+      if (issuer.vat_number) right(page, regular, `TVA ${issuer.vat_number}`, 553, 716, 8, colors.text, 208);
     } else {
       page.drawText(fit(bold, kind.toUpperCase(), metrics.titleSize, 270), { x: 42, y: 700, size: metrics.titleSize, font: bold, color: colors.primary });
       page.drawText(fit(bold, number, metrics.numberSize, 270), { x: 42, y: 680, size: metrics.numberSize, font: bold, color: colors.heading });
@@ -452,8 +454,9 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
       right(page, regular, issuerAddressText, 553, 772, 8, colors.muted, 245);
       if (issuerEmail) right(page, regular, issuerEmail, 553, 760, 8, colors.muted, 245);
       if (issuerPhone) right(page, regular, issuerPhone, 553, 748, 8, colors.muted, 245);
-      if (issuer.siret) right(page, regular, `SIRET ${issuer.siret}`, 553, 736, 8, colors.muted, 245);
-      if (issuer.vat_number) right(page, regular, `TVA ${issuer.vat_number}`, 553, 724, 8, colors.muted, 245);
+      if (issuerWebsite) right(page, regular, issuerWebsite, 553, 736, 8, colors.muted, 245);
+      if (issuer.siret) right(page, regular, `SIRET ${issuer.siret}`, 553, 724, 8, colors.muted, 245);
+      if (issuer.vat_number) right(page, regular, `TVA ${issuer.vat_number}`, 553, 712, 8, colors.muted, 245);
     }
     y = referenceLayout ? 606 : 692;
   };

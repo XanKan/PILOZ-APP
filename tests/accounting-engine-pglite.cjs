@@ -27,6 +27,7 @@ async function main(){
   await db.query("insert into public.external_mail_links(company_id,connection_id,direction,subject,recipients,status,created_by) values($1,$2,'outbound','Message A',array['a@example.test'],'sent',$3),($4,$5,'outbound','Message B',array['b@example.test'],'sent',$6)",[company,ownConnection,actor,otherCompany,otherConnection,otherActor]);
   await db.query("insert into public.sales_terms(company_id,name,created_by) values($1,'CGV A',$2),($3,'CGV B',$4)",[company,actor,otherCompany,otherActor]);
   await setIdentity(db,actor);
+  await db.query("select public.save_company_numbering_configuration($1,'DEV',73,'year_prefix','FAC',42,'prefix_year_month','AV',30)",[company]);
 
   const visibleConnections=(await db.query('select company_id,user_id from public.external_connections order by company_id')).rows;
   const visibleMail=(await db.query('select company_id,subject from public.external_mail_links order by company_id')).rows;
@@ -50,6 +51,11 @@ async function main(){
   const draft=(await db.query('select public.save_document_draft(null,$1::jsonb,$2::jsonb) result',[JSON.stringify(document),JSON.stringify(lines)])).rows[0].result;
   const finalized=(await db.query('select public.finalize_document($1) result',[draft.id])).rows[0].result;
   if(!finalized?.number)throw new Error('La facture multi-taux n’a pas été finalisée.');
+  if(finalized.number!=='FAC-2026-07-0042')throw new Error(`Premier numéro configuré non respecté : ${finalized.number}`);
+  let invoiceNumberingLocked=false;
+  try{await db.query("select public.save_company_numbering_configuration($1,'DEV',73,'year_prefix','FAC',99,'prefix_year_month','AV',30)",[company]);}catch(error){invoiceNumberingLocked=String(error.message).includes('invoice_numbering_locked');}
+  if(!invoiceNumberingLocked)throw new Error('La séquence facture reste modifiable après une facture.');
+  await db.query("select public.save_company_numbering_configuration($1,'DEV',74,'prefix_year','FAC',43,'prefix_year_month','AV',30)",[company]);
 
   const entry=(await db.query("select id from public.accounting_entries where document_id=$1 and event_kind='original'",[draft.id])).rows[0];
   if(!entry)throw new Error('Écriture comptable de facture absente.');

@@ -317,7 +317,7 @@ body.auth-checking #auth-loading{display:flex}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <link rel="stylesheet" href="assets/css/phase1-foundation.css?v=20260725.12">
-<link rel="stylesheet" href="assets/css/modern-erp.css?v=20260726.6">
+<link rel="stylesheet" href="assets/css/modern-erp.css?v=20260726.7">
 <link rel="stylesheet" href="assets/css/erp-access-control.css?v=20260726.2">
 <link rel="stylesheet" href="assets/css/dashboard-cockpit.css?v=20260724.4">
 <link rel="stylesheet" href="assets/css/crm-command-center.css?v=20260726.3">
@@ -420,12 +420,14 @@ const artefact = typeof window.storage !== 'undefined' && window.storage && wind
 function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
 function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 const AUTH_URLS = {login:'https://app.piloz.fr/?mode=login', signup:'https://app.piloz.fr/?mode=signup'};
-const AUTH_SIGNUP_STEPS = 4;
+const AUTH_SIGNUP_STEPS = 5;
 const SIGNUP_DRAFT_KEY = 'piloz_signup_draft_v1';
 function blankSignupDraft(){
   return {
     firstName:'', lastName:'', email:'', password:'', confirmPassword:'', terms:false,
-    companyName:'', sector:'', status:'', teamSize:'', siret:'',
+    companyName:'', sector:'', status:'', teamSize:'', siret:'', currency:'EUR',
+    quotePrefix:'DEV', quoteStartNumber:'1', quoteNumberFormat:'prefix_year_month',
+    invoicePrefix:'FAC', invoiceStartNumber:'1', invoiceNumberFormat:'prefix_year_month',
     primaryNeed:'', currentTool:'', contactsVolume:'', heardAbout:''
   };
 }
@@ -2390,6 +2392,8 @@ const AUTH_STATUS_OPTIONS = [['independant','Indépendant'],['micro-entreprise',
 const AUTH_TEAM_OPTIONS = [['solo','Je travaille seul'],['2-5','2 à 5 personnes'],['6-10','6 à 10 personnes'],['11-50','11 à 50 personnes'],['50+','Plus de 50 personnes']];
 const AUTH_NEED_OPTIONS = [['prospects','Suivre mes prospects'],['relances','Automatiser mes relances'],['documents','Créer des devis et factures'],['paiements','Suivre mes paiements'],['centraliser','Centraliser mon activité commerciale']];
 const AUTH_TOOL_OPTIONS = [['aucun','Aucun'],['excel','Excel ou Google Sheets'],['crm','Un CRM'],['facturation','Un logiciel de facturation'],['autre','Autre']];
+const AUTH_CURRENCY_OPTIONS = [['EUR','Euro (EUR)'],['USD','Dollar américain (USD)'],['GBP','Livre sterling (GBP)'],['CHF','Franc suisse (CHF)']];
+const AUTH_NUMBER_FORMAT_OPTIONS = [['prefix_year_month','Préfixe-année-mois-numéro · DEV-2026-07-0001'],['prefix_year','Préfixe-année-numéro · DEV-2026-0001'],['year_prefix','Année-préfixe-numéro · 2026-DEV-0001']];
 const AUTH_VOLUME_OPTIONS = [['0-10','0 à 10'],['11-50','11 à 50'],['51-200','51 à 200'],['201+','Plus de 200']];
 function authOptions(options, value, placeholder='Sélectionnez une option'){
   return `<option value="">${placeholder}</option>` + options.map(([id,label])=>`<option value="${id}" ${value===id?'selected':''}>${esc(label)}</option>`).join('');
@@ -2476,6 +2480,13 @@ function authValidateSignupStep(step){
     if(siret && !/^\d{14}$/.test(siret)) errors.siret = 'Le SIRET doit contenir 14 chiffres.';
   }
   if(step===3){
+    if(!signupDraft.currency) errors.currency = 'Choisissez la devise principale.';
+    if(!/^[A-Z0-9]{1,10}$/.test(String(signupDraft.quotePrefix||'').trim().toUpperCase())) errors.quotePrefix = 'Utilisez 1 à 10 lettres ou chiffres.';
+    if(!/^[A-Z0-9]{1,10}$/.test(String(signupDraft.invoicePrefix||'').trim().toUpperCase())) errors.invoicePrefix = 'Utilisez 1 à 10 lettres ou chiffres.';
+    if(!Number.isInteger(Number(signupDraft.quoteStartNumber))||Number(signupDraft.quoteStartNumber)<1) errors.quoteStartNumber = 'Le premier numéro doit être supérieur à zéro.';
+    if(!Number.isInteger(Number(signupDraft.invoiceStartNumber))||Number(signupDraft.invoiceStartNumber)<1) errors.invoiceStartNumber = 'Le premier numéro doit être supérieur à zéro.';
+  }
+  if(step===4){
     if(!signupDraft.primaryNeed) errors.primaryNeed = 'Choisissez votre besoin principal.';
     if(!signupDraft.currentTool) errors.currentTool = 'Indiquez votre outil actuel.';
     if(!signupDraft.contactsVolume) errors.contactsVolume = 'Précisez votre volume de prospects ou clients.';
@@ -2525,6 +2536,21 @@ function authSignupStepMarkup(){
     </div>
     <p class="auth-help">Le SIRET reste facultatif à cette étape. Vous pourrez compléter vos informations société plus tard dans Piloz.</p>`;
   if(authStep===3) return `
+    <p class="auth-help">Si vous changez de logiciel, indiquez le prochain numéro à utiliser. Ce choix reste modifiable tant qu’aucun document correspondant n’a été créé.</p>
+    <div class="auth-grid two">
+      <div class="auth-field"><label for="signup_currency">Devise principale *</label><select id="signup_currency" onchange="updateSignupField('currency', this.value)"${authAria('currency')}>${authOptions(AUTH_CURRENCY_OPTIONS, signupDraft.currency, 'Choisissez une devise')}</select>${authErrorMarkup('currency')}</div>
+      <div class="auth-field"><label for="signup_quotePrefix">Préfixe des devis *</label><input id="signup_quotePrefix" maxlength="10" value="${esc(signupDraft.quotePrefix)}" oninput="updateSignupField('quotePrefix', this.value.toUpperCase())"${authAria('quotePrefix')}>${authErrorMarkup('quotePrefix')}</div>
+    </div>
+    <div class="auth-grid two">
+      <div class="auth-field"><label for="signup_quoteStartNumber">Premier numéro de devis *</label><input id="signup_quoteStartNumber" type="number" min="1" step="1" value="${esc(signupDraft.quoteStartNumber)}" oninput="updateSignupField('quoteStartNumber', this.value)"${authAria('quoteStartNumber')}>${authErrorMarkup('quoteStartNumber')}</div>
+      <div class="auth-field"><label for="signup_quoteNumberFormat">Format des devis *</label><select id="signup_quoteNumberFormat" onchange="updateSignupField('quoteNumberFormat', this.value)">${authOptions(AUTH_NUMBER_FORMAT_OPTIONS, signupDraft.quoteNumberFormat)}</select></div>
+    </div>
+    <div class="auth-grid two">
+      <div class="auth-field"><label for="signup_invoicePrefix">Préfixe des factures *</label><input id="signup_invoicePrefix" maxlength="10" value="${esc(signupDraft.invoicePrefix)}" oninput="updateSignupField('invoicePrefix', this.value.toUpperCase())"${authAria('invoicePrefix')}>${authErrorMarkup('invoicePrefix')}</div>
+      <div class="auth-field"><label for="signup_invoiceStartNumber">Première facture *</label><input id="signup_invoiceStartNumber" type="number" min="1" step="1" value="${esc(signupDraft.invoiceStartNumber)}" oninput="updateSignupField('invoiceStartNumber', this.value)"${authAria('invoiceStartNumber')}>${authErrorMarkup('invoiceStartNumber')}</div>
+    </div>
+    <div class="auth-field"><label for="signup_invoiceNumberFormat">Format des factures *</label><select id="signup_invoiceNumberFormat" onchange="updateSignupField('invoiceNumberFormat', this.value)">${authOptions(AUTH_NUMBER_FORMAT_OPTIONS, signupDraft.invoiceNumberFormat)}</select></div>`;
+  if(authStep===4) return `
     <div class="auth-field"><label for="signup_primaryNeed">Quel est votre besoin principal ? *</label><select id="signup_primaryNeed" onchange="updateSignupField('primaryNeed', this.value)"${authAria('primaryNeed')}>${authOptions(AUTH_NEED_OPTIONS, signupDraft.primaryNeed, 'Choisissez votre priorité')}</select>${authErrorMarkup('primaryNeed')}</div>
     <div class="auth-field"><label for="signup_currentTool">Quel outil utilisez-vous actuellement ? *</label><select id="signup_currentTool" onchange="updateSignupField('currentTool', this.value)"${authAria('currentTool')}>${authOptions(AUTH_TOOL_OPTIONS, signupDraft.currentTool, 'Choisissez un outil')}</select>${authErrorMarkup('currentTool')}</div>
     <div class="auth-field"><label for="signup_contactsVolume">Combien de prospects ou clients gérez-vous environ ? *</label><select id="signup_contactsVolume" onchange="updateSignupField('contactsVolume', this.value)"${authAria('contactsVolume')}>${authOptions(AUTH_VOLUME_OPTIONS, signupDraft.contactsVolume, 'Choisissez un volume')}</select>${authErrorMarkup('contactsVolume')}</div>
@@ -2533,6 +2559,7 @@ function authSignupStepMarkup(){
     <div class="auth-summary">
       <div class="auth-summary-card"><h3>Votre compte</h3><div class="auth-summary-list">${authSummaryItem('Nom complet', `${signupDraft.firstName} ${signupDraft.lastName}`.trim())}${authSummaryItem('Email', signupDraft.email)}</div></div>
       <div class="auth-summary-card"><h3>Votre activité</h3><div class="auth-summary-list">${authSummaryItem('Entreprise', signupDraft.companyName)}${authSummaryItem('Secteur', signupDraft.sector)}${authSummaryItem('Statut', authLabel(AUTH_STATUS_OPTIONS, signupDraft.status))}${authSummaryItem('Équipe', authLabel(AUTH_TEAM_OPTIONS, signupDraft.teamSize))}${authSummaryItem('SIRET', signupDraft.siret || 'Non renseigné')}</div></div>
+      <div class="auth-summary-card"><h3>Vos documents</h3><div class="auth-summary-list">${authSummaryItem('Devise', signupDraft.currency)}${authSummaryItem('Prochain devis', `${signupDraft.quotePrefix} · ${signupDraft.quoteStartNumber}`)}${authSummaryItem('Prochaine facture', `${signupDraft.invoicePrefix} · ${signupDraft.invoiceStartNumber}`)}</div></div>
       <div class="auth-summary-card"><h3>Vos besoins</h3><div class="auth-summary-list">${authSummaryItem('Priorité', authLabel(AUTH_NEED_OPTIONS, signupDraft.primaryNeed))}${authSummaryItem('Outil actuel', authLabel(AUTH_TOOL_OPTIONS, signupDraft.currentTool))}${authSummaryItem('Volume géré', authLabel(AUTH_VOLUME_OPTIONS, signupDraft.contactsVolume))}${authSummaryItem('Origine', signupDraft.heardAbout || 'Non renseigné')}</div></div>
     </div>
     <div class="auth-cta-note">Le compte Supabase n’est créé qu’à cette étape finale. Les réponses d’onboarding seront enregistrées dans le profil utilisateur et dans l’état Piloz.</div>`;
@@ -2583,7 +2610,7 @@ function pageAuth(){
   setAuthVisibility(true);
   el.style.display = 'flex';
   el.innerHTML = `<div class="auth-shell">${authAside()}<section class="auth-panel">${authPanelContent()}</section></div>`;
-  const target = authFocusTarget || (authRecovery ? 'reset_password' : (authMode==='signup' ? (['signup_firstName','signup_companyName','signup_primaryNeed','signup_firstName'][authStep-1] || 'signup_firstName') : 'login_email'));
+  const target = authFocusTarget || (authRecovery ? 'reset_password' : (authMode==='signup' ? (['signup_firstName','signup_companyName','signup_currency','signup_primaryNeed','signup_firstName'][authStep-1] || 'signup_firstName') : 'login_email'));
   authFocusTarget = '';
   setTimeout(()=>{ const node = document.getElementById(target); if(node) node.focus(); }, 40);
 }
@@ -2610,7 +2637,8 @@ function authBuildOnboarding(){
     createdAt: new Date().toISOString(),
     fullName: `${signupDraft.firstName} ${signupDraft.lastName}`.trim(),
     account: {firstName: signupDraft.firstName.trim(), lastName: signupDraft.lastName.trim(), email: signupDraft.email.trim()},
-    company: {name: signupDraft.companyName.trim(), sector: signupDraft.sector.trim(), status: signupDraft.status, teamSize: signupDraft.teamSize, siret: (signupDraft.siret||'').replace(/\s+/g,'')},
+    company: {name: signupDraft.companyName.trim(), sector: signupDraft.sector.trim(), status: signupDraft.status, teamSize: signupDraft.teamSize, siret: (signupDraft.siret||'').replace(/\s+/g,''), currency:signupDraft.currency},
+    documents: {currency:signupDraft.currency, quotePrefix:signupDraft.quotePrefix.trim().toUpperCase(), quoteStartNumber:Number(signupDraft.quoteStartNumber)||1, quoteNumberFormat:signupDraft.quoteNumberFormat, invoicePrefix:signupDraft.invoicePrefix.trim().toUpperCase(), invoiceStartNumber:Number(signupDraft.invoiceStartNumber)||1, invoiceNumberFormat:signupDraft.invoiceNumberFormat},
     needs: {primaryNeed: signupDraft.primaryNeed, currentTool: signupDraft.currentTool, contactsVolume: signupDraft.contactsVolume, heardAbout: signupDraft.heardAbout.trim()},
     labels: {status: authLabel(AUTH_STATUS_OPTIONS, signupDraft.status), teamSize: authLabel(AUTH_TEAM_OPTIONS, signupDraft.teamSize), primaryNeed: authLabel(AUTH_NEED_OPTIONS, signupDraft.primaryNeed), currentTool: authLabel(AUTH_TOOL_OPTIONS, signupDraft.currentTool), contactsVolume: authLabel(AUTH_VOLUME_OPTIONS, signupDraft.contactsVolume)},
     requestedOffer,
@@ -2710,8 +2738,8 @@ async function authLogin(){
 async function authSignupFinish(){
   if(!authServerReady()) return false;
   const errors = authValidateSignupStep(1);
-  Object.assign(errors, authValidateSignupStep(2), authValidateSignupStep(3));
-  if(Object.keys(errors).length){ authSetErrors(errors); authStep = Object.keys(authValidateSignupStep(1)).length ? 1 : (Object.keys(authValidateSignupStep(2)).length ? 2 : 3); pageAuth(); return false; }
+  Object.assign(errors, authValidateSignupStep(2), authValidateSignupStep(3), authValidateSignupStep(4));
+  if(Object.keys(errors).length){ authSetErrors(errors); authStep = Object.keys(authValidateSignupStep(1)).length ? 1 : (Object.keys(authValidateSignupStep(2)).length ? 2 : (Object.keys(authValidateSignupStep(3)).length ? 3 : 4)); pageAuth(); return false; }
   const onboarding = authBuildOnboarding();
   authBusy = true;
   authStatusMessage = 'Création du compte…';
@@ -2897,17 +2925,17 @@ async function boActif(uid, actif){
 <script src="assets/js/modules/subscription/site-offer.js?v=20260726.1"></script>
 <script src="assets/js/modules/subscription/entitlements.js?v=20260721.10"></script>
 <script src="assets/js/modules/onboarding/company-search.js?v=20260721.10"></script>
-<script src="assets/js/modules/onboarding/professional-onboarding.js?v=20260721.10"></script>
-<script src="assets/js/modules/erp/erp-app.js?v=20260726.15"></script>
-<script src="assets/js/modules/erp/erp-modern.js?v=20260726.6"></script>
-<script src="assets/js/modules/erp/erp-compliance.js?v=20260726.2"></script>
+<script src="assets/js/modules/onboarding/professional-onboarding.js?v=20260726.11"></script>
+<script src="assets/js/modules/erp/erp-app.js?v=20260726.16"></script>
+<script src="assets/js/modules/erp/erp-modern.js?v=20260726.8"></script>
+<script src="assets/js/modules/erp/erp-compliance.js?v=20260726.3"></script>
 <script src="assets/js/modules/erp/erp-commercial-v2.js?v=20260726.3"></script>
 <script src="assets/js/modules/erp/erp-dashboard-cockpit.js?v=20260724.4"></script>
-<script src="assets/js/modules/erp/erp-accounting-extensions.js?v=20260726.4"></script>
+<script src="assets/js/modules/erp/erp-accounting-extensions.js?v=20260726.6"></script>
 <script src="assets/js/modules/erp/erp-commercial-workspace.js?v=20260724.2"></script>
 <script src="assets/js/modules/erp/erp-crm-command-center.js?v=20260726.3"></script>
 <script src="assets/js/modules/erp/erp-crm-enterprise.js?v=20260726.3"></script>
-<script src="assets/js/modules/erp/erp-document-editor-v2.js?v=20260726.15"></script>
+<script src="assets/js/modules/erp/erp-document-editor-v2.js?v=20260726.16"></script>
 <script src="assets/js/modules/erp/erp-document-viewer-v2.js?v=20260726.9"></script>
 <script src="assets/js/modules/erp/erp-clients.js?v=20260726.1"></script>
 <script src="assets/js/modules/erp/erp-catalog-v2.js?v=20260723.1"></script>

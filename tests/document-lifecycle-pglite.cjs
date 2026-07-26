@@ -679,7 +679,7 @@ async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[],cli
           throw new Error(`progress invoice: situation 2 draft could not be edited and saved ${JSON.stringify({result:resaved.rows[0]?.result,lines:linesAfterSave.rows[0]})}`);
       }
       const finalizedProgress=(await db.query('select public.finalize_document($1) result',[progressId])).rows[0].result;
-      if(!/^FAC-\d{4}-\d+$/.test(finalizedProgress.number||''))
+      if(!/^FAC-\d{4}(?:-\d{2})?-\d+$/.test(finalizedProgress.number||''))
         throw new Error(`progress invoice: situation ${situation} did not receive a regular fiscal invoice number ${JSON.stringify(finalizedProgress)}`);
       progressFiscalNumbers.push(finalizedProgress.number);
       latestProgressId=progressId;
