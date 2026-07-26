@@ -92,6 +92,13 @@
     return data;
   }
   async function companyContext(){
+    try{
+      const invitations=await rpc('list_my_pending_company_invitations');
+      for(const invitation of Array.isArray(invitations)?invitations:[]){
+        const company=invitation.company_name||'cette entreprise',role=invitation.role_name?` avec le rôle ${invitation.role_name}`:'';
+        if(global.confirm(`Vous êtes invité à rejoindre ${company}${role}. Accepter cette invitation ?`))await rpc('accept_company_invitation',{target_invitation_id:invitation.id});
+      }
+    }catch(error){if(!['PGRST202','42883'].includes(String(error?.code||'')))console.warn('[PILOZ Accès] Invitations non chargées',{code:error?.code||'',message:error?.message||String(error)});}
     let rows=await request('/rest/v1/user_preferences?select=company_id&user_id=eq.'+encodeURIComponent(global.PilozRuntime.session.user_id));
     if(!rows[0]?.company_id){await rpc('ensure_user_company',{company_name:'Mon entreprise'});rows=await request('/rest/v1/user_preferences?select=company_id&user_id=eq.'+encodeURIComponent(global.PilozRuntime.session.user_id));}
     if(!rows[0]?.company_id)throw new Error("Aucune entreprise n'est associée à ce compte.");return rows[0].company_id;

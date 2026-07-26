@@ -2,7 +2,38 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607260080' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607260081' ok
+  union all
+  select 'company_access_system_roles',count(*)::text,count(*)=0
+  from public.companies company
+  where (select count(distinct role.system_key) from public.company_roles role
+         where role.company_id=company.id and role.is_system and role.active
+           and role.system_key in('administrator','user','commercial','accountant'))<>4
+  union all
+  select 'company_access_resolver_rpc',coalesce(to_regprocedure('public.resolve_company_permissions(uuid,uuid)')::text,'missing'),
+    to_regprocedure('public.resolve_company_permissions(uuid,uuid)') is not null
+  union all
+  select 'company_access_context_rpc',coalesce(to_regprocedure('public.get_company_access_context(uuid)')::text,'missing'),
+    to_regprocedure('public.get_company_access_context(uuid)') is not null
+  union all
+  select 'company_access_users_rpc',coalesce(to_regprocedure('public.list_company_access_users(uuid,text,text,uuid,text,text,text,integer,integer)')::text,'missing'),
+    to_regprocedure('public.list_company_access_users(uuid,text,text,uuid,text,text,text,integer,integer)') is not null
+  union all
+  select 'company_invitation_accept_rpc',coalesce(to_regprocedure('public.accept_company_invitation(uuid)')::text,'missing'),
+    to_regprocedure('public.accept_company_invitation(uuid)') is not null
+  union all
+  select 'company_access_rls_tables',count(*)::text,count(*)=3
+  from pg_class
+  where oid in('public.company_roles'::regclass,'public.company_invitations'::regclass,'public.company_access_audit'::regclass)
+    and relrowsecurity
+  union all
+  select 'company_access_server_guards',count(*)::text,count(*)=3
+  from pg_trigger
+  where (tgrelid,tgname) in(
+    ('public.documents'::regclass,'documents_enforce_central_permission'),
+    ('public.document_lines'::regclass,'document_lines_enforce_central_permission'),
+    ('public.payments'::regclass,'payments_enforce_central_permission')
+  ) and not tgisinternal
   union all
   select 'crm_pipelines_rls',coalesce((select relrowsecurity::text from pg_class where oid=to_regclass('public.crm_pipelines')),'missing'),
     coalesce((select relrowsecurity from pg_class where oid=to_regclass('public.crm_pipelines')),false)
@@ -276,7 +307,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607260080',
+  'schema_version','202607260081',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../assets/css/erp-access-control.css">
+  <title>Test Équipe et accès</title>
+</head>
+<body>
+  <main id="main"></main>
+  <pre id="result" data-status="running">RUNNING</pre>
+  <script>
+    location.hash = '#settings/users';
+    const role = (id, name, systemKey, permissions) => ({
+      id, name, role_key: systemKey, system_key: systemKey, is_system: true,
+      description: `Rôle ${name}`, created_at: '2026-07-26T12:00:00Z', updated_at: '2026-07-26T12:00:00Z',
+      users_count: id === 'administrator' ? 1 : 0, permissions
+    });
+    const permissions = [
+      { permission_key: 'company.users.read', category_label: 'Administration', label: 'Consulter les utilisateurs', description: '', allowed_scopes: ['company'] },
+      { permission_key: 'company.users.manage', category_label: 'Administration', label: 'Gérer les utilisateurs', description: '', allowed_scopes: ['company'] },
+      { permission_key: 'sales.quotes.read', category_label: 'Devis et factures', label: 'Consulter les devis', description: '', allowed_scopes: ['own', 'team', 'company'] },
+      { permission_key: 'sales.invoices.finalize', category_label: 'Devis et factures', label: 'Finaliser les factures', description: '', allowed_scopes: ['own', 'team', 'company'] }
+    ];
+    const roles = [
+      role('administrator', 'Administrateur', 'administrator', permissions.map(item => ({ permission_key: item.permission_key, scope: 'company' }))),
+      role('user', 'Utilisateur', 'user', [{ permission_key: 'sales.quotes.read', scope: 'own' }]),
+      role('commercial', 'Commercial', 'commercial', [{ permission_key: 'sales.quotes.read', scope: 'team' }]),
+      role('accountant', 'Expert-comptable', 'accountant', [])
+    ];
+    const context = {
+      summary: { active_users: 1, pending_invitations: 1, custom_roles: 0, anomalies: 0 },
+      permissions, roles, teams: [], audit: [],
+      invitations: [{ id: 'invite-1', email: 'invite@piloz.fr', first_name: 'Jeanne', last_name: 'Martin', intended_role_id: 'commercial', status: 'sent', delivery_status: 'sent', expires_at: '2026-08-02T12:00:00Z' }],
+      users: [{ user_id: 'user-1', status: 'active' }]
+    };
+    const users = [{
+      user_id: 'user-1', email: 'admin@piloz.fr', first_name: 'Alice', last_name: 'Durand', role_id: 'administrator',
+      role_name: 'Administrateur', member_status: 'active', invitation_status: 'accepted',
+      last_sign_in_at: '2026-07-26T12:00:00Z', added_at: '2026-07-20T12:00:00Z', total_count: 1
+    }];
+    window.PilozRuntime = { session: { user_id: 'user-1' } };
+    window.toast = () => {};
+    window.PilozApp = {
+      allowed: () => true,
+      getState: () => ({ companyId: '00000000-0000-4000-8000-000000000001' }),
+      go: path => { location.hash = `#${path}`; }
+    };
+    window.PilozModern = { renderRoute: () => false, renderNavigation: () => {} };
+    window.PilozERP = {
+      rpc: async name => name === 'get_company_access_context' ? context : users,
+      invoke: async () => ({ invitationSent: true, message: 'Invitation créée.' })
+    };
+  </script>
+  <script src="../assets/js/modules/erp/erp-access-control.js"></script>
+  <script>
+    setTimeout(() => {
+      const assertions = [];
+      const check = (name, value) => assertions.push({ name, ok: Boolean(value) });
+      check('quatre onglets', document.querySelectorAll('.access-tabs button').length === 4);
+      check('colonnes utilisateur complètes', [...document.querySelectorAll('.access-table th')].some(node => /Invitation/.test(node.textContent)));
+      check('tri disponible', document.querySelectorAll('.access-sort').length >= 6);
+      check('utilisateur réel affiché', document.body.textContent.includes('Alice Durand'));
+      PilozAccess.setTab('roles');
+      check('quatre rôles système', document.querySelectorAll('.access-role-card').length === 4);
+      PilozAccess.openRole('commercial');
+      check('message système exact', document.body.textContent.includes('Ce rôle n’est pas modifiable, il fait partie des rôles par défaut du logiciel.'));
+      check('éditeur groupé', document.querySelectorAll('.access-permission-grid section').length === 2);
+      const columnCount = getComputedStyle(document.querySelector('.access-permission-grid')).gridTemplateColumns.split(' ').length;
+      check(innerWidth < 900 ? 'éditeur responsive une colonne' : 'éditeur deux colonnes bureau', columnCount === (innerWidth < 900 ? 1 : 2));
+      const failed = assertions.filter(item => !item.ok);
+      const result = document.getElementById('result');
+      result.dataset.status = failed.length ? 'failed' : 'passed';
+      result.textContent = failed.length ? `Échec : ${failed.map(item => item.name).join(', ')}` : `${assertions.length}/${assertions.length} contrôles Équipe et accès réussis`;
+    }, 80);
+  </script>
+</body>
+</html>

@@ -9,6 +9,7 @@ const {pgcrypto}=require(path.join(packageRoot,'dist','contrib','pgcrypto.cjs'))
 const repoRoot=path.resolve(__dirname,'..');
 const migrationsDir=path.join(repoRoot,'supabase','migrations');
 const actor='11111111-1111-4111-8111-111111111111';
+const commercialActor='11111111-1111-4111-8111-111111111112';
 const company='22222222-2222-4222-8222-222222222222';
 const client='33333333-3333-4333-8333-333333333333';
 
@@ -99,6 +100,35 @@ async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[],cli
   try{
     await bootstrap(db);
     await db.exec('reset role');
+    await db.exec(`
+      insert into auth.users(id,email,raw_user_meta_data) values('${commercialActor}','commercial@piloz.fr',jsonb_build_object('first_name','Camille'));
+      insert into public.company_members(company_id,user_id,role) values('${company}','${commercialActor}','sales');
+      set request.jwt.claim.sub='${commercialActor}';
+      set role authenticated;
+    `);
+    const systemRoles=await db.query(`select system_key,name from public.company_roles where company_id=$1 and is_system and active order by system_key`,[company]);
+    if(systemRoles.rows.length!==4||!['accountant','administrator','commercial','user'].every(key=>systemRoles.rows.some(row=>row.system_key===key)))
+      throw new Error(`access: four system roles expected ${JSON.stringify(systemRoles.rows)}`);
+    const commercialAccess=await db.query(`select
+      public.has_company_permission($1,'sales.quotes.finalize') quote_finalize,
+      public.has_company_permission($1,'sales.invoices.create_draft') invoice_draft,
+      public.has_company_permission($1,'sales.invoices.finalize') invoice_finalize,
+      public.has_company_permission($1,'payments.create') payment_create,
+      public.has_company_permission($1,'catalog.purchase_price.read') purchase_price,
+      public.has_company_permission($1,'catalog.margin.read') margin`,[company]);
+    if(!commercialAccess.rows[0].quote_finalize||!commercialAccess.rows[0].invoice_draft||commercialAccess.rows[0].invoice_finalize
+      ||commercialAccess.rows[0].payment_create||commercialAccess.rows[0].purchase_price||commercialAccess.rows[0].margin)
+      throw new Error(`access: invalid Commercial matrix ${JSON.stringify(commercialAccess.rows[0])}`);
+    await db.exec(`reset role; set request.jwt.claim.sub='${actor}';`);
+    let lastAdministratorProtected=false;
+    try{await db.query(`update public.company_members set role_id=(select id from public.company_roles where company_id=$1 and system_key='user') where company_id=$1 and user_id=$2`,[company,actor]);}
+    catch(error){lastAdministratorProtected=/au moins un administrateur actif/.test(error.message);}
+    if(!lastAdministratorProtected)throw new Error('access: last active administrator must be protected');
+    let systemRoleProtected=false;
+    try{await db.query(`update public.company_roles set name='Administrateur modifié' where company_id=$1 and system_key='administrator'`,[company]);}
+    catch(error){systemRoleProtected=/rôle n’est pas modifiable/.test(error.message);}
+    if(!systemRoleProtected)throw new Error('access: system roles must be immutable');
+    await db.exec(`reset role; set request.jwt.claim.sub='${actor}';`);
     await db.exec(`
       insert into public.document_templates(id,company_id,name,document_type,language,status,is_default,current_version,created_by,updated_by)
       values
