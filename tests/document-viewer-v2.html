@@ -52,7 +52,7 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   check('facture en retard calculée par échéance',PilozDocumentStatus.effective(state.data,state.data.documents.find(row=>row.id==='f4'))==='overdue');
   check('facture annulée sans reste à payer',PilozDocumentStatus.remainingFor(state.data,{id:'cancelled',status:'cancelled',total_incl_tax:500})===0);
 
-  location.hash='document-viewer?id=q1&type=quote';PilozModern.renderRoute('document-viewer',state);await wait(30);
+  location.hash='document-viewer?id=q1&type=quote';PilozModern.renderRoute('document-viewer',state);check('ancien aperçu figé jamais affiché',!main.textContent.includes('Aperçu figé')&&!main.textContent.includes('Le contenu figé reste consultable'));await wait(30);
   check('structure en trois colonnes',!!document.querySelector('.document-viewer-list')&&!!document.querySelector('.document-viewer-preview')&&!!document.querySelector('.document-viewer-side'));
   check('liste devis complète',document.querySelectorAll('.document-viewer-list-item').length===3);
   check('dates émission et échéance libellées dans la liste',document.querySelector('.document-viewer-list-item')?.textContent.includes('Date d’émission :')&&document.querySelector('.document-viewer-list-item')?.textContent.includes('Date d’échéance :'));
