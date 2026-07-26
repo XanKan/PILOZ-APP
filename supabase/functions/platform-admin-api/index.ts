@@ -113,6 +113,14 @@ Deno.serve(async req=>{
    await client.rpc("platform_admin_record_auth_action",{target_user_id:userId,target_company_id:companyId,target_action:"user.password_reset_requested",target_reason:reason,target_new_state:{requested:true}});
    return response(req,{sent:true});
   }
+  if(action==="users.mfa_reset"){
+   requirePermission("users.write");const userId=uuid(payload.userId),companyId=payload.companyId?uuid(payload.companyId):null,reason=text(payload.reason,500);
+   if(!reason)throw new Error("Le motif est obligatoire");const authAdmin=privileged(),{data:list,error:listError}=await authAdmin.auth.admin.mfa.listFactors({userId});if(listError)throw listError;
+   const factors=list?.factors||[];
+   for(const factor of factors){const {error}=await authAdmin.auth.admin.mfa.deleteFactor({userId,id:factor.id});if(error)throw error;}
+   const {error:auditError}=await client.rpc("platform_admin_record_auth_action",{target_user_id:userId,target_company_id:companyId,target_action:"user.sessions_revoked",target_reason:reason,target_new_state:{mfa_reset_required:true,deleted_factor_count:factors.length}});if(auditError)throw auditError;
+   return response(req,{reset:true,deletedFactors:factors.length});
+  }
   if(action==="plans.list"){
    requirePermission("plans.read");const {data,error}=await client.from("subscription_plan_versions").select("*").order("plan_key").order("version",{ascending:false});if(error)throw error;return response(req,{items:data||[]});
   }
