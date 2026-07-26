@@ -2,6 +2,8 @@
 
 ## 0.9.0-compliance.29 — 26 juillet 2026
 
+- finalisation des factures d’acompte fiabilisée après un changement de régime TVA, y compris lorsque la valeur chargée provient d’un ancien format texte ;
+- propagation correcte du mode silencieux lors de la sauvegarde préalable et remontée du véritable motif lorsqu’une finalisation est refusée ;
 - alignement automatique des brouillons à 0 % de TVA lorsqu’une entreprise est déclarée non assujettie, afin d’autoriser leur finalisation sans produire de TVA incohérente ;
 - masquage immédiat des paramètres TVA devenus inutiles lorsque l’assujettissement est désactivé ;
 - simplification des listes de TVA dans les devis et factures : seuls les pourcentages configurés sont affichés ;
