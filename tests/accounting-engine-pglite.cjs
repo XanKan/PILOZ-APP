@@ -57,6 +57,22 @@ async function main(){
   if(!invoiceNumberingLocked)throw new Error('La séquence facture reste modifiable après une facture.');
   await db.query("select public.save_company_numbering_configuration($1,'DEV',74,'prefix_year','FAC',43,'prefix_year_month','AV',30)",[company]);
 
+  await db.exec('reset role');
+  await db.query("update public.company_document_settings set quote_next_number=2 where company_id=$1",[company]);
+  await db.query("update public.document_sequences set next_value=2 where company_id=$1 and document_type='quote' and year=2026",[company]);
+  await db.query(`insert into public.documents(company_id,document_type,number,client_id,status,issue_date,validity_date,currency,language,total_excl_tax,total_tax,total_incl_tax,created_by)
+    values($1,'quote','DEV-2026-0077',$2,'pending','2026-07-26','2026-08-25','EUR','fr',100,20,120,$3)`,[company,client,actor]);
+  await db.exec("set session_replication_role='replica'");
+  await db.query("update public.documents set number='DEV-2026-0077' where company_id=$1 and document_type='quote'",[company]);
+  await db.exec("set session_replication_role='origin'");
+  await db.exec('reset role');
+  const historicalQuote=(await db.query("select number,issue_date,document_type,public._piloz_existing_document_sequence_max(company_id,'quote',2026) existing_max from public.documents where company_id=$1 and document_type='quote'",[company])).rows;
+  const reconciledQuoteNumber=(await db.query("select public._piloz_take_document_number($1,'quote',2026,false) number",[company])).rows[0].number;
+  const reconciledQuoteNext=Number((await db.query('select quote_next_number from public.company_document_settings where company_id=$1',[company])).rows[0].quote_next_number);
+  if(reconciledQuoteNumber!=='DEV-2026-0078'||reconciledQuoteNext!==79)
+    throw new Error(`Reconciliation de la sequence devis invalide ${JSON.stringify({historicalQuote,reconciledQuoteNumber,reconciledQuoteNext})}`);
+  await setIdentity(db,actor);
+
   const entry=(await db.query("select id from public.accounting_entries where document_id=$1 and event_kind='original'",[draft.id])).rows[0];
   if(!entry)throw new Error('Écriture comptable de facture absente.');
   const totals=(await db.query('select round(sum(debit),2) debit,round(sum(credit),2) credit from public.accounting_entry_lines where entry_id=$1',[entry.id])).rows[0];
@@ -104,7 +120,7 @@ async function main(){
   if(Number(audit.count)<2)throw new Error('Historique des paramètres comptables incomplet.');
 
   await db.close();
-  console.log(JSON.stringify({ok:true,documentNumber:finalized.number,entryId:entry.id,totals,vatLines,
+  console.log(JSON.stringify({ok:true,documentNumber:finalized.number,reconciledQuoteNumber,reconciledQuoteNext,entryId:entry.id,totals,vatLines,
     export:{firstExport,cancellation,releasedEntries:released.entry_count},payment:{paymentId,totals:paymentTotals},
     vatCash:{collected:vatPreview.total_collected,base:vatPreview.total_tax_base,vat:vatPreview.total_vat,rates:vatPreview.lines.map(row=>row.tax_rate)},
     rls:{connections:visibleConnections.length,mail:visibleMail.length,terms:visibleTerms.length,secretsBlocked:secretBlocked}}));
