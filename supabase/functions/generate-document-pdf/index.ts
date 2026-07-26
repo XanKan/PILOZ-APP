@@ -1073,6 +1073,111 @@ async function loadFrozenLogo(
   }
 }
 
+async function appendFrozenSalesTerms(
+  admin: SupabaseClient<any, "public", "public", any, any>,
+  documentId: string,
+  baseBytes: Uint8Array,
+): Promise<Uint8Array> {
+  const { data: snapshot, error } = await admin.from("document_sales_terms_snapshots")
+    .select("company_id,source_type,body,pdf_storage_path,pdf_sha256")
+    .eq("document_id", documentId)
+    .maybeSingle();
+  if (error) throw Object.assign(new Error("sales_terms_snapshot_read_failed"), { code: "sales_terms_snapshot_read_failed" });
+  let data = snapshot;
+  if (!data) {
+    const { data: document } = await admin.from("documents")
+      .select("company_id,client_id,document_type,selected_sales_terms_id")
+      .eq("id", documentId)
+      .maybeSingle();
+    if (document) {
+      const family = document.document_type === "quote"
+        ? "quote"
+        : document.document_type === "credit_note"
+        ? "credit_note"
+        : ["invoice", "deposit_invoice", "balance_invoice", "progress_invoice", "proforma_invoice"].includes(document.document_type)
+        ? "invoice"
+        : document.document_type;
+      let termsId = document.selected_sales_terms_id || null;
+      if (!termsId) {
+        const clientFilter = document.client_id
+          ? `client_id.eq.${document.client_id},client_id.is.null`
+          : "client_id.is.null";
+        const { data: assignments } = await admin.from("sales_terms_assignments")
+          .select("sales_terms_id,client_id,priority,created_at")
+          .eq("company_id", document.company_id)
+          .eq("document_type", family)
+          .eq("active", true)
+          .or(clientFilter)
+          .order("priority", { ascending: false })
+          .order("created_at", { ascending: false });
+        const clientAssignment = (assignments || []).find((row: any) => row.client_id === document.client_id);
+        termsId = clientAssignment?.sales_terms_id || assignments?.[0]?.sales_terms_id || null;
+      }
+      if (termsId) {
+        const { data: terms } = await admin.from("sales_terms")
+          .select("id,current_version")
+          .eq("id", termsId)
+          .eq("company_id", document.company_id)
+          .eq("status", "active")
+          .maybeSingle();
+        if (terms) {
+          const { data: currentVersion } = await admin.from("sales_terms_versions")
+            .select("company_id,source_type,body,pdf_storage_path,pdf_sha256")
+            .eq("sales_terms_id", terms.id)
+            .eq("version", terms.current_version)
+            .maybeSingle();
+          data = currentVersion;
+        }
+      }
+    }
+  }
+  if (!data) return baseBytes;
+  const output = await PDFDocument.load(baseBytes, { updateMetadata: false });
+  if (data.source_type === "pdf") {
+    const path = String(data.pdf_storage_path || "");
+    if (!path.startsWith(`${data.company_id}/`) || path.includes("..")) {
+      throw Object.assign(new Error("sales_terms_pdf_path_invalid"), { code: "sales_terms_pdf_path_invalid" });
+    }
+    const { data: blob, error: downloadError } = await admin.storage.from("company-sales-terms").download(path);
+    if (downloadError || !blob || blob.size < 1 || blob.size > 10 * 1024 * 1024) {
+      throw Object.assign(new Error("sales_terms_pdf_download_failed"), { code: "sales_terms_pdf_download_failed" });
+    }
+    const attachmentBytes = new Uint8Array(await blob.arrayBuffer());
+    if (!isPdf(attachmentBytes)) throw Object.assign(new Error("sales_terms_pdf_invalid"), { code: "sales_terms_pdf_invalid" });
+    const expectedHash = String(data.pdf_sha256 || "");
+    if (expectedHash && await sha256Hex(attachmentBytes) !== expectedHash) {
+      throw Object.assign(new Error("sales_terms_pdf_integrity_failed"), { code: "sales_terms_pdf_integrity_failed" });
+    }
+    const attachment = await PDFDocument.load(attachmentBytes, { updateMetadata: false });
+    const copied = await output.copyPages(attachment, attachment.getPageIndices());
+    copied.forEach(page => output.addPage(page));
+  } else {
+    const body = String(data.body || "").trim();
+    if (!body) throw Object.assign(new Error("sales_terms_body_missing"), { code: "sales_terms_body_missing" });
+    const regular = await output.embedFont(StandardFonts.Helvetica);
+    const bold = await output.embedFont(StandardFonts.HelveticaBold);
+    let page = output.addPage(A4);
+    let y = 790;
+    const nextPage = (continued: boolean) => {
+      page = output.addPage(A4);
+      y = 790;
+      page.drawText(continued ? "Conditions generales de vente (suite)" : "Conditions generales de vente", { x: 42, y, size: 14, font: bold, color: rgb(0.08, 0.12, 0.2) });
+      y -= 28;
+    };
+    page.drawText("Conditions generales de vente", { x: 42, y, size: 14, font: bold, color: rgb(0.08, 0.12, 0.2) });
+    y -= 28;
+    for (const paragraph of body.split(/\r?\n/)) {
+      const rows = paragraph.trim() ? wrap(regular, paragraph, 8, 511) : [""];
+      for (const row of rows) {
+        if (y < 52) nextPage(true);
+        if (row) page.drawText(text(row), { x: 42, y, size: 8, font: regular, color: rgb(0.08, 0.12, 0.2) });
+        y -= row ? 11 : 7;
+      }
+    }
+  }
+  return output.save();
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Methode non autorisee" }, 405);
@@ -1140,7 +1245,8 @@ Deno.serve(async (req) => {
   let persistedObject = false;
   try {
     const logo = await loadFrozenLogo(userClient, payload, companyId);
-    const bytes = await buildPdf(payload, logo);
+    let bytes = await buildPdf(payload, logo);
+    bytes = await appendFrozenSalesTerms(admin, documentId, bytes);
     let sha256 = await sha256Hex(bytes);
     const path = `${companyId}/documents/${documentId}/${snapshotId}.pdf`;
     const { error: uploadError } = await admin.storage.from("company-files").upload(path, bytes, {

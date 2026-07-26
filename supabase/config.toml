@@ -27,3 +27,12 @@ verify_jwt = false
 # message via le fournisseur e-mail configuré côté serveur.
 [functions.public-contact]
 verify_jwt = false
+
+# Le même point d'entrée reçoit les callbacks OAuth signés par un state court.
+# Les actions POST restent authentifiées manuellement dans la fonction.
+[functions.external-integrations]
+verify_jwt = false
+
+# Génération authentifiée des paquets comptables figés et de leur manifeste.
+[functions.accounting-export-package]
+verify_jwt = true

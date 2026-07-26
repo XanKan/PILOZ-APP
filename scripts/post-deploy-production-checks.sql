@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607260069' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607260075' ok
   union all
   select 'invoice_legal_validator',coalesce(to_regprocedure('public.validate_invoice_for_finalization(uuid)')::text,'missing'),
     to_regprocedure('public.validate_invoice_for_finalization(uuid)') is not null
@@ -192,6 +192,45 @@ with controls as(
     and tgname='documents_guard_operational_client'
     and not tgisinternal
   union all
+  select 'stripe_onboarding_grants_rls',coalesce((select relrowsecurity::text from pg_class where oid='public.stripe_onboarding_grants'::regclass),'missing'),
+    coalesce((select relrowsecurity from pg_class where oid='public.stripe_onboarding_grants'::regclass),false)
+  union all
+  select 'external_connections_rls',coalesce((select relrowsecurity::text from pg_class where oid='public.external_connections'::regclass),'missing'),
+    coalesce((select relrowsecurity from pg_class where oid='public.external_connections'::regclass),false)
+  union all
+  select 'oauth_secrets_blocked_from_browser',has_table_privilege('authenticated','public.external_connection_secrets','SELECT')::text,
+    not has_table_privilege('authenticated','public.external_connection_secrets','SELECT')
+  union all
+  select 'sales_terms_snapshot_trigger',count(*)::text,count(*)=1
+  from pg_trigger
+  where tgrelid='public.documents'::regclass
+    and tgname='documents_snapshot_sales_terms'
+    and not tgisinternal
+  union all
+  select 'accounting_entries_rls',coalesce((select relrowsecurity::text from pg_class where oid='public.accounting_entries'::regclass),'missing'),
+    coalesce((select relrowsecurity from pg_class where oid='public.accounting_entries'::regclass),false)
+  union all
+  select 'accounting_document_trigger',count(*)::text,count(*)=1
+  from pg_trigger
+  where tgrelid='public.documents'::regclass
+    and tgname='documents_generate_accounting'
+    and not tgisinternal
+  union all
+  select 'accounting_export_rpc',coalesce(to_regprocedure('public.validate_accounting_export(uuid,text,date,date,text,boolean,boolean,text)')::text,'missing'),
+    to_regprocedure('public.validate_accounting_export(uuid,text,date,date,text,boolean,boolean,text)') is not null
+  union all
+  select 'accounting_fiscal_maintenance_rpc',coalesce(to_regprocedure('public.run_accounting_fiscal_maintenance(timestamptz)')::text,'missing'),
+    to_regprocedure('public.run_accounting_fiscal_maintenance(timestamptz)') is not null
+      and not has_function_privilege('anon','public.run_accounting_fiscal_maintenance(timestamptz)','EXECUTE')
+      and not has_function_privilege('authenticated','public.run_accounting_fiscal_maintenance(timestamptz)','EXECUTE')
+  union all
+  select 'accounting_close_fiscal_year_rpc',coalesce(to_regprocedure('public.close_accounting_fiscal_year(uuid)')::text,'missing'),
+    to_regprocedure('public.close_accounting_fiscal_year(uuid)') is not null
+  union all
+  select 'proprietary_export_adapters_disabled',count(*)::text,count(*)=0
+  from public.accounting_export_adapters
+  where adapter_group='proprietary' and availability='available'
+  union all
   select 'production_without_kms',count(*)::text,count(*)=0
   from public.company_fiscal_configurations
   where mode='production' and activation_status='production_active'
@@ -207,7 +246,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607260069',
+  'schema_version','202607260075',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;

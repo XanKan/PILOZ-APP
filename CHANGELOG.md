@@ -2,6 +2,16 @@
 
 ## 0.9.0-compliance.29 — 26 juillet 2026
 
+- sécurisation de l’inscription après paiement : seul un événement Stripe signé et traité de façon idempotente ouvre le droit temporaire à l’onboarding ;
+- ajout de la connexion Google et Microsoft via Supabase Auth, sans exposer de secret ni de jeton dans le navigateur ;
+- ajout des Extensions Google Agenda, Outlook Calendar, Gmail et Outlook Mail avec OAuth PKCE, synchronisation incrémentale, webhooks, reprise sur erreur et périmètre personnel, partagé ou entreprise ;
+- maintien honnête d’IMAP/SMTP et des connecteurs comptables propriétaires en état « À configurer » tant qu’aucun service serveur validé n’est disponible ;
+- création d’une bibliothèque de CGV versionnées, importables en PDF, assignables par client et par type de document, puis figées avec les documents finalisés ;
+- ajout du moteur de pré-comptabilité central équilibré, des journaux, exercices, comptes auxiliaires, règles de ventilation, écritures de règlements et exports figés ;
+- ajout du registre des règlements, des exports ventes, achats et banque, de la TVA sur encaissements multi-taux et des contrôles de clôture fiscale ;
+- distinction explicite entre les exports CSV génériques, le FEC technique à faire valider par un professionnel et les connecteurs propriétaires non activés ;
+- isolation RLS par entreprise renforcée pour les connexions externes, messages, CGV, écritures et exports, avec coffre OAuth inaccessible au navigateur ;
+- ajout des tests d’intégrité comptable, de TVA multi-taux, de clôture, d’isolation inter-entreprises et de non-divulgation des secrets.
 - exclusion explicite de `app.piloz.fr` des moteurs de recherche via la balise `noindex, nofollow` et `robots.txt`, avec contrôle automatique avant publication ;
 - ajout de la rubrique principale « Bibliothèque » regroupant Clients, Fournisseurs et Articles & services ;
 - retrait temporaire de Stock de la navigation principale, sans suppression des données ni des fonctions existantes ;

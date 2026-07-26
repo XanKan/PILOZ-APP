@@ -246,6 +246,7 @@ body.auth-checking #auth-loading{display:flex}
 .souvenir input{width:17px;height:17px;margin-top:2px;accent-color:var(--flamme)}
 .btn:focus-visible,.tab:focus-visible,.chip:focus-visible,.search:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid rgba(17,191,174,.45);outline-offset:3px}
 .auth-panel .btn[disabled],.auth-panel button[disabled]{opacity:.68;cursor:not-allowed;transform:none;box-shadow:none}
+.auth-sso{display:grid;grid-template-columns:1fr 1fr;gap:10px}.auth-sso .btn{justify-content:center;min-height:44px}.auth-sso-mark{width:21px;height:21px;display:inline-grid;place-items:center;flex:0 0 21px}.auth-sso-mark svg{display:block;width:100%;height:100%}.auth-divider{display:flex;align-items:center;gap:12px;color:var(--gris);font-size:.78rem}.auth-divider:before,.auth-divider:after{content:"";height:1px;background:var(--bord);flex:1}
 @media (max-width:920px){
   #auth{padding:12px}
   .auth-shell{grid-template-columns:1fr}
@@ -323,6 +324,7 @@ body.auth-checking #auth-loading{display:flex}
 <link rel="stylesheet" href="assets/css/catalog-workspace.css?v=20260725.1">
 <link rel="stylesheet" href="assets/css/piloz-brand.css?v=20260723.1">
 <link rel="stylesheet" href="assets/css/piloz-premium.css?v=20260726.3">
+<link rel="stylesheet" href="assets/css/accounting-extensions.css?v=20260726.1">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/images/piloz-favicon.png?v=20260723.1">
 <link rel="shortcut icon" type="image/png" href="assets/images/piloz-favicon.png?v=20260723.1">
 <link rel="apple-touch-icon" sizes="180x180" href="assets/images/piloz-apple-touch-icon.png?v=20260723.1">
@@ -439,6 +441,7 @@ let authStatusKind = 'error';
 let authFocusTarget = '';
 let authBusy = false;
 let PENDING_RECOVERY = null;
+let PENDING_OAUTH = null;
 let PENDING_HASH_ERROR = '';
 function persistSignupDraft(){ lsSet(SIGNUP_DRAFT_KEY, signupDraft); }
 function clearSignupDraft(){ signupDraft = blankSignupDraft(); persistSignupDraft(); authStep = 1; }
@@ -516,6 +519,14 @@ try{
         email: hp.get('email') || ''
       };
       history.replaceState(null,'',location.pathname + location.search);
+    } else if(hp.get('access_token') && hp.get('refresh_token')){
+      PENDING_OAUTH = {
+        access_token: hp.get('access_token') || '',
+        refresh_token: hp.get('refresh_token') || '',
+        user_id: hp.get('user_id') || '',
+        email: hp.get('email') || ''
+      };
+      history.replaceState(null,'',location.pathname + location.search.replace(/([?&])mode=(login|signup)(&|$)/,'$1').replace(/[?&]$/,''));
     } else if(hp.get('error_description')){
       PENDING_HASH_ERROR = hp.get('error_description') || 'Le lien de réinitialisation est invalide ou expiré.';
       history.replaceState(null,'',location.pathname + location.search);
@@ -526,6 +537,7 @@ if(CFG && CFG.url){ const n = normaliserUrlSb(CFG.url); if(n!==CFG.url){ CFG.url
 let SES = lsGet('piloz_ses') || null;         // {access_token, refresh_token, user_id, email}
 window.PilozRuntime={get config(){return CFG;},get session(){return SES;},get state(){return S;},get setupStep(){return typeof phase1SetupStep==='number'?phase1SetupStep:0;},request:sb};
 if(PENDING_RECOVERY){ SES = {...(SES||{}), ...PENDING_RECOVERY}; authRecovery = true; authMode = 'login'; lsSet('piloz_ses', SES); }
+if(PENDING_OAUTH){ SES = {...(SES||{}), ...PENDING_OAUTH}; window.PilozOAuthSessionPending = true; lsSet('piloz_ses', SES); }
 if(PENDING_HASH_ERROR){ authStatusMessage = PENDING_HASH_ERROR; authStatusKind = 'error'; }
 let syncEtat = 'local';                      // local | ok | pending | offline
 function setSync(s){ syncEtat = s; const f=document.getElementById('syncfoot'); if(f) f.innerHTML = piedSync(); }
@@ -2411,6 +2423,24 @@ function authServerReady(){
   pageAuth();
   return false;
 }
+function authSsoMarkup(){
+  const googleLogo=`<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.09-1.92 3.27-4.75 3.27-8.1Z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.29-2.65l-3.57-2.77c-.99.66-2.25 1.05-3.72 1.05-2.87 0-5.3-1.94-6.17-4.54H2.14v2.85A11 11 0 0 0 12 23Z"/><path fill="#FBBC05" d="M5.83 14.09A6.6 6.6 0 0 1 5.48 12c0-.73.13-1.43.35-2.09V7.06H2.14A11 11 0 0 0 1 12c0 1.77.42 3.44 1.14 4.94l3.69-2.85Z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.2 1.64l3.15-3.15A10.55 10.55 0 0 0 12 1a11 11 0 0 0-9.86 6.06l3.69 2.85c.87-2.6 3.3-4.53 6.17-4.53Z"/></svg>`;
+  const microsoftLogo=`<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#F25022" d="M1 1h10v10H1z"/><path fill="#7FBA00" d="M13 1h10v10H13z"/><path fill="#00A4EF" d="M1 13h10v10H1z"/><path fill="#FFB900" d="M13 13h10v10H13z"/></svg>`;
+  return `<div class="auth-sso"><button type="button" class="btn btn-o" onclick="authOAuth('google')"><span class="auth-sso-mark">${googleLogo}</span>Continuer avec Google</button><button type="button" class="btn btn-o" onclick="authOAuth('azure')"><span class="auth-sso-mark">${microsoftLogo}</span>Continuer avec Microsoft</button></div><div class="auth-divider"><span>ou avec votre e-mail</span></div>`;
+}
+function authOAuth(provider){
+  if(!authServerReady())return false;
+  if(!['google','azure'].includes(provider))return false;
+  if(authMode==='signup'&&!window.PilozCheckoutClaim?.hasPending?.()){
+    authStatusMessage='Choisissez une offre et confirmez votre carte avant de créer le compte.';authStatusKind='error';pageAuth();return false;
+  }
+  try{sessionStorage.setItem('piloz_oauth_context_v1',JSON.stringify({mode:authMode,provider,startedAt:new Date().toISOString(),checkout:!!window.PilozCheckoutClaim?.hasPending?.()}));}catch{}
+  const redirectTo=location.origin+location.pathname;
+  const params=new URLSearchParams({provider,redirect_to:redirectTo});
+  if(provider==='azure')params.set('scopes','openid email profile');
+  location.assign(CFG.url.replace(/\/$/,'')+'/auth/v1/authorize?'+params.toString());
+  return false;
+}
 function authValidateEmail(value){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((value||'').trim()); }
 function authValidateSignupStep(step){
   const errors = {};
@@ -2504,6 +2534,7 @@ function authPanelContent(){
     </form>`;
   if(authMode==='login') return `
     <div class="auth-panel-head"><div><h2>${esc(intro.title)}</h2><p>${esc(intro.text)}</p></div><p class="auth-switch">${authSwitchMarkup()}</p></div>
+    ${authSsoMarkup()}
     <form novalidate onsubmit="return authSubmit(event)" class="auth-grid">
       <div class="auth-field"><label for="login_email">Adresse e-mail</label><input id="login_email" type="email" autocomplete="username" placeholder="vous@entreprise.fr" value="${esc(loginDraft.email)}" oninput="updateLoginField('email', this.value)"${authAria('loginEmail')}>${authErrorMarkup('loginEmail')}</div>
       <div class="auth-field"><label for="login_password">Mot de passe</label><input id="login_password" type="password" autocomplete="current-password" value="${esc(loginDraft.password)}" oninput="updateLoginField('password', this.value)"${authAria('loginPassword')}>${authErrorMarkup('loginPassword')}</div>
@@ -2519,6 +2550,7 @@ function authPanelContent(){
   const progress = Math.round((authStep / AUTH_SIGNUP_STEPS) * 100);
   return `
     <div class="auth-panel-head"><div><div class="auth-badge">Essai gratuit ${ESSAI_JOURS} jours</div><h2>${esc(intro.title)}</h2><p>${esc(intro.text)}</p></div><p class="auth-switch">${authSwitchMarkup()}</p></div>
+    ${authStep===1?authSsoMarkup():''}
     <div class="auth-progress"><div class="auth-progress-top"><span>Étape ${authStep} sur ${AUTH_SIGNUP_STEPS}</span><span>${progress}%</span></div><div class="auth-progress-track"><div class="auth-progress-fill" style="width:${progress}%"></div></div></div>
     <form novalidate onsubmit="return authSubmit(event)" class="auth-grid">
       ${authSignupStepMarkup()}
@@ -2597,7 +2629,14 @@ async function authSyncSession(opts={}){
   applyAuthModeToUrl('');
   let checkoutClaimed=false;
   try{checkoutClaimed=!!(await window.PilozCheckoutClaim?.claimAfterAuth?.());}
-  catch(error){console.error('[PILOZ Stripe] Rattachement du Checkout impossible',{code:error?.code||'',message:error?.message||String(error)});toast(authErrorMessage(error,'Le paiement Stripe n’a pas encore pu être rattaché. Réessayez depuis la page Abonnement.'));}
+  catch(error){
+    console.error('[PILOZ Stripe] Rattachement du Checkout impossible',{code:error?.code||'',message:error?.message||String(error)});
+    const safeMessage=authErrorMessage(error,'Le paiement Stripe n’a pas encore pu être rattaché. Réessayez dans quelques secondes.');
+    if(opts.requireCheckout){
+      invalidateAuthSession(safeMessage);authMode='signup';authStatusMessage=safeMessage;authStatusKind='error';authBusy=false;pageAuth();return false;
+    }
+    toast(safeMessage);
+  }
   if(!checkoutClaimed)window.PilozSiteOffer?.routeAfterAuth?.();
   await chargerLicence();
   fermerAuth();
@@ -2869,6 +2908,7 @@ function adminCreerCompte(){
 <script src="assets/js/modules/erp/erp-compliance.js?v=20260726.2"></script>
 <script src="assets/js/modules/erp/erp-commercial-v2.js?v=20260726.2"></script>
 <script src="assets/js/modules/erp/erp-dashboard-cockpit.js?v=20260724.4"></script>
+<script src="assets/js/modules/erp/erp-accounting-extensions.js?v=20260726.1"></script>
 <script src="assets/js/modules/erp/erp-commercial-workspace.js?v=20260724.2"></script>
 <script src="assets/js/modules/erp/erp-document-editor-v2.js?v=20260726.13"></script>
 <script src="assets/js/modules/erp/erp-document-viewer-v2.js?v=20260726.7"></script>
