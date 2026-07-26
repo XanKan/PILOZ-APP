@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.0-compliance.40 — 27 juillet 2026
+
+- correction du compte collectif client : les nouvelles écritures utilisent `411` au lieu de `411000` ;
+- génération d’un compte auxiliaire client distinct, normalisé, unique et limité à 10 caractères maximum sans remplissage artificiel ;
+- correction du repli qui supprimait l’auxiliaire lorsqu’aucun profil comptable spécifique n’existait ;
+- conservation des exports déjà validés et mise à niveau des seules écritures encore exportables ;
+- nouvelle prévisualisation comptable regroupée par pièce avec compte, auxiliaire, libellé, débit, crédit et totaux équilibrés ;
+- ajout de la liste repliable des comptes, de l’impression et du contrôle automatisé `411 / CLIENT` dans les tests comptables.
+
 ## 0.9.0-compliance.39 — 26 juillet 2026
 
 - rattrapage des factures définitives historiques qui ne possèdent pas encore d’écriture comptable, sans modifier les pièces d’origine ;

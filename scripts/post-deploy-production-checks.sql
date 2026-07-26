@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607260085' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607270086' ok
   union all
   select 'company_access_system_roles',count(*)::text,count(*)=0
   from public.companies company
@@ -18,6 +18,22 @@ with controls as(
   union all
   select 'company_access_users_rpc',coalesce(to_regprocedure('public.list_company_access_users(uuid,text,text,uuid,text,text,text,integer,integer)')::text,'missing'),
     to_regprocedure('public.list_company_access_users(uuid,text,text,uuid,text,text,text,integer,integer)') is not null
+  union all
+  select 'accounting_customer_collective_411',count(*)::text,count(*)=0
+  from public.accounting_settings where customer_collective_account='411000'
+  union all
+  select 'accounting_auxiliary_length_max_10',count(*)::text,count(*)=0
+  from public.accounting_settings where auxiliary_length not between 1 and 10
+  union all
+  select 'accounting_unexported_customer_411000',count(*)::text,count(*)=0
+  from public.accounting_entry_lines line
+  join public.accounting_entries entry on entry.id=line.entry_id
+  where line.account_code='411000'
+    and not exists(
+      select 1 from public.accounting_export_batch_entries exported
+      join public.accounting_export_batches batch on batch.id=exported.export_batch_id
+      where exported.accounting_entry_id=entry.id and batch.status='validated'
+    )
   union all
   select 'company_invitation_accept_rpc',coalesce(to_regprocedure('public.accept_company_invitation(uuid)')::text,'missing'),
     to_regprocedure('public.accept_company_invitation(uuid)') is not null
@@ -313,7 +329,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607260085',
+  'schema_version','202607270086',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;

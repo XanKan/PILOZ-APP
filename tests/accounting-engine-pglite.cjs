@@ -21,6 +21,7 @@ async function main(){
       '1 rue du Test','75001','Paris','France','compta@example.test',true,20,now())`,[company]);
   await db.query("insert into public.company_document_settings(company_id,invoice_prefix,default_payment_terms,default_payment_method) values($1,'FAC','days_30','bank_transfer') on conflict(company_id) do nothing",[company]);
   await db.query("insert into public.clients(id,company_id,kind,legal_name,email,address_line_1,postal_code,city,country_code,created_by) values($1,$2,'company','Client TVA multiple','client@example.test','2 rue Client','69001','Lyon','FR',$3)",[client,company,actor]);
+  await db.query("insert into public.client_accounting_profiles(company_id,client_id,collective_account,auxiliary_account,assignment_mode,accounting_label,created_by) values($1,$2,'411000','CLI000001','automatic','Client TVA multiple',$3)",[company,client,actor]);
   const ownConnection=crypto.randomUUID(),otherConnection=crypto.randomUUID();
   await db.query("insert into public.external_connections(id,company_id,user_id,provider,connection_scope,status,created_by) values($1,$2,$3,'gmail','personal','connected',$3),($4,$5,$6,'gmail','personal','connected',$6)",[ownConnection,company,actor,otherConnection,otherCompany,otherActor]);
   await db.query("insert into public.external_connection_secrets(connection_id,ciphertext,initialization_vector,key_version) values($1,'cipher-a','iv-a','v1'),($2,'cipher-b','iv-b','v1')",[ownConnection,otherConnection]);
@@ -79,6 +80,9 @@ async function main(){
   if(!entry)throw new Error('Écriture comptable de facture absente.');
   const totals=(await db.query('select round(sum(debit),2) debit,round(sum(credit),2) credit from public.accounting_entry_lines where entry_id=$1',[entry.id])).rows[0];
   if(Number(totals.debit)!==230||Number(totals.credit)!==230)throw new Error(`Écriture déséquilibrée ${JSON.stringify(totals)}`);
+  const customerLine=(await db.query("select account_code,account_label,auxiliary_code,auxiliary_label from public.accounting_entry_lines where entry_id=$1 and third_party_id=$2",[entry.id,client])).rows[0];
+  if(customerLine?.account_code!=='411'||customerLine?.auxiliary_code!=='CLIENTTVAM'||customerLine?.auxiliary_code?.length>10||!customerLine?.account_label?.startsWith('Client - '))
+    throw new Error(`Compte client ou auxiliaire incorrect ${JSON.stringify(customerLine)}`);
   const vatLines=(await db.query("select account_code,tax_rate,credit from public.accounting_entry_lines where entry_id=$1 and account_code like '4457%' order by tax_rate",[entry.id])).rows;
   const vat10=vatLines.find(row=>Number(row.tax_rate)===10),vat20=vatLines.find(row=>Number(row.tax_rate)===20);
   if(vat10?.account_code!=='445713'||Number(vat10.credit)!==10||vat20?.account_code!=='445712'||Number(vat20.credit)!==20)
@@ -86,6 +90,9 @@ async function main(){
 
   const preview=(await db.query("select public.preview_accounting_export($1,'sales','2026-07-01','2026-07-31','csv_debit_credit',false) result",[company])).rows[0].result;
   if(!preview?.ok||!preview.entries?.every(row=>row.balanced)||Number(preview.entry_count)!==1)throw new Error(`Prévisualisation comptable invalide ${JSON.stringify(preview)}`);
+  const previewCustomerLine=preview.entries[0]?.lines?.find(row=>row.account_code==='411');
+  if(previewCustomerLine?.auxiliary_code!=='CLIENTTVAM'||previewCustomerLine?.combined_account_code!=='411CLIENTTVAM'||Number(preview.auxiliary_max_length)!==10)
+    throw new Error(`Prévisualisation du compte auxiliaire invalide ${JSON.stringify(previewCustomerLine)}`);
   const firstExport=(await db.query("select public.validate_accounting_export($1,'sales','2026-07-01','2026-07-31','csv_debit_credit',false,false,'Test export fige') id",[company])).rows[0].id;
   const frozen=(await db.query("select status,entry_count,total_debit,total_credit,snapshot_sha256 from public.accounting_export_batches where id=$1",[firstExport])).rows[0];
   const frozenFile=(await db.query("select content_text,sha256 from public.accounting_export_files where export_batch_id=$1 and file_kind='entries'",[firstExport])).rows[0];
@@ -93,6 +100,8 @@ async function main(){
     throw new Error(`Export valide incomplet ${JSON.stringify(frozen)}`);
   if(!frozenFile?.content_text?.startsWith('Journal;Date;Ecriture;Piece;Compte;')||!frozenFile.sha256)
     throw new Error('Le CSV generique ne possede pas sa structure documentee.');
+  if(!frozenFile.content_text.includes(';411;Client - Client TVA multiple;CLIENTTVAM;Client TVA multiple;'))
+    throw new Error(`Le compte collectif et l'auxiliaire client sont absents du fichier ${frozenFile.content_text}`);
   const excluded=(await db.query("select public.preview_accounting_export($1,'sales','2026-07-01','2026-07-31','csv_debit_credit',false) result",[company])).rows[0].result;
   if(Number(excluded.entry_count)!==0||excluded.accounts.length!==0)throw new Error('Une ecriture validee reste exportable.');
   const cancellation=(await db.query("select public.cancel_accounting_export($1,'Correction du lot de test') id",[firstExport])).rows[0].id;
