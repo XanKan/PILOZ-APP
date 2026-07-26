@@ -896,9 +896,10 @@ from public.company_members member where member.company_id=target.company_id
 update public.reminders target set assigned_user_id=coalesce(target.assigned_user_id,target.created_by),team_id=coalesce(target.team_id,member.primary_team_id)
 from public.company_members member where member.company_id=target.company_id
   and member.user_id=coalesce(target.assigned_user_id,target.created_by) and (target.assigned_user_id is null or target.team_id is null);
-update public.documents target set assigned_user_id=coalesce(target.assigned_user_id,target.created_by),team_id=coalesce(target.team_id,member.primary_team_id)
-from public.company_members member where member.company_id=target.company_id
-  and member.user_id=coalesce(target.assigned_user_id,target.created_by) and (target.assigned_user_id is null or target.team_id is null);
+-- Existing documents keep their frozen business state.  Their access owner is
+-- resolved with coalesce(assigned_user_id, created_by) by the policies below;
+-- rewriting historical documents here would incorrectly fire fiscal/client
+-- validation triggers introduced by earlier migrations.
 
 create index if not exists clients_access_scope_idx on public.clients(company_id,assigned_user_id,team_id);
 create index if not exists opportunities_access_scope_idx on public.opportunities(company_id,assigned_user_id,team_id);
