@@ -2,6 +2,7 @@
 
 ## 0.9.0-compliance.29 — 26 juillet 2026
 
+- simplification des listes de TVA dans les devis et factures : seuls les pourcentages configurés sont affichés ;
 - affichage de la déduction d’acompte dans le récapitulatif des factures et des PDF ;
 - choix de la déduction complète, au prorata de l’avancement ou d’un montant fixe sur les factures de situation ;
 - calcul serveur autoritaire du montant net exigible avec conservation des totaux bruts et de la méthode choisie ;
