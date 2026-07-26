@@ -118,13 +118,34 @@ async function main(){
     Number(vat10Collected?.tax_base)!==50||Number(vat10Collected?.vat)!==5||Number(vat20Collected?.tax_base)!==50||Number(vat20Collected?.vat)!==10)
     throw new Error(`Ventilation TVA sur encaissement incorrecte ${JSON.stringify(vatPreview)}`);
 
+  const legacyValid=crypto.randomUUID(),legacyInvalid=crypto.randomUUID();
+  await db.exec('reset role');
+  await db.exec("set session_replication_role='replica'");
+  await db.query(`insert into public.documents(id,company_id,document_type,number,client_id,status,issue_date,due_date,subject,currency,language,total_excl_tax,total_tax,total_incl_tax,created_by)
+    values($1,$2,'invoice','FAC-2026-07-0040',$3,'paid','2026-07-25','2026-08-25','Facture historique valide','EUR','fr',50,0,50,$4),
+          ($5,$2,'invoice','FAC-2026-07-0039',$3,'finalized','2026-07-24','2026-08-24','Facture historique TVA incomplete','EUR','fr',100,20,120,$4)`,[legacyValid,company,client,actor,legacyInvalid]);
+  await db.query(`insert into public.document_lines(company_id,document_id,position,line_type,name,quantity,unit,unit_price,tax_rate,total_excl_tax,total_tax,total_incl_tax,created_by)
+    values($1,$2,1,'free_item','Ancienne prestation',1,'unité',50,0,50,0,50,$4),
+          ($1,$3,1,'free_item','Ancienne prestation TVA',1,'unité',100,20,100,0,100,$4)`,[company,legacyValid,legacyInvalid,actor]);
+  await db.exec("set session_replication_role='origin'");
+  await setIdentity(db,actor);
+  const backfill=(await db.query('select public.backfill_company_accounting_entries($1) result',[company])).rows[0].result;
+  if(Number(backfill.created)!==1||Number(backfill.failed)!==1||!backfill.failures?.some(item=>item.number==='FAC-2026-07-0039'))
+    throw new Error(`Rattrapage historique non diagnostique ${JSON.stringify(backfill)}`);
+  const diagnostic=(await db.query("select public.diagnose_accounting_export($1,'sales','2026-07-01','2026-07-31') result",[company])).rows[0].result;
+  if(Number(diagnostic.eligible_documents)!==3||Number(diagnostic.generated_entries)!==2||Number(diagnostic.missing_entries)!==1)
+    throw new Error(`Diagnostic export incomplet ${JSON.stringify(diagnostic)}`);
+  const previewAfterBackfill=(await db.query("select public.preview_accounting_export($1,'sales','2026-07-01','2026-07-31','fec_technical',false) result",[company])).rows[0].result;
+  if(!previewAfterBackfill.entries.some(row=>row.piece_reference==='FAC-2026-07-0040'))
+    throw new Error('La facture historique valide reste absente de la previsualisation.');
+
   const audit=(await db.query("select count(*)::int count from public.accounting_config_history where company_id=$1 and table_name in('accounting_settings','accounting_fiscal_years')",[company])).rows[0];
   if(Number(audit.count)<2)throw new Error('Historique des paramètres comptables incomplet.');
 
   await db.close();
   console.log(JSON.stringify({ok:true,documentNumber:finalized.number,reconciledQuoteNumber,reconciledQuoteNext,entryId:entry.id,totals,vatLines,
     export:{firstExport,cancellation,releasedEntries:released.entry_count},payment:{paymentId,totals:paymentTotals},
-    vatCash:{collected:vatPreview.total_collected,base:vatPreview.total_tax_base,vat:vatPreview.total_vat,rates:vatPreview.lines.map(row=>row.tax_rate)},
+    vatCash:{collected:vatPreview.total_collected,base:vatPreview.total_tax_base,vat:vatPreview.total_vat,rates:vatPreview.lines.map(row=>row.tax_rate)},backfill,diagnostic,
     rls:{connections:visibleConnections.length,mail:visibleMail.length,terms:visibleTerms.length,secretsBlocked:secretBlocked}}));
 }
 

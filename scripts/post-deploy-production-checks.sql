@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607260084' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607260085' ok
   union all
   select 'company_access_system_roles',count(*)::text,count(*)=0
   from public.companies company
@@ -280,6 +280,12 @@ with controls as(
   select 'accounting_export_rpc',coalesce(to_regprocedure('public.validate_accounting_export(uuid,text,date,date,text,boolean,boolean,text)')::text,'missing'),
     to_regprocedure('public.validate_accounting_export(uuid,text,date,date,text,boolean,boolean,text)') is not null
   union all
+  select 'accounting_export_diagnostics_rpc',coalesce(to_regprocedure('public.diagnose_accounting_export(uuid,text,date,date)')::text,'missing'),
+    to_regprocedure('public.diagnose_accounting_export(uuid,text,date,date)') is not null
+  union all
+  select 'accounting_export_backfill_rpc',coalesce(to_regprocedure('public.backfill_company_accounting_entries(uuid)')::text,'missing'),
+    to_regprocedure('public.backfill_company_accounting_entries(uuid)') is not null
+  union all
   select 'accounting_fiscal_maintenance_rpc',coalesce(to_regprocedure('public.run_accounting_fiscal_maintenance(timestamptz)')::text,'missing'),
     to_regprocedure('public.run_accounting_fiscal_maintenance(timestamptz)') is not null
       and not has_function_privilege('anon','public.run_accounting_fiscal_maintenance(timestamptz)','EXECUTE')
@@ -307,7 +313,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607260084',
+  'schema_version','202607260085',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;

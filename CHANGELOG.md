@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0-compliance.39 — 26 juillet 2026
+
+- rattrapage des factures définitives historiques qui ne possèdent pas encore d’écriture comptable, sans modifier les pièces d’origine ;
+- génération comptable déclenchée sur toutes les transitions fiscales définitives et protégée contre les doublons ;
+- diagnostic des exports vides distinguant période sans facture, écritures déjà exportées et pièces en erreur ;
+- affichage d’un motif français exploitable lorsqu’une pièce ne peut pas être comptabilisée, avec détail technique limité à la console ;
+- tests de non-régression couvrant une ancienne facture correctement rattrapée et une incohérence de TVA explicitement signalée.
+
 ## 0.9.0-compliance.29 — 26 juillet 2026
 
 - ajout d’une confirmation explicite « Oui / Non » avant la validation d’un devis ;
