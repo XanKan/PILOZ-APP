@@ -637,20 +637,21 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
     page.drawText("Reste apres ce document", { x: 285, y: totalsRowY - 14, size: 7, font: bold, color: colors.heading });
     right(page, bold, amount(marketSummary.remaining_after_current, currency), 547, totalsRowY - 14, 7, colors.heading, 95);
   }
-  const footerLines: string[] = [];
-  // Render mandatory invoice notices first so optional template text cannot
-  // push them outside the footer line limit.
-  if (doc.supply_date) footerLines.push(`Date de vente / prestation : ${date(doc.supply_date)}`);
-  if (doc.purchase_order_reference) footerLines.push(`Bon de commande client : ${text(doc.purchase_order_reference)}`);
-  if (doc.contract_reference) footerLines.push(`Référence du contrat : ${text(doc.contract_reference)}`);
-  if (doc.document_type !== "quote" || showLatePenalties) {
-    [settings.early_payment_discount_notice, settings.late_payment_penalty_notice, settings.collection_fee_notice]
-      .filter(Boolean).forEach(value => footerLines.push(String(value)));
-  }
+  const documentNoticeLines: string[] = [];
+  const paymentLegalLines = (doc.document_type !== "quote" || showLatePenalties)
+    ? [
+        settings.early_payment_discount_notice || "Escompte pour paiement anticipé : néant.",
+        settings.late_payment_penalty_notice || "Pénalités de retard : trois fois le taux d’intérêt légal en vigueur.",
+        settings.collection_fee_notice || "Indemnité forfaitaire pour frais de recouvrement due en cas de retard de paiement : 40 €.",
+      ].map(String)
+    : [];
+  if (doc.supply_date) documentNoticeLines.push(`Date de vente / prestation : ${date(doc.supply_date)}`);
+  if (doc.purchase_order_reference) documentNoticeLines.push(`Bon de commande client : ${text(doc.purchase_order_reference)}`);
+  if (doc.contract_reference) documentNoticeLines.push(`Référence du contrat : ${text(doc.contract_reference)}`);
   const footerBody = resolveFooterTokens(templateFooter.body, issuer);
   let legalIdentity = "";
   let legalContact = "";
-  if (templateVersion.free_field) footerLines.push(String(templateVersion.free_field));
+  if (templateVersion.free_field) documentNoticeLines.push(String(templateVersion.free_field));
   if (showLegalMentions) {
     const registeredAddress = [issuer.address_line1 || issuer.address_line_1, issuer.address_line2 || issuer.address_line_2, issuer.postal_code, issuer.city, issuer.country_code].filter(Boolean).map(text).join(" - ");
     legalIdentity = [
@@ -666,15 +667,23 @@ async function buildPdf(payload: SnapshotPayload, logo?: LogoAsset) {
       issuer.vat_number && `TVA ${issuer.vat_number}`,
     ].filter(Boolean).map(text).join(" - ");
     legalContact = [issuer.phone_e164 || issuer.phone, issuer.email, issuer.website].filter(Boolean).map(text).join(" - ");
-    if (!referenceLayout && legalIdentity) footerLines.push(legalIdentity);
-    if (!referenceLayout && legalContact) footerLines.push(legalContact);
-    [settings.visible_mention, settings.legal_notice].filter(Boolean).forEach(value => footerLines.push(String(value)));
+    if (!referenceLayout && legalIdentity) documentNoticeLines.push(legalIdentity);
+    if (!referenceLayout && legalContact) documentNoticeLines.push(legalContact);
+    [settings.visible_mention, settings.legal_notice].filter(Boolean).forEach(value => documentNoticeLines.push(String(value)));
   }
-  const footerNote = footerLines.join(" | ");
+  const footerNote = documentNoticeLines.join(" | ");
   const footerSize = doc.document_type === "quote" ? 6.5 : 5.2;
-  const footerLimit = doc.document_type === "quote" ? 6 : 12;
+  const footerLimit = doc.document_type === "quote" ? 4 : 6;
   const footerGap = doc.document_type === "quote" ? 8 : 6.2;
-  limitedLines(regular, footerNote, footerSize, 245, footerLimit).forEach((line, index) => page.drawText(line, { x: 303, y: 175 - index * footerGap, size: footerSize, font: regular, color: colors.muted }));
+  let rightNoticeY = 175;
+  if (paymentLegalLines.length) {
+    page.drawText("Conditions de règlement :", { x: 303, y: rightNoticeY, size: 8, font: bold, color: colors.heading });
+    rightNoticeY -= 14;
+    const renderedLegalLines = limitedLines(regular, paymentLegalLines.join(" | "), 6.2, 245, 7);
+    renderedLegalLines.forEach((line, index) => page.drawText(line, { x: 303, y: rightNoticeY - index * 7.4, size: 6.2, font: regular, color: colors.text }));
+    rightNoticeY -= renderedLegalLines.length * 7.4 + 7;
+  }
+  limitedLines(regular, footerNote, footerSize, 245, footerLimit).forEach((line, index) => page.drawText(line, { x: 303, y: rightNoticeY - index * footerGap, size: footerSize, font: regular, color: colors.muted }));
   if (showPaymentTerms || acceptsBankTransfer) {
     page.drawText("Conditions de paiement :", { x: 42, y: 175, size: 8, font: bold, color: colors.heading });
     page.drawText(fit(regular, `Délai : ${paymentTermLabel}`, 7, 245), { x: 42, y: 161, size: 7, font: regular, color: colors.text });
