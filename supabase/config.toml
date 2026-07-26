@@ -22,3 +22,8 @@ verify_jwt = false
 # Les offres, l'origine, le débit et le nombre de tentatives sont validés côté serveur.
 [functions.stripe-public-checkout]
 verify_jwt = false
+
+# Formulaire public de piloz.fr. La fonction valide les champs et transmet le
+# message via le fournisseur e-mail configuré côté serveur.
+[functions.public-contact]
+verify_jwt = false
