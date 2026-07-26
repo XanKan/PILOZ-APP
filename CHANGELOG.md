@@ -2,6 +2,7 @@
 
 ## 0.9.0-compliance.29 — 26 juillet 2026
 
+- ouverture automatique de la consultation après finalisation d’une facture, d’un acompte, d’un solde ou d’une situation, sans écran intermédiaire de document verrouillé ;
 - conservation du défilement de l’éditeur et du panneau droit après chaque recalcul (avancement, acompte, remise, TVA ou paramètre), sans retour intempestif en haut de page ;
 - finalisation des factures d’acompte fiabilisée après un changement de régime TVA, y compris lorsque la valeur chargée provient d’un ancien format texte ;
 - propagation correcte du mode silencieux lors de la sauvegarde préalable et remontée du véritable motif lorsqu’une finalisation est refusée ;

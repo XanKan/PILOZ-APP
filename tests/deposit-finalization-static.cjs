@@ -6,7 +6,8 @@ const checks=[
   ['régime non TVA booléen ou texte reconnu',app.includes("String(value).toLowerCase()==='false'")&&editor.includes("String(value).toLowerCase()==='false'")],
   ['toutes les lignes du brouillon sont remises à zéro',app.includes("(draft.lines||[]).forEach(line=>{line.tax_rate=0;})")&&editor.includes("d.lines.forEach(line=>{line.tax_rate=0;})")],
   ['options de sauvegarde conservées',app.includes('saveDocument=async function(...args)')&&app.includes('return saveDocumentBase(...args)')],
-  ['motif réel propagé pendant la finalisation',editor.includes('finalizeCurrentDocument({throwOnError:true})')]
+  ['motif réel propagé pendant la finalisation',editor.includes('finalizeCurrentDocument({throwOnError:true})')],
+  ['consultation ouverte directement après finalisation',editor.includes('openFinalizedConsultation(result.id||saved.id)')&&editor.includes("if(invoiceTypes.has(d.document_type)&&locked(d)&&d.id){openFinalizedConsultation(d.id);return;}")]
 ];
 const failed=checks.filter(([,ok])=>!ok);
 if(failed.length){console.error(JSON.stringify({ok:false,failed:failed.map(([name])=>name)}));process.exit(1);}
