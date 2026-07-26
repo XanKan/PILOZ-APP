@@ -36,7 +36,7 @@
   const body=panel.querySelector('.modern-secondary-items'),title=panel.querySelector('h2');if(title)title.textContent=data.label;
   if(body)body.innerHTML=data.items.map(([itemPath,label])=>`<button class="modern-secondary-item ${secondaryActive(path,itemPath)?'active':''}" onclick="PilozApp.go('${itemPath}')"><span>${esc(label)}</span></button>`).join('');
  }
- function openArea(area){const target={crm:'crm/pipeline',sales:'sales/quotes',purchases:'purchases/orders',library:'sales/clients',stock:'stock/items',settings:'settings/overview',dashboard:'dashboard',reports:'reports'}[area]||'dashboard';base.openArea(area,target);}
+ function openArea(area){const target={crm:'crm/pipeline',sales:'sales/quotes',purchases:'purchases/orders',library:'sales/clients',stock:'stock/items',accounting:'accounting/payments',settings:'settings/overview',dashboard:'dashboard',reports:'reports'}[area]||'dashboard';base.openArea(area,target);}
 
  const defaultBlocks=['revenue','collected','outstanding','overdue','quotes','activities','pipeline','recent'];
  const optionalBlocks=['topClients','topItems','margin','comparison','stock','supplierOrders','receipts'];

@@ -27,8 +27,8 @@
   purchases:{label:'Achats',items:[['purchases/overview','Vue d’ensemble'],['purchases/orders','Commandes fournisseurs'],['purchases/receipts','Réceptions'],['purchases/invoices','Factures fournisseurs']]},
   library:{label:'Bibliothèque',items:[['sales/clients','Clients'],['purchases/suppliers','Fournisseurs'],['sales/catalog','Articles & services']]},
   stock:{label:'Stock',items:[['stock/overview','Vue d’ensemble'],['stock/items','Articles en stock'],['stock/movements','Mouvements'],['stock/inventories','Inventaires'],['stock/warehouses','Entrepôts']]},
-  accounting:{label:'Comptabilité',items:[['accounting/payments','Règlements'],['accounting/exports','Exports comptables'],['accounting/vat-cash','TVA sur encaissements'],['accounting/settings','Paramétrage comptable']]},
-  settings:{label:'Paramètres',groups:[['Général',[['settings/overview','Vue d’ensemble']]],['Entreprise et ventes',[['settings/company','Mon entreprise'],['settings/sales','Ventes et documents'],['settings/templates','Modèles de documents'],['settings/sales-terms','Conditions générales de vente'],['settings/catalog','Catalogue Articles & services']]],['Accès et services',[['settings/users','Équipe et accès'],['settings/extensions','Extensions'],['settings/security','Sécurité'],['settings/subscription','Abonnement et utilisation']]],['Administration',[['settings/purchases','Achats'],['settings/pipeline','Pipeline'],['settings/data','Données'],['settings/compliance','Conformité'],['settings/about-compliance','À propos de Piloz']]]]}
+  accounting:{label:'Comptabilité',groups:[['Opérations',[['accounting/payments','Règlements'],['accounting/exports','Exports comptables'],['accounting/vat-cash','TVA sur encaissements']]],['Paramétrage',[['accounting/settings/exercises','Exercices fiscaux'],['accounting/settings/journals','Journaux'],['accounting/settings/tiers','Tiers'],['accounting/settings/deposits','Acomptes'],['accounting/settings/sales','Ventes'],['accounting/settings/purchases','Achats'],['accounting/settings/vat','TVA'],['accounting/settings/financial','Comptes financiers'],['accounting/settings/complementary','Comptes complémentaires']]]]},
+  settings:{label:'Paramètres',groups:[['Général',[['settings/overview','Vue d’ensemble']]],['Entreprise et ventes',[['settings/company','Mon entreprise'],['settings/sales','Ventes et documents'],['settings/templates','Modèles de documents'],['settings/catalog','Catalogue Articles & services']]],['Accès et services',[['settings/users','Équipe et accès'],['settings/extensions','Extensions'],['settings/security','Sécurité'],['settings/subscription','Abonnement et utilisation']]],['Administration',[['settings/purchases','Achats'],['settings/pipeline','Pipeline'],['settings/data','Données'],['settings/compliance','Conformité'],['settings/about-compliance','À propos de Piloz']]]]}
  };
  const ui={
   secondaryOpen:storage.get('piloz_modern_secondary',true),
@@ -239,8 +239,7 @@
    ['settings/subscription','Abonnement et utilisation','Offre active, limites et informations de facturation.','◆']
   ]],
   ['Documents et administration',[
-   ['settings/templates','Modèles de documents','Thèmes, logos, couleurs, colonnes et pieds de page.','✎'],
-   ['settings/sales-terms','Conditions générales de vente','Versions manuelles ou PDF et assignation par document ou client.','▤'],
+   ['settings/templates','Modèles de documents','Thèmes, logos, couleurs, colonnes, pieds de page et CGV.','✎'],
    ['settings/data','Notifications et données','Exports, journal d’activité et gestion des données.','⇩'],
    ['settings/compliance','Conformité','Contrôles fiscaux, confidentialité, sécurité et preuves.','✓'],
    ['settings/about-compliance','À propos de Piloz','Version, périmètre fonctionnel et informations légales.','i']
