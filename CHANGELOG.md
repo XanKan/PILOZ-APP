@@ -207,6 +207,12 @@ Cette pré-release ne constitue pas une certification NF 525/NF 203, une conform
 - Onglet Comptabilité client volontairement limité à la saisie du code auxiliaire ; le paramétrage général est réservé à une version ultérieure.
 - Sélection du destinataire et des adresses dans les devis/factures, figée dans les snapshots.
 - RLS renforcée pour les rôles en lecture seule et stockage privé des pièces client.
+## 0.9.0-compliance.31 — 26 juillet 2026
+
+- restauration immédiate de l’affichage des devis et factures sans perte de données ;
+- ajout du droit de lecture manquant sur les CGV sélectionnées et d’un chargement de secours explicite ;
+- correction de l’état actif de la navigation : les consultations et éditions de documents sélectionnent désormais Ventes.
+
 ## 0.9.0-compliance.30 — 26 juillet 2026
 
 - nouveau Suivi commercial : multi-pipeline, vues Kanban/liste/prévision/calendrier et fiches détaillées ;

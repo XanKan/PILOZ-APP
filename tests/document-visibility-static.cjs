@@ -3,6 +3,7 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const app = fs.readFileSync(path.join(root, 'assets/js/modules/erp/erp-app.js'), 'utf8');
+const modern = fs.readFileSync(path.join(root, 'assets/js/modules/erp/erp-modern.js'), 'utf8');
 const migration = fs.readFileSync(
   path.join(root, 'supabase/migrations/202607260080_restore_document_visibility.sql'),
   'utf8',
@@ -17,6 +18,8 @@ const checks = [
     app.includes("column!=='selected_sales_terms_id'") && app.includes('Les documents ont été restaurés avec les colonnes essentielles')],
   ['the fallback keeps client labels available',
     app.includes('const clientsById=new Map') && app.includes('clientsById.get(document.client_id)')],
+  ['document consultation and edition keep Sales selected in the main navigation',
+    modern.includes("path==='document-viewer'||path==='document-editor')return'sales'")],
 ];
 
 const failed = checks.filter(([, ok]) => !ok).map(([name]) => name);
