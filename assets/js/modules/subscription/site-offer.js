@@ -12,20 +12,20 @@
  function captureUser(user){if(read())return read();const metadata=user?.user_metadata||user?.raw_user_meta_data||{};return write({plan:metadata.requested_plan,billing:metadata.requested_billing_interval,source:'auth-metadata'});}
  function current(){return read();}
  function clear(){write(null);}
- function readClaim(){try{const value=JSON.parse(localStorage.getItem(CLAIM_KEY)||'null');if(!value||!/^cs_[A-Za-z0-9_]+$/.test(String(value.sessionId||''))||String(value.claimToken||'').length<40)return null;return value;}catch{return null;}}
+ function readClaim(){try{const value=JSON.parse(localStorage.getItem(CLAIM_KEY)||'null');if(!value||!/^cs_[A-Za-z0-9_]+$/.test(String(value.sessionId||'')))return null;return{sessionId:value.sessionId,capturedAt:value.capturedAt||null};}catch{return null;}}
  function writeClaim(value){try{if(value)localStorage.setItem(CLAIM_KEY,JSON.stringify(value));else localStorage.removeItem(CLAIM_KEY);}catch{}return value;}
  function captureCheckout(){
-  const params=new URLSearchParams(location.search),sessionId=params.get('session_id'),claimToken=params.get('claim');
-  if(params.get('stripe')!=='checkout_success'||!sessionId||!claimToken)return readClaim();
+  const params=new URLSearchParams(location.search),sessionId=params.get('session_id');
+  if(params.get('stripe')!=='checkout_success'||!sessionId)return readClaim();
   const offer=normalize({plan:params.get('plan'),billing:params.get('billing'),source:'stripe-checkout'});if(offer)write(offer);
-  const claim=writeClaim({sessionId,claimToken,capturedAt:new Date().toISOString()});
+  const claim=writeClaim({sessionId,capturedAt:new Date().toISOString()});
   ['stripe','session_id','claim'].forEach(key=>params.delete(key));history.replaceState(null,'',location.pathname+(params.toString()?`?${params}`:'')+location.hash);
   return claim;
  }
  async function claimAfterAuth(){
   const pending=readClaim();if(!pending)return null;
   if(!global.PilozRuntime?.session||!global.PilozERP)throw new Error('La session Piloz n’est pas encore prête.');
-  const companyId=await global.PilozERP.companyContext(),result=await global.PilozERP.invoke('stripe-billing',{action:'claim',companyId,sessionId:pending.sessionId,claimToken:pending.claimToken});
+  const companyId=await global.PilozERP.companyContext(),result=await global.PilozERP.invoke('stripe-billing',{action:'claim',companyId,sessionId:pending.sessionId});
   if(!result?.claimed)throw new Error('La confirmation Stripe n’a pas pu être rattachée au compte.');
   writeClaim(null);clear();const params=new URLSearchParams(location.search);['mode','plan','billing','source'].forEach(key=>params.delete(key));history.replaceState(null,'',location.pathname+(params.toString()?`?${params}`:'')+location.hash);return result;
  }

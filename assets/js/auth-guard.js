@@ -36,6 +36,16 @@
       }
       global.PilozCurrentUser=user;
       global.PilozSiteOffer?.captureUser(user);
+      if(global.PilozOAuthSessionPending){
+        const session=global.PilozRuntime.session;
+        session.user_id=user.id;session.email=user.email||'';
+        try{localStorage.setItem('piloz_ses',JSON.stringify(session));}catch{}
+        let context={};try{context=JSON.parse(sessionStorage.getItem('piloz_oauth_context_v1')||'{}');sessionStorage.removeItem('piloz_oauth_context_v1');}catch{}
+        global.PilozOAuthSessionPending=false;
+        const completed=await global.authSyncSession?.({remember:true,requireCheckout:!!context.checkout});
+        if(completed!==false){history.replaceState(null,'',location.pathname+'#dashboard');global.render?.();}
+        return;
+      }
       await global.charger?.();
     }catch(error){
       console.error('Échec du démarrage sécurisé de Piloz',error);

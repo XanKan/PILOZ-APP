@@ -9,6 +9,7 @@ const frontend=read('assets/js/modules/erp/erp-modern.js');
 const config=read('supabase/config.toml');
 const billingMigration=read('supabase/migrations/202607240057_stripe_billing.sql');
 const trialMigration=read('supabase/migrations/202607240058_stripe_trial_checkout_and_billing_profile.sql');
+const onboardingMigration=read('supabase/migrations/202607260070_secure_checkout_onboarding.sql');
 const checks={
  secret_server_only:billing.includes('Deno.env.get("STRIPE_SECRET_KEY")')&&publicCheckout.includes('Deno.env.get("STRIPE_SECRET_KEY")')&&webhook.includes('Deno.env.get("STRIPE_WEBHOOK_SECRET")')&&!frontend.includes('STRIPE_SECRET_KEY')&&!frontend.includes('STRIPE_WEBHOOK_SECRET'),
  raw_signed_webhook:webhook.includes('const rawBody=await req.text()')&&webhook.includes('constructEventAsync(rawBody,signature,webhookSecret'),
@@ -19,7 +20,7 @@ const checks={
  card_required_during_trial:publicCheckout.includes('payment_method_collection:"always"')&&publicCheckout.includes('trial_period_days:14'),
  managed_payments_tax_code:publicCheckout.includes('txcd_10103001')&&billing.includes('txcd_10103001')&&!publicCheckout.includes('tax_id_collection'),
  plan_update_confirmed_by_stripe:billing.includes('subscription_update_confirm')&&billing.includes('items:[{id:item.id,price:mapping.external_price_id'),
- secure_checkout_claim:trialMigration.includes('claim_token_hash text not null unique')&&trialMigration.includes('enable row level security')&&publicCheckout.includes('claimHash=await hashHex(claimToken)'),
+ secure_checkout_claim:onboardingMigration.includes('stripe_onboarding_grants')&&onboardingMigration.includes('enable row level security')&&onboardingMigration.includes('revoke all on public.stripe_onboarding_grants')&&webhook.includes('stripe_onboarding_grants')&&billing.includes('grant.status!=="ready"')&&!publicCheckout.includes('claimToken'),
  browser_plan_change_blocked:trialMigration.includes('revoke execute on function public.choose_plan(uuid,text,text) from public,anon,authenticated'),
  company_authorization:billing.includes('["owner","admin"].includes(member.role)'),
  customer_billing_rls:billingMigration.includes('platform_billing_invoices_company_select')&&billingMigration.includes("array['owner','admin']"),

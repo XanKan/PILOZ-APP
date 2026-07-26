@@ -47,9 +47,9 @@ Deno.serve(async req=>{
    if(createError)throw createError;mapping=created;
   }
   await stripe.products.update(mapping.external_product_id,{tax_code:PILOZ_TAX_CODE});
-  const claimId=crypto.randomUUID(),claimToken=`${crypto.randomUUID().replaceAll("-","")}${crypto.randomUUID().replaceAll("-","")}`,claimHash=await hashHex(claimToken);
+  const claimId=crypto.randomUUID(),serverNonce=`${crypto.randomUUID().replaceAll("-","")}${crypto.randomUUID().replaceAll("-","")}`,claimHash=await hashHex(serverNonce);
   const success=new URL("https://app.piloz.fr/");
-  success.searchParams.set("mode","signup");success.searchParams.set("stripe","checkout_success");success.searchParams.set("session_id","{CHECKOUT_SESSION_ID}");success.searchParams.set("claim",claimToken);success.searchParams.set("plan",planKey);success.searchParams.set("billing",billingInterval);success.searchParams.set("source","stripe-checkout");
+  success.searchParams.set("mode","signup");success.searchParams.set("stripe","checkout_success");success.searchParams.set("session_id","{CHECKOUT_SESSION_ID}");success.searchParams.set("plan",planKey);success.searchParams.set("billing",billingInterval);success.searchParams.set("source","stripe-checkout");
   const checkout=await stripe.checkout.sessions.create({
    mode:"subscription",payment_method_collection:"always",client_reference_id:claimId,
    line_items:[{price:mapping.external_price_id,quantity:1}],success_url:success.toString(),cancel_url:"https://piloz.fr/#tarifs",

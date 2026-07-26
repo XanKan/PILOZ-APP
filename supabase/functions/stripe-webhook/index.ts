@@ -111,7 +111,16 @@ Deno.serve(async req=>{
  try{
   if(event.type==="checkout.session.completed"){
    const subscriptionId=objectId(source.subscription),pendingClaim=claimId(source);companyId=await companyFromObject(admin,source);
-   if(!companyId&&pendingClaim){await admin.from("stripe_checkout_claims").update({status:"completed",checkout_email:String((source as any).customer_details?.email||"").trim().toLowerCase()||null,external_customer_id:objectId(source.customer)||null,external_subscription_id:subscriptionId||null,updated_at:new Date().toISOString()}).eq("id",pendingClaim).in("status",["pending","completed"]);}
+   if(!companyId&&pendingClaim){
+    const checkoutEmail=String((source as any).customer_details?.email||"").trim().toLowerCase();
+    if(!checkoutEmail)throw new Error("checkout_email_missing");
+    await admin.from("stripe_checkout_claims").update({status:"completed",checkout_email:checkoutEmail,external_customer_id:objectId(source.customer)||null,external_subscription_id:subscriptionId||null,updated_at:new Date().toISOString()}).eq("id",pendingClaim).in("status",["pending","completed"]);
+    const {data:claim}=await admin.from("stripe_checkout_claims").select("checkout_session_id").eq("id",pendingClaim).maybeSingle();
+    if(!claim?.checkout_session_id)throw new Error("checkout_claim_missing");
+    const {error:grantError}=await admin.from("stripe_onboarding_grants").upsert({checkout_claim_id:pendingClaim,checkout_session_id:claim.checkout_session_id,checkout_email:checkoutEmail,status:"ready",expires_at:new Date(Date.now()+86400000).toISOString(),updated_at:new Date().toISOString()},{onConflict:"checkout_claim_id"});
+    if(grantError)throw grantError;
+    await admin.from("stripe_checkout_audit_events").upsert({checkout_claim_id:pendingClaim,event_key:event.id,event_type:event.type,outcome:"accepted",details:{livemode:event.livemode}},{onConflict:"event_key,event_type,outcome"});
+   }
    else if(subscriptionId){const subscription=await stripe.subscriptions.retrieve(subscriptionId,{expand:["default_payment_method","items.data.price"]});companyId=await syncSubscription(admin,stripe,subscription,event.created);}
   }else if(["customer.subscription.created","customer.subscription.updated","customer.subscription.deleted","customer.subscription.paused","customer.subscription.resumed"].includes(event.type)){
    const pendingClaim=claimId(source);companyId=await companyFromObject(admin,source);

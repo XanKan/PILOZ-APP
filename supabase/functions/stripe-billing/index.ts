@@ -15,7 +15,6 @@ function objectId(value:unknown){return typeof value==="string"?value:(value&&ty
 function iso(seconds:unknown){const value=Number(seconds);return Number.isFinite(value)&&value>0?new Date(value*1000).toISOString():null;}
 function subscriptionStatus(value:string){if(value==="trialing")return"trialing";if(value==="active")return"active";if(["past_due","unpaid","incomplete"].includes(value))return"past_due";if(value==="paused")return"suspended";return"canceled";}
 function safeAppUrl(req:Request){const origin=req.headers.get("origin")||"";if(origin.startsWith("http://localhost:"))return origin;const configured=(Deno.env.get("APP_URL")||"https://app.piloz.fr").replace(/\/$/,"");return configured.startsWith("https://")?configured:"https://app.piloz.fr";}
-async function hashHex(value:string){const bytes=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(value));return[...new Uint8Array(bytes)].map(byte=>byte.toString(16).padStart(2,"0")).join("");}
 
 async function currentPlanVersion(admin:SupabaseClient,planKey:string){
  const {data:plan,error:planError}=await admin.from("plans").select("key,name,price_monthly_cents,price_annual_cents").eq("key",planKey).maybeSingle();
@@ -58,12 +57,15 @@ async function customerProfile(stripe:Stripe,customerId:string){
  return customer?{name:customer.name||null,email:customer.email||null,line1:customer.address?.line1||null,line2:customer.address?.line2||null,postal:customer.address?.postal_code||null,city:customer.address?.city||null,country:customer.address?.country||null,taxId:taxId||null,defaultPaymentMethod:objectId(customer.invoice_settings?.default_payment_method)}:null;
 }
 
-async function claimCheckout(admin:SupabaseClient,stripe:Stripe,user:{id:string;email?:string|null},companyId:string,sessionId:string,claimToken:string){
- if(!/^cs_[A-Za-z0-9_]+$/.test(sessionId)||claimToken.length<40)throw Object.assign(new Error("invalid_checkout_claim"),{code:"invalid_checkout_claim",statusCode:400});
- const claimHash=await hashHex(claimToken),{data:claim,error:claimError}=await admin.from("stripe_checkout_claims").select("*").eq("checkout_session_id",sessionId).eq("claim_token_hash",claimHash).maybeSingle();
+async function claimCheckout(admin:SupabaseClient,stripe:Stripe,user:{id:string;email?:string|null},companyId:string,sessionId:string){
+ if(!/^cs_[A-Za-z0-9_]+$/.test(sessionId))throw Object.assign(new Error("invalid_checkout_claim"),{code:"invalid_checkout_claim",statusCode:400});
+ const {data:claim,error:claimError}=await admin.from("stripe_checkout_claims").select("*").eq("checkout_session_id",sessionId).maybeSingle();
  if(claimError)throw claimError;if(!claim)throw Object.assign(new Error("checkout_claim_not_found"),{code:"checkout_claim_not_found",statusCode:404});
  if(claim.status==="claimed"&&claim.claimed_company_id===companyId)return{claimed:true,idempotent:true};
- if(claim.status==="claimed"||new Date(claim.expires_at)<=new Date())throw Object.assign(new Error("checkout_claim_expired"),{code:"checkout_claim_expired",statusCode:409});
+ const {data:grant,error:grantError}=await admin.from("stripe_onboarding_grants").select("*").eq("checkout_claim_id",claim.id).maybeSingle();
+ if(grantError)throw grantError;
+ if(claim.status!=="completed"||!grant||grant.status!=="ready")throw Object.assign(new Error("checkout_webhook_pending"),{code:"checkout_webhook_pending",statusCode:409});
+ if(new Date(grant.expires_at)<=new Date()||new Date(claim.expires_at)<=new Date())throw Object.assign(new Error("checkout_claim_expired"),{code:"checkout_claim_expired",statusCode:409});
  const checkout=await stripe.checkout.sessions.retrieve(sessionId,{expand:["subscription","customer"]});
  if(checkout.status!=="complete"||!checkout.subscription)throw Object.assign(new Error("checkout_not_complete"),{code:"checkout_not_complete",statusCode:409});
  const checkoutEmail=String(checkout.customer_details?.email||(typeof checkout.customer!=="string"&&!checkout.customer?.deleted?checkout.customer?.email:"")||claim.checkout_email||"").trim().toLowerCase();
@@ -79,6 +81,9 @@ async function claimCheckout(admin:SupabaseClient,stripe:Stripe,user:{id:string;
  if(updateError)throw updateError;
  const {error:markError}=await admin.from("stripe_checkout_claims").update({status:"claimed",checkout_email:checkoutEmail,external_customer_id:customerId,external_subscription_id:subscriptionId,claimed_company_id:companyId,claimed_user_id:user.id,claimed_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",claim.id).in("status",["pending","completed"]);
  if(markError)throw markError;
+ const {error:consumeError}=await admin.from("stripe_onboarding_grants").update({status:"consumed",consumed_by_user_id:user.id,consumed_by_company_id:companyId,consumed_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",grant.id).eq("status","ready");
+ if(consumeError)throw consumeError;
+ await admin.from("stripe_checkout_audit_events").insert({checkout_claim_id:claim.id,event_key:`claim:${claim.id}:${user.id}`,event_type:"onboarding.claimed",outcome:"accepted",details:{company_id:companyId}});
  return{claimed:true,planKey:planVersion.plan_key,billingInterval:claim.billing_interval,status:subscriptionStatus(updated.status)};
 }
 
@@ -99,7 +104,7 @@ Deno.serve(async req=>{
  if(!member||!["owner","admin"].includes(member.role))return response(req,{error:"Seul un propriétaire ou administrateur peut gérer l’abonnement."},403);
  const stripe=new Stripe(stripeKey,{httpClient:Stripe.createFetchHttpClient()}),livemode=stripeKey.startsWith("sk_live_"),appUrl=safeAppUrl(req),returnUrl=`${appUrl}/#settings/subscription`;
  try{
-  if(action==="claim")return response(req,await claimCheckout(admin,stripe,user,companyId,text(body.sessionId,180),text(body.claimToken,180)));
+  if(action==="claim")return response(req,await claimCheckout(admin,stripe,user,companyId,text(body.sessionId,180)));
   const {data:subscription,error:subscriptionError}=await admin.from("subscriptions").select("*").eq("company_id",companyId).maybeSingle();
   if(subscriptionError||!subscription)return response(req,{error:"Abonnement introuvable"},404);
   if(action==="portal"){
@@ -132,7 +137,7 @@ Deno.serve(async req=>{
  }catch(error){
   const cause=error as {type?:string;code?:string;statusCode?:number};
   console.error("[PILOZ Stripe] billing action failed",{action,companyId,type:cause.type||"unknown",code:cause.code||"unknown",status:cause.statusCode||500});
-  const messages:Record<string,string>={checkout_email_mismatch:"Utilisez la même adresse e-mail que celle saisie lors du paiement Stripe.",checkout_claim_expired:"Ce lien de paiement a expiré. Recommencez depuis piloz.fr.",checkout_claim_not_found:"Ce paiement Stripe est introuvable ou a déjà été utilisé.",checkout_not_complete:"Le moyen de paiement Stripe n’a pas encore été confirmé.",plan_already_active:"Cette offre est déjà active."};
+  const messages:Record<string,string>={checkout_email_mismatch:"Utilisez la même adresse e-mail que celle saisie lors du paiement Stripe.",checkout_claim_expired:"Ce lien de paiement a expiré. Recommencez depuis piloz.fr.",checkout_claim_not_found:"Ce paiement Stripe est introuvable ou a déjà été utilisé.",checkout_not_complete:"Le moyen de paiement Stripe n’a pas encore été confirmé.",checkout_webhook_pending:"Stripe confirme encore votre paiement. Patientez quelques secondes puis réessayez.",plan_already_active:"Cette offre est déjà active."};
   const code=cause.code||"stripe_request_failed",message=messages[code]||"Le service de paiement est temporairement indisponible. Réessayez dans quelques instants.";
   return response(req,{error:message,code},cause.statusCode&&cause.statusCode<500?cause.statusCode:502);
  }

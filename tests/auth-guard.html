@@ -21,6 +21,10 @@
     checks.push(['contenu privé absent',doc.getElementById('main').children.length===0]);
     await load('../index.html?mode=signup');
     doc=frame.contentDocument;
+    checks.push(['paiement préalable obligatoire',doc.body.textContent.includes('Choisissez d’abord votre offre')&&!doc.getElementById('signup_email')]);
+    localStorage.setItem('piloz_stripe_checkout_claim_v1',JSON.stringify({sessionId:'cs_test_auth_guard',capturedAt:new Date().toISOString()}));
+    await load('../index.html?mode=signup');
+    doc=frame.contentDocument;
     checks.push(['inscription affichée',!!doc.getElementById('signup_email')&&!!doc.getElementById('signup_password')]);
     checks.push(['conditions obligatoires',!!doc.querySelector('.auth-check input[type="checkbox"]')]);
     checks.push(['aucune fuite en inscription',getComputedStyle(doc.getElementById('app')).display==='none'&&doc.getElementById('tabs').children.length===0]);
@@ -29,9 +33,10 @@
     doc=frame.contentDocument;
     checks.push(['session invalide refusée',!!doc.getElementById('auth')&&doc.getElementById('auth_status').textContent.includes('session a expiré')]);
     checks.push(['application masquée avec jeton invalide',getComputedStyle(doc.getElementById('app')).display==='none']);
-    checks.push(['contenu vide avec jeton invalide',doc.getElementById('main').children.length===0]);
+    checks.push(['contenu privé masqué avec jeton invalide',getComputedStyle(doc.getElementById('main')).display==='none'||doc.getElementById('main').textContent.trim()==='']);
     checks.push(['navigation vide avec jeton invalide',doc.getElementById('tabs').children.length===0]);
     localStorage.removeItem('piloz_ses');
+    localStorage.removeItem('piloz_stripe_checkout_claim_v1');
   }catch(error){checks.push(['exécution',false,error.message]);}
   const failed=checks.filter(([,ok])=>!ok),node=document.getElementById('result');
   node.dataset.status=failed.length?'failed':'passed';
