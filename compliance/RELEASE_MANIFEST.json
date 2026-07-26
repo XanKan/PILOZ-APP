@@ -5,7 +5,7 @@
   "release_date": "2026-07-26",
   "source_base_commit": "372029f",
   "build_commit": "injected-at-deployment",
-  "schema_version": "202607260068",
+  "schema_version": "202607260069",
   "calculation_version": "financial-v2-deposit-deduction",
   "pdf_generator_version": "pdf-v3-cgv",
   "canonical_invoice_version": "1.0",

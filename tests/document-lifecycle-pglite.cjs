@@ -611,6 +611,10 @@ async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[],cli
       ||Number(secondProrataSituation.metadata?.deposit_deduction_ttc)!==240
       ||Number(secondProrataSituation.total_incl_tax)!==360)
       throw new Error(`deposit deduction: previous deductions are not carried forward ${JSON.stringify(secondProrataSituation)}`);
+    await db.query('select public.finalize_document($1) result',[secondDepositProgressId]);
+    const completedProgressError=await db.query('select public.create_next_progress_invoice_draft($1) result',[secondDepositProgressId]).then(()=>null,error=>error);
+    if(!completedProgressError||!/progress_already_complete/.test(completedProgressError.message))
+      throw new Error('progress invoice: a situation following 100 percent completion must be blocked');
     await db.exec('reset role');
     await db.query('select terms_conditions from public.document_template_versions limit 0');
     await db.exec(`set request.jwt.claim.sub='${actor}'; set role authenticated;`);
