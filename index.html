@@ -650,7 +650,7 @@ async function charger(){
   render();
   demarrerVerrou();
   if(authRecovery || !SES) pageAuth();
-  else { fermerAuth(); chargerLicence().then(controlerLicence); }
+  else { LIC={plan:'abonnement',fin:'2099-01-01',actif:true}; fermerAuth(); }
   notifierRelances();
 }
 let saveT = null;
@@ -2428,16 +2428,28 @@ function authSsoMarkup(){
   const microsoftLogo=`<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#F25022" d="M1 1h10v10H1z"/><path fill="#7FBA00" d="M13 1h10v10H13z"/><path fill="#00A4EF" d="M1 13h10v10H1z"/><path fill="#FFB900" d="M13 13h10v10H13z"/></svg>`;
   return `<div class="auth-sso"><button type="button" class="btn btn-o" onclick="authOAuth('google')"><span class="auth-sso-mark">${googleLogo}</span>Continuer avec Google</button><button type="button" class="btn btn-o" onclick="authOAuth('azure')"><span class="auth-sso-mark">${microsoftLogo}</span>Continuer avec Microsoft</button></div><div class="auth-divider"><span>ou avec votre e-mail</span></div>`;
 }
-function authOAuth(provider){
+async function authOAuth(provider){
   if(!authServerReady())return false;
   if(!['google','azure'].includes(provider))return false;
   if(authMode==='signup'&&!window.PilozCheckoutClaim?.hasPending?.()){
     authStatusMessage='Choisissez une offre et confirmez votre carte avant de créer le compte.';authStatusKind='error';pageAuth();return false;
   }
+  authBusy=true;authStatusMessage='Vérification de la connexion sécurisée…';authStatusKind='info';pageAuth();
+  try{
+    const response=await fetch(CFG.url.replace(/\/$/,'')+'/auth/v1/settings',{headers:{apikey:CFG.key}});
+    const settings=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error('provider_settings_unavailable');
+    if(settings[provider]!==true){
+      const label=provider==='google'?'Google':'Microsoft';
+      authBusy=false;authStatusMessage=`La connexion avec ${label} n’est pas encore activée. Utilisez votre adresse e-mail ou contactez l’administrateur Piloz.`;authStatusKind='error';pageAuth();return false;
+    }
+  }catch(error){
+    authBusy=false;authStatusMessage='Impossible de vérifier la connexion Google/Microsoft. Réessayez dans quelques instants.';authStatusKind='error';pageAuth();return false;
+  }
   try{sessionStorage.setItem('piloz_oauth_context_v1',JSON.stringify({mode:authMode,provider,startedAt:new Date().toISOString(),checkout:!!window.PilozCheckoutClaim?.hasPending?.()}));}catch{}
   const redirectTo=location.origin+location.pathname;
   const params=new URLSearchParams({provider,redirect_to:redirectTo});
-  if(provider==='azure')params.set('scopes','openid email profile');
+  if(provider==='azure')params.set('scopes','openid email profile offline_access');
   location.assign(CFG.url.replace(/\/$/,'')+'/auth/v1/authorize?'+params.toString());
   return false;
 }
@@ -2606,6 +2618,22 @@ async function authSyncSession(opts={}){
   const remember = opts.remember !== false;
   const onboarding = opts.onboarding || null;
   if(remember) lsSet('piloz_ses', SES); else lsSet('piloz_ses', null);
+  let checkoutClaimed=false;
+  try{checkoutClaimed=!!(await window.PilozCheckoutClaim?.claimAfterAuth?.());}
+  catch(error){
+    console.error('[PILOZ Stripe] Rattachement du Checkout impossible',{code:error?.code||'',message:error?.message||String(error)});
+    const safeMessage=authErrorMessage(error,'Le paiement Stripe n’a pas encore pu être rattaché. Réessayez dans quelques secondes.');
+    if(opts.requireCheckout){
+      invalidateAuthSession(safeMessage);authMode='signup';authStatusMessage=safeMessage;authStatusKind='error';authBusy=false;pageAuth();return false;
+    }
+  }
+  try{
+    await window.PilozCheckoutClaim?.verifyLicenseAccess?.();
+  }catch(error){
+    console.warn('[PILOZ Licence] Accès refusé',{code:error?.code||'license_required'});
+    const safeMessage=error?.message||'Aucune licence Piloz active n’est associée à ce compte.';
+    invalidateAuthSession(safeMessage);authMode='login';authStatusMessage=safeMessage;authStatusKind='error';authBusy=false;pageAuth();return false;
+  }
   try{
     const d = await cloudCharger();
     S = d || structuredClone(DEFAUT);
@@ -2627,18 +2655,8 @@ async function authSyncSession(opts={}){
   authBusy = false;
   authRecovery = false;
   applyAuthModeToUrl('');
-  let checkoutClaimed=false;
-  try{checkoutClaimed=!!(await window.PilozCheckoutClaim?.claimAfterAuth?.());}
-  catch(error){
-    console.error('[PILOZ Stripe] Rattachement du Checkout impossible',{code:error?.code||'',message:error?.message||String(error)});
-    const safeMessage=authErrorMessage(error,'Le paiement Stripe n’a pas encore pu être rattaché. Réessayez dans quelques secondes.');
-    if(opts.requireCheckout){
-      invalidateAuthSession(safeMessage);authMode='signup';authStatusMessage=safeMessage;authStatusKind='error';authBusy=false;pageAuth();return false;
-    }
-    toast(safeMessage);
-  }
   if(!checkoutClaimed)window.PilozSiteOffer?.routeAfterAuth?.();
-  await chargerLicence();
+  LIC={plan:'abonnement',fin:'2099-01-01',actif:true};
   fermerAuth();
   render();
   notifierRelances();
@@ -2673,7 +2691,7 @@ async function authLogin(){
     if(!r.ok) throw new Error(j.msg || j.error_description || j.message || 'Identifiants refusés.');
     SES = {access_token:j.access_token, refresh_token:j.refresh_token, user_id:j.user.id, email:j.user.email};
     window.PilozSiteOffer?.captureUser?.(j.user);
-    await authSyncSession({remember:loginDraft.remember});
+    if(await authSyncSession({remember:loginDraft.remember})===false)return false;
     history.replaceState(null, '', `${location.pathname}#dashboard`);
     render();
     loginDraft.password = '';
@@ -2716,7 +2734,7 @@ async function authSignupFinish(){
     SES = {access_token:j.access_token, refresh_token:j.refresh_token, user_id:(j.user&&j.user.id)||'', email:(j.user&&j.user.email)||signupDraft.email.trim()};
     window.PilozSiteOffer?.captureUser?.(j.user);
     clearSignupDraft();
-    await authSyncSession({remember:true, onboarding});
+    if(await authSyncSession({remember:true, onboarding})===false)return false;
     toast('Bienvenue dans Piloz ✨');
   }catch(e){
     authBusy = false;
@@ -2771,7 +2789,7 @@ async function authResetPassword(){
     const j = await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(j.msg || j.error_description || j.message || 'Mise à jour refusée.');
     recoveryDraft = {password:'', confirmPassword:''};
-    await authSyncSession({remember:true});
+    if(await authSyncSession({remember:true})===false)return false;
     toast('Mot de passe mis à jour');
   }catch(e){
     authBusy = false;
@@ -2794,20 +2812,14 @@ async function apiLic(methode, chemin, corps){
   return null;
 }
 async function chargerLicence(){
-  try{
-    const rows = await apiLic('GET', 'licences?select=*&user_id=eq.'+SES.user_id);
-    if(rows && rows.length){ LIC = rows[0]; return; }
-    const fin = plusJours(iso(AUJ()), ESSAI_JOURS);
-    const ins = await apiLic('POST', 'licences', {user_id:SES.user_id, email:SES.email, plan:'essai', fin, actif:true});
-    LIC = (ins && ins[0]) || {plan:'essai', fin, actif:true};
-    toast('🎁 Votre essai gratuit de '+ESSAI_JOURS+' jours démarre !');
-  }catch(e){
-    LIC = e.message==='NOTABLE' ? {plan:'installation', fin:'2099-01-01', actif:true} : null;
-  }
+  const access=await window.PilozCheckoutClaim?.verifyLicenseAccess?.();
+  if(!access?.allowed){LIC=null;throw Object.assign(new Error('Licence Piloz requise.'),{code:access?.reason||'license_required'});}
+  LIC={plan:access.planKey||'abonnement',fin:'2099-01-01',actif:true};
+  return LIC;
 }
 function licenceValide(){
   if(!SES) return true;
-  if(!LIC) return true;
+  if(!LIC) return false;
   return LIC.actif !== false && (LIC.fin||'2099') >= iso(AUJ());
 }
 function joursLicence(){ return LIC && LIC.fin ? Math.ceil((new Date(LIC.fin+'T00:00') - AUJ())/86400000) : null; }
@@ -2899,7 +2911,7 @@ function adminCreerCompte(){
 <script src="assets/js/domain/fiscal-domain.js?v=20260726.2"></script>
 <script src="assets/js/domain/electronic-invoice.js?v=20260722.1"></script>
 <script src="assets/js/utils/document-statuses.js?v=20260722.3"></script>
-<script src="assets/js/modules/subscription/site-offer.js?v=20260724.2"></script>
+<script src="assets/js/modules/subscription/site-offer.js?v=20260726.1"></script>
 <script src="assets/js/modules/subscription/entitlements.js?v=20260721.10"></script>
 <script src="assets/js/modules/onboarding/company-search.js?v=20260721.10"></script>
 <script src="assets/js/modules/onboarding/professional-onboarding.js?v=20260721.10"></script>
@@ -2914,7 +2926,7 @@ function adminCreerCompte(){
 <script src="assets/js/modules/erp/erp-document-viewer-v2.js?v=20260726.7"></script>
 <script src="assets/js/modules/erp/erp-clients.js?v=20260725.2"></script>
 <script src="assets/js/modules/erp/erp-catalog-v2.js?v=20260723.1"></script>
-<script src="assets/js/auth-guard.js?v=20260721.10"></script>
+<script src="assets/js/auth-guard.js?v=20260726.1"></script>
 <script src="assets/js/piloz-premium-motion.js?v=20260726.1"></script>
 </body>
 </html>

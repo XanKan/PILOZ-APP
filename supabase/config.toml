@@ -28,6 +28,11 @@ verify_jwt = false
 [functions.public-contact]
 verify_jwt = false
 
+# Contrôle d'accès applicatif authentifié. La fonction vérifie côté serveur
+# l'appartenance à une entreprise et l'état réel de sa licence.
+[functions.license-access]
+verify_jwt = true
+
 # Le même point d'entrée reçoit les callbacks OAuth signés par un state court.
 # Les actions POST restent authentifiées manuellement dans la fonction.
 [functions.external-integrations]

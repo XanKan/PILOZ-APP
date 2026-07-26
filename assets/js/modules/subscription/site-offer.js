@@ -29,6 +29,15 @@
   if(!result?.claimed)throw new Error('La confirmation Stripe n’a pas pu être rattachée au compte.');
   writeClaim(null);clear();const params=new URLSearchParams(location.search);['mode','plan','billing','source'].forEach(key=>params.delete(key));history.replaceState(null,'',location.pathname+(params.toString()?`?${params}`:'')+location.hash);return result;
  }
+ async function verifyLicenseAccess(){
+  if(!global.PilozRuntime?.session||!global.PilozERP)throw Object.assign(new Error('La session Piloz n’est pas encore prête.'),{code:'session_not_ready'});
+  const result=await global.PilozERP.invoke('license-access',{});
+  if(!result?.allowed){
+   const error=new Error('Aucune licence Piloz active n’est associée à ce compte. Souscrivez une offre ou contactez l’administrateur de votre entreprise.');
+   error.code=result?.reason||'license_required';throw error;
+  }
+  return result;
+ }
  function hasPendingCheckout(){return!!readClaim();}
  function routeAfterAuth(){
   const offer=current();if(!offer)return false;
@@ -38,5 +47,5 @@
  }
  captureUrl();captureCheckout();
  global.PilozSiteOffer={normalize,current,set:write,clear,captureUrl,captureUser,routeAfterAuth};
- global.PilozCheckoutClaim={current:readClaim,clear:()=>writeClaim(null),captureUrl:captureCheckout,hasPending:hasPendingCheckout,claimAfterAuth};
+ global.PilozCheckoutClaim={current:readClaim,clear:()=>writeClaim(null),captureUrl:captureCheckout,hasPending:hasPendingCheckout,claimAfterAuth,verifyLicenseAccess};
 })(window);

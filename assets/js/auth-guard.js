@@ -46,6 +46,13 @@
         if(completed!==false){history.replaceState(null,'',location.pathname+'#dashboard');global.render?.();}
         return;
       }
+      try{
+        await global.PilozCheckoutClaim?.verifyLicenseAccess?.();
+      }catch(error){
+        console.warn('[PILOZ Licence] Session refusée',{code:error?.code||'license_required'});
+        global.invalidateAuthSession?.(error?.message||'Aucune licence Piloz active n’est associée à ce compte.');
+        global.pageAuth?.();return;
+      }
       await global.charger?.();
     }catch(error){
       console.error('Échec du démarrage sécurisé de Piloz',error);
