@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<title>Tests conservation du défilement PILOZ</title>
+<body>
+<nav id="tabs"></nav><main id="main"></main><div id="result" data-status="running">RUNNING</div>
+<script>
+window.render=()=>{};window.renderTabs=()=>{};window.PilozRuntime={session:null};
+</script>
+<script src="../assets/js/modules/erp/erp-app.js"></script>
+<script>
+(async()=>{
+ const checks=[],check=(name,value)=>checks.push([name,!!value]),wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+ const makeFixture=()=>{const node=document.createElement('div');node.className='document-v2';node.style.cssText='position:fixed;left:0;top:0;width:140px;height:90px;overflow:auto';node.innerHTML='<div style="height:500px"><aside class="document-v2-panel" style="width:100px;height:45px;overflow:auto"><div style="height:300px">Défilement</div></aside></div>';document.body.appendChild(node);return node;};
+ let editor=makeFixture(),panel=editor.querySelector('.document-v2-panel');editor.scrollTop=70;panel.scrollTop=55;
+ const snapshot=PilozApp.captureScrollState();editor.remove();editor=makeFixture();PilozApp.restoreScrollState(snapshot);await wait(80);panel=editor.querySelector('.document-v2-panel');
+ check('éditeur restauré après remplacement du DOM',editor.scrollTop===70);
+ check('panneau droit restauré après remplacement du DOM',panel.scrollTop===55);
+ const failed=checks.filter(([,ok])=>!ok),node=document.getElementById('result');node.dataset.status=failed.length?'failed':'passed';node.textContent=failed.length?`Échec : ${failed.map(([name])=>name).join(', ')}`:`${checks.length}/${checks.length} positions restaurées`;
+})().catch(error=>{const node=document.getElementById('result');node.dataset.status='failed';node.textContent='Échec JavaScript : '+(error.stack||error.message);});
+</script>
+</body></html>
