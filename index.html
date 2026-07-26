@@ -2439,7 +2439,7 @@ async function authOAuth(provider){
     const response=await fetch(CFG.url.replace(/\/$/,'')+'/auth/v1/settings',{headers:{apikey:CFG.key}});
     const settings=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error('provider_settings_unavailable');
-    if(settings[provider]!==true){
+    if(settings?.external?.[provider]!==true){
       const label=provider==='google'?'Google':'Microsoft';
       authBusy=false;authStatusMessage=`La connexion avec ${label} n’est pas encore activée. Utilisez votre adresse e-mail ou contactez l’administrateur Piloz.`;authStatusKind='error';pageAuth();return false;
     }

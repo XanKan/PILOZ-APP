@@ -9,7 +9,7 @@ const license=read('supabase/functions/license-access/index.ts');
 const config=read('supabase/config.toml');
 const checks={
  oauth_provider_names:app.includes("authOAuth('google')")&&app.includes("authOAuth('azure')"),
- oauth_provider_preflight:app.includes("'/auth/v1/settings'")&&app.includes('settings[provider]!==true'),
+ oauth_provider_preflight:app.includes("'/auth/v1/settings'")&&app.includes('settings?.external?.[provider]!==true'),
  microsoft_scopes:app.includes("openid email profile offline_access"),
  oauth_checkout_required_for_signup:app.includes("authMode==='signup'&&!window.PilozCheckoutClaim?.hasPending?.()"),
  server_license_gate:offer.includes("invoke('license-access',{})")&&license.includes('userClient.auth.getUser()'),
