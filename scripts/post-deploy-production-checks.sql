@@ -2,7 +2,37 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607260076' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607260079' ok
+  union all
+  select 'crm_pipelines_rls',coalesce((select relrowsecurity::text from pg_class where oid=to_regclass('public.crm_pipelines')),'missing'),
+    coalesce((select relrowsecurity from pg_class where oid=to_regclass('public.crm_pipelines')),false)
+  union all
+  select 'crm_pipeline_workspace_rpc',coalesce(to_regprocedure('public.get_crm_pipeline_workspace(uuid,text,jsonb,integer,integer)')::text,'missing'),
+    to_regprocedure('public.get_crm_pipeline_workspace(uuid,text,jsonb,integer,integer)') is not null
+  union all
+  select 'crm_dashboard_command_center_rpc',coalesce(to_regprocedure('public.get_dashboard_command_center(text,date,date,text)')::text,'missing'),
+    to_regprocedure('public.get_dashboard_command_center(text,date,date,text)') is not null
+  union all
+  select 'crm_activity_reschedule_rpc',coalesce(to_regprocedure('public.reschedule_crm_activity(uuid,timestamptz,uuid)')::text,'missing'),
+    to_regprocedure('public.reschedule_crm_activity(uuid,timestamptz,uuid)') is not null
+  union all
+  select 'crm_saved_view_rpc',coalesce(to_regprocedure('public.save_crm_view(uuid,text,text,jsonb,jsonb,jsonb,boolean,boolean)')::text,'missing'),
+    to_regprocedure('public.save_crm_view(uuid,text,text,jsonb,jsonb,jsonb,boolean,boolean)') is not null
+  union all
+  select 'crm_mail_treatment_rpc',coalesce(to_regprocedure('public.update_crm_mail_link(uuid,jsonb)')::text,'missing'),
+    to_regprocedure('public.update_crm_mail_link(uuid,jsonb)') is not null
+  union all
+  select 'crm_automation_retry_rpc',coalesce(to_regprocedure('public.retry_crm_automation_run(uuid)')::text,'missing'),
+    to_regprocedure('public.retry_crm_automation_run(uuid)') is not null
+      and not has_function_privilege('anon','public.retry_crm_automation_run(uuid)','EXECUTE')
+  union all
+  select 'crm_mail_metadata_columns',count(*)::text,count(*)=4
+  from information_schema.columns where table_schema='public' and table_name='external_mail_links'
+    and column_name in('sender','preview','treatment_status','assigned_user_id')
+  union all
+  select 'crm_granular_write_policy',count(*)::text,count(*)=1
+  from pg_policies where schemaname='public' and tablename='crm_notes' and policyname='crm_notes_insert'
+    and coalesce(with_check,'') like '%manage_opportunity%'
   union all
   select 'invoice_legal_validator',coalesce(to_regprocedure('public.validate_invoice_for_finalization(uuid)')::text,'missing'),
     to_regprocedure('public.validate_invoice_for_finalization(uuid)') is not null
@@ -246,7 +276,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607260076',
+  'schema_version','202607260079',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;
