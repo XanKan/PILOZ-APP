@@ -2,6 +2,7 @@
 
 ## 0.9.0-compliance.29 — 26 juillet 2026
 
+- exclusion explicite de `app.piloz.fr` des moteurs de recherche via la balise `noindex, nofollow` et `robots.txt`, avec contrôle automatique avant publication ;
 - ajout de la rubrique principale « Bibliothèque » regroupant Clients, Fournisseurs et Articles & services ;
 - retrait temporaire de Stock de la navigation principale, sans suppression des données ni des fonctions existantes ;
 - accès direct à « Créer un nouveau client » dès l’ouverture du sélecteur client des devis et factures ;
