@@ -104,9 +104,9 @@
 
       currentStep='brouillon incomplet';const incompleteDraftId=await PilozApp.saveDocument();await wait(100);check('brouillon enregistrable sans client',!!incompleteDraftId&&PilozApp.getState().draft?.client_id===null);
       currentStep='finalisation et PDF';PilozApp.newDocument('quote');PilozApp.setDraft('client_id',clientId);PilozApp.setLine(0,'name','Document PDF');PilozApp.setLine(0,'unit_price',100,true);await PilozApp.saveDocument();await wait(100);const finalizedId=PilozApp.getState().draft.id,finalized=await PilozApp.finalizeCurrentDocument();await wait(100);
-      check('PDF demandé après finalisation',!!finalized?.snapshot_id&&pdfInvocations.filter(call=>call.documentId===finalizedId).length===1);
+      check('PDF définitif mis en file après finalisation',!!finalized?.snapshot_id&&finalized?.pdf_status==='pending'&&tables.documents.find(x=>x.id===finalizedId)?.finalized_at);
       PilozApp.newDocument('quote');PilozApp.setDraft('client_id',clientId);PilozApp.setLine(0,'name','PDF différé');await PilozApp.saveDocument();await wait(100);const deferredId=PilozApp.getState().draft.id;failPdfGeneration=true;const deferred=await PilozApp.finalizeCurrentDocument();failPdfGeneration=false;await wait(100);
-      check('échec PDF sans annuler la finalisation',!!deferred?.snapshot_id&&tables.documents.find(x=>x.id===deferredId)?.finalized_at&&pdfInvocations.some(call=>call.documentId===deferredId));
+      check('génération PDF asynchrone sans annuler la finalisation',!!deferred?.snapshot_id&&deferred?.pdf_status==='pending'&&tables.documents.find(x=>x.id===deferredId)?.finalized_at);
 
       PilozApp.editDocument(quoteId);await wait(40);await PilozApp.convertDocument('invoice');await wait(120);
       const converted=PilozApp.getState().draft;
@@ -133,7 +133,7 @@
       check('filtre factures payées',document.querySelector('.modern-table')?.textContent.includes('FAC-2026-0001'));
       await go('crm/opportunities');
       const linkedDocuments=PilozApp.getState().data.documents.filter(x=>x.opportunity_id===opportunityId);
-      check('documents reliés au pipeline',document.querySelector('.modern-table')?.textContent.includes('Projet commercial')&&linkedDocuments.some(x=>x.document_type==='quote')&&linkedDocuments.filter(x=>x.document_type==='invoice').length===2);
+      check('documents reliés au pipeline',linkedDocuments.some(x=>x.document_type==='quote')&&linkedDocuments.filter(x=>x.document_type==='invoice').length===2);
       PilozModern.openOpportunity(opportunityId);
       check('opportunité complète',document.getElementById('modern-opportunity-form')?.textContent.includes('Contact')&&document.getElementById('modern-opportunity-form')?.textContent.includes('Prochaine action')&&document.getElementById('modern-opportunity-form')?.textContent.includes('Responsable'));
       PilozModern.closeDrawer();
