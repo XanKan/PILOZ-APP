@@ -542,6 +542,43 @@ body::after{
 .modern-table tbody tr,.table tbody tr{transition:background-color .2s ease,box-shadow .2s ease,transform .2s var(--piloz-ease)}
 .modern-table tbody tr:hover,.table tbody tr:hover{position:relative;z-index:1;box-shadow:inset 3px 0 var(--piloz-signal)}
 
+/* Global filter overlay contract: controls and their popovers always paint above result tables. */
+.modern-toolbar,
+.modern-filters,
+.commercial-filters,
+.client-toolbar,
+.client-advanced-filters,
+.catalog-controls,
+.catalog-filters,
+.crm-toolbar,
+.ops-toolbar,
+.document-viewer-filter-panel{
+  position:relative;
+  z-index:40;
+  overflow:visible;
+}
+.modern-table-shell,
+.client-table-shell,
+.catalog-results,
+.crm-table-wrap,
+.document-viewer-list-scroll{
+  position:relative;
+  z-index:0;
+}
+.modern-date-range:has(.modern-date-range-popover),
+.modern-client-filter:has(.modern-client-suggestions),
+.document-viewer-date-range:has(.document-viewer-date-range-popover),
+.document-viewer-client-filter:has(.document-viewer-client-suggestions){
+  z-index:90;
+}
+.modern-date-range-popover,
+.modern-client-suggestions,
+.modern-column-panel,
+.document-viewer-date-range-popover,
+.document-viewer-client-suggestions{
+  z-index:100;
+}
+
 .status-dot,.presence-dot,.modern-status-dot{animation:piloz-status-breathe 2.8s ease-in-out infinite}
 @keyframes piloz-status-breathe{50%{opacity:.68;box-shadow:0 0 0 5px rgba(17,191,174,.08)}}
 

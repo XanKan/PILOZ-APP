@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0-compliance.44 — 27 juillet 2026
+
+- correction globale de la superposition des filtres au-dessus des tableaux ;
+- calendriers de période, recherches client et panneau de colonnes placés dans une couche d’interface dédiée ;
+- correction appliquée aux espaces documents, suivi commercial, clients, catalogue et comptabilité ;
+- ajout d’un contrôle automatique empêchant la régression des niveaux de superposition.
+
 ## 0.9.0-compliance.43 — 27 juillet 2026
 
 - correction de la cause résiduelle des exports `411 + auxiliaire` : les écritures non figées sont désormais remises en conformité avant chaque prévisualisation et validation ;

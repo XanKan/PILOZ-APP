@@ -4,6 +4,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Tests consultation documents V2 — Piloz</title>
 <link rel="stylesheet" href="../assets/css/document-viewer-v2.css">
+<link rel="stylesheet" href="../assets/css/piloz-premium.css">
 <body><main id="main"></main><div id="result" data-status="running">RUNNING</div>
 <script>
 window.__errors=[];addEventListener('error',event=>__errors.push(event.message));window.toast=()=>{};window.confirm=()=>true;window.alert=()=>{};
@@ -78,6 +79,8 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
 
   PilozDocumentViewerV2.toggleAdvancedFilters();
   check('panneau Plus de filtres',!!document.querySelector('.document-viewer-filter-panel:not([hidden])'));
+  const filterLayer=Number(getComputedStyle(document.querySelector('.document-viewer-filter-panel')).zIndex)||0,listLayer=Number(getComputedStyle(document.querySelector('.document-viewer-list-scroll')).zIndex)||0;
+  check('filtres affichés devant le tableau',filterLayer>listLayer&&getComputedStyle(document.querySelector('.document-viewer-filter-panel')).overflow==='visible');
   check('périodes du au regroupées',document.querySelectorAll('.document-viewer-date-range').length===2&&document.querySelectorAll('.document-viewer-filter-panel input[type="date"]').length===0);
   PilozDocumentViewerV2.toggleDateRange('issue');
   check('calendrier de période propre',document.querySelectorAll('.document-viewer-calendar-days button').length===42&&main.textContent.includes('Choisissez le premier jour'));
