@@ -22,6 +22,7 @@ const checks={
   afnor_mandatory_notes:['PMT','PMD','AAB'].every(code=>edge.includes(`subject_code: "${code}"`)),
   french_siren_legal_identifier:edge.includes('scheme: "0002"')&&edge.includes('legal_registration_identifier: sirenIdentifier(supplier)'),
   siret_private_identifier:edge.includes('scheme: "0009"')&&edge.includes('identifiers: privatePartyIdentifiers(supplier)'),
+  sandbox_tenant_id_not_used_as_iso_address:edge.includes('usableProviderFallback = /^\\d{4}$/.test(normalizedFallbackScheme)')&&edge.includes('It identifies the API tenant')&&edge.includes('party.siret'),
   outside_scope_vat_rate_omitted:edge.includes('!["O", "E"].includes(category)')&&edge.includes('BR-O-05 forbids BT-152'),
   configured_legal_mentions:edge.includes('early_payment_discount_notice,late_payment_penalty_notice,collection_fee_notice')&&edge.includes('canonicalPayload.legal_mentions'),
   optional_empty_values_removed:edge.includes('function compactJson(value: unknown)')&&edge.includes('return compactJson(result) as JsonObject'),

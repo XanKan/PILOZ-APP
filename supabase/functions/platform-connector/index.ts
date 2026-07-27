@@ -219,8 +219,24 @@ function partyName(party: JsonObject) {
 }
 
 function electronicAddress(party: JsonObject, fallbackScheme = "", fallbackValue = "") {
-  const value = text(party.routing_identifier, party.electronic_routing_identifier, fallbackValue, party.siret, party.siren);
-  const scheme = text(party.routing_scheme, party.electronic_routing_scheme, fallbackScheme, party.siret ? "0009" : "0002");
+  // The SUPER PDP sandbox exposes an internal company number with the literal
+  // scheme `sandbox`. It identifies the API tenant, but it is not an ISO 6523
+  // electronic address and must never be written to BT-34/BT-49.
+  const normalizedFallbackScheme = text(fallbackScheme).trim();
+  const usableProviderFallback = /^\d{4}$/.test(normalizedFallbackScheme) && Boolean(text(fallbackValue));
+  const value = text(
+    party.routing_identifier,
+    party.electronic_routing_identifier,
+    usableProviderFallback ? fallbackValue : "",
+    party.siret,
+    party.siren,
+  );
+  const scheme = text(
+    party.routing_scheme,
+    party.electronic_routing_scheme,
+    usableProviderFallback ? normalizedFallbackScheme : "",
+    digits(party.siret).length === 14 ? "0009" : "0002",
+  );
   return value ? { value, scheme } : null;
 }
 
