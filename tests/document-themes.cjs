@@ -1,56 +1,25 @@
 const fs=require('node:fs');
 const path=require('node:path');
-const vm=require('node:vm');
 const {loadPGlite,setIdentity,bootstrap}=require('./helpers/pglite-bootstrap.cjs');
 const {PGlite,pgcrypto}=loadPGlite();
 
 let assertions=0;
 function check(value,message){assertions+=1;if(!value)throw new Error(`Assertion ${assertions}: ${message}`);}
 
-function rendererChecks(){
-  const window={};
-  vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'..','assets','js','modules','erp','document-theme-renderer.js'),'utf8'),{window,Intl,URL,console});
-  const renderer=window.PilozDocumentThemeRenderer;
-  check(renderer.VERSION==='theme-renderer-v1','renderer version');
-  check(renderer.TYPES.length>=8,'document types');
-  check(renderer.STRUCTURES.length===6,'six structures');
-  check(renderer.PALETTES.length>=4,'palettes');
-  for(const [key] of renderer.STRUCTURES){
-    const config=renderer.defaults(key),html=renderer.render(config,renderer.sample('invoice'),{specimen:true});
-    check(config.structure.key===key,`structure ${key}`);
-    check(html.includes(`dtr-${key}`),`structure class ${key}`);
-    check(html.includes('SPECIMEN'),`specimen ${key}`);
-    check(html.includes('Conditions de paiement'),`payment terms ${key}`);
-    check(html.includes('Total TTC'),`totals ${key}`);
-  }
-  for(const [type,label] of renderer.TYPES){
-    const data=renderer.sample(type),html=renderer.render(renderer.defaults(),data,{documentType:type,specimen:false});
-    check(data.document.type===type,`sample type ${type}`);
-    check(html.includes(label),'type title '+type);
-    check(!html.includes('dtr-specimen'),'no specimen outside editor '+type);
-  }
-  for(const [key,label] of renderer.COLUMNS){
-    const config=renderer.defaults(),column=config.table.columns.find(row=>row.key===key);
-    check(Boolean(column),`column ${key}`);
-    check(column.label===label,`column label ${key}`);
-    check(Number.isInteger(column.position),`column position ${key}`);
-  }
-  for(const palette of renderer.PALETTES){
-    palette.forEach(value=>check(/^#[0-9A-F]{6}$/i.test(value),`palette color ${value}`));
-  }
-  for(const font of renderer.FONTS)check(renderer.normalize({typography:{title:{family:font}}}).typography.title.family===font,`font ${font}`);
-  const unsafe=renderer.normalize({colors:{primary:'red'},spacing:{top:-50,right:500},links:[{url:'javascript:alert(1)'},{url:'https://piloz.fr',label:'Piloz'}],table:{columns:[{key:'description',visible:false}]}});
-  check(unsafe.colors.primary==='#11BFAE','invalid color normalized');
-  check(unsafe.spacing.top===12,'minimum margin');
-  check(unsafe.spacing.right===120,'maximum margin');
-  check(unsafe.links.length===1,'unsafe link removed');
-  check(unsafe.table.columns.find(row=>row.key==='description').visible,'description locked visible');
-  const escaped=renderer.render(renderer.defaults(),{...renderer.sample(),client:{name:'<script>alert(1)</script>'}},{});
-  check(!escaped.includes('<script>'),'renderer escapes client data');
-  const footerPreview=renderer.render(renderer.defaults(),{...renderer.sample(),footer_logos:[{name:'Certification',width:72,signed_url:'https://example.test/certification.png'}]},{specimen:true});
-  check(footerPreview.includes('dtr-footer-logos'),'footer logos rendered in editor preview');
-  check(footerPreview.includes('SPECIMEN'),'specimen stays confined to editor rendering');
-  while(assertions<100)check(renderer.render(renderer.defaults(),renderer.sample(),{specimen:false}).length>1000,`render stability ${assertions+1}`);
+function rendererIntegrationChecks(){
+  const root=path.resolve(__dirname,'..');
+  const viewer=fs.readFileSync(path.join(root,'assets','js','modules','erp','erp-document-viewer-v2.js'),'utf8');
+  const app=fs.readFileSync(path.join(root,'assets','js','modules','erp','erp-app.js'),'utf8');
+  const pdf=fs.readFileSync(path.join(root,'supabase','functions','generate-document-pdf','index.ts'),'utf8');
+  check(viewer.includes("invokeBlob('generate-document-pdf'"),'viewer uses the current PDF renderer');
+  check(viewer.includes('resolveDocumentTemplateId'),'viewer resolves the configured document template');
+  check(viewer.includes('draftPdfFingerprint'),'draft preview invalidates its cache when the template changes');
+  check(app.includes('ensureDraftDocumentTemplate'),'editor assigns the configured template before saving');
+  check(app.includes('default_quote_template_id')&&app.includes('default_invoice_template_id'),'quote and invoice defaults are supported');
+  check(pdf.includes('document_template_versions'),'server renderer loads the immutable template version');
+  check(pdf.includes('selected_sales_terms_id'),'server renderer includes assigned terms and conditions');
+  check(pdf.includes('visible_columns'),'server renderer applies the configured columns');
+  check(!fs.existsSync(path.join(root,'assets','js','modules','erp','document-theme-renderer.js')),'removed legacy renderer is no longer required');
 }
 
 async function databaseChecks(){
@@ -117,4 +86,4 @@ async function databaseChecks(){
   }finally{await db.close();}
 }
 
-(async()=>{rendererChecks();await databaseChecks();})().catch(error=>{console.error(error);process.exitCode=1;});
+(async()=>{rendererIntegrationChecks();await databaseChecks();})().catch(error=>{console.error(error);process.exitCode=1;});

@@ -15,12 +15,12 @@ const checks={
   accounting_route_selects_tab:accounting.includes("currentPath.startsWith('accounting/settings/')")&&accounting.includes("app().go(`accounting/settings/${tab}`)"),
   deposit_example_updates_immediately:accounting.includes('onchange="PilozOps.updateDepositExample()"')&&accounting.includes('oninput="PilozOps.updateDepositExample()"')&&accounting.includes('function updateDepositExample()'),
   deposit_examples_follow_selected_method:accounting.includes("direct=method==='direct'")&&accounting.includes("<td>${esc(vatSuspense)}</td><td>Débit</td><td>100,00</td>")&&accounting.includes("<td>${esc(vatSales)}</td><td>Crédit</td><td>100,00</td>"),
-  sales_accounts_editable_with_701_default:accounting.includes("row?.account_code||'701'")&&accounting.includes('data-direction="sale" data-scope-type="item_type"')&&accounting.includes("api().insert('accounting_account_mappings'"),
+  sales_accounts_use_current_editable_defaults:accounting.includes("['product','Article','707000']")&&accounting.includes("['service','Main d’œuvre','706000']")&&accounting.includes("['subscription','Abonnement','706000']")&&accounting.includes("['fee','Frais','708000']")&&accounting.includes('data-direction="sale" data-scope-type="item_type"')&&accounting.includes("api().insert('accounting_account_mappings'"),
   payment_accounts_editable_with_512100_default:accounting.includes("row?.financial_account_code||'512100'")&&accounting.includes('data-payment-method=')&&accounting.includes("api().insert('accounting_payment_method_mappings'"),
   accounting_shortcut_not_redirected:commercial.includes("accounting:'accounting/payments'"),
-  tiers_use_configurable_length_and_one_example:accounting.includes("['auxiliary_length','Nombre de caractères','number']")&&accounting.includes('Exemple sur ${length} caractères')&&!accounting.includes('ops-third-party-identifier'),
+  tiers_default_to_individualized_accounts:accounting.includes("settings.customer_account_mode||'individualized'")&&accounting.includes('function individualizedCustomerAccount')&&accounting.includes("individualizedCustomerAccount('Dupont Martin')")&&accounting.includes('Compte client individualisé dans CompteNum')&&accounting.includes('max="10"')&&!accounting.includes('ops-third-party-identifier'),
   tiers_hide_generic_prefix_fields:!accounting.includes("['customer_auxiliary_prefix','Préfixe auxiliaire client']")&&!accounting.includes("['supplier_auxiliary_prefix','Préfixe auxiliaire fournisseur']"),
-  client_profile_uses_real_identifier:clients.includes('<h2>Identifiant client</h2>')&&clients.includes('placeholder="Ex. DUPONT"'),
+  client_profile_persists_individual_account:clients.includes('<h2>Compte comptable client</h2>')&&clients.includes('placeholder="Ex. 411SOLUNEO"')&&clients.includes("assign_client_individual_account"),
 };
 
 console.log(JSON.stringify(checks,null,2));

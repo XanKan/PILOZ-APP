@@ -37,10 +37,10 @@
       checks.push(['bandeau paramètres supprimé',!document.querySelector('.modern-secondary-panel')&&!document.getElementById('app').classList.contains('modern-subnav-open')]);
       checks.push(['route rendue',PilozModern.renderRoute('settings',state)===true]);
       const cards=[...document.querySelectorAll('.settings-overview-card')],paths=cards.map(card=>card.getAttribute('onclick'));
-      checks.push(['11 réglages visibles',cards.length===11]);
+      checks.push(['9 réglages visibles',cards.length===9]);
       checks.push(['3 groupes visibles',document.querySelectorAll('.settings-overview-section').length===3]);
       checks.push(['liens uniques',new Set(paths).size===cards.length]);
-      checks.push(['rubriques essentielles',document.getElementById('main').textContent.includes('Mon entreprise')&&document.getElementById('main').textContent.includes('Ventes et documents')&&document.getElementById('main').textContent.includes('Modèles de documents')&&document.getElementById('main').textContent.includes('Équipe et accès')&&document.getElementById('main').textContent.includes('Notifications et données')]);
+      checks.push(['rubriques essentielles',document.getElementById('main').textContent.includes('Mon entreprise')&&document.getElementById('main').textContent.includes('Ventes & Documents')&&document.getElementById('main').textContent.includes('Modèles de documents')&&document.getElementById('main').textContent.includes('Équipe et accès')&&document.getElementById('main').textContent.includes('Notifications et données')]);
       checks.push(['CGV regroupées dans les modèles',!paths.some(value=>value.includes("settings/sales-terms"))&&document.getElementById('main').textContent.includes('pieds de page et CGV')]);
       checks.push(['conformité masquée de la vue client',!document.getElementById('main').textContent.includes('Conformité et fiscalité')&&!document.getElementById('main').textContent.includes('À propos et conformité')]);
       checks.push(['aucune valeur vide technique',!/undefined|null/.test(document.getElementById('main').textContent)]);

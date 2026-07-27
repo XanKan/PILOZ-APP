@@ -6,9 +6,9 @@ Le catalogue centralise les articles, services, variantes, tarifs, fournisseurs 
 
 ## Activation en production
 
-1. Appliquer les migrations Supabase jusqu'à `202607230052_customer_due_actions.sql` avec le script de déploiement de production.
+1. Appliquer les migrations Supabase jusqu'à `202607270094_crm_party_official_company_details.sql` avec le script de déploiement de production.
 2. Exécuter `scripts/post-deploy-production-checks.sql` dans le projet Supabase de production.
-3. Vérifier que `latest_migration` vaut `202607230052` avant d'utiliser les nouvelles fonctions.
+3. Vérifier que `latest_migration` vaut `202607270094` avant d'utiliser les nouvelles fonctions.
 
 La migration est additive : elle ne supprime ni table ni donnée existante. Tant qu'elle n'est pas appliquée, l'interface statique reste publiable mais les nouvelles écritures du catalogue ne peuvent pas être garanties.
 

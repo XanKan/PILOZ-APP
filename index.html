@@ -9,8 +9,11 @@
 <meta name="application-name" content="Piloz">
 <meta name="theme-color" content="#11BFAE">
 <meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; frame-src 'self' data: blob: https:; worker-src 'self' blob:; media-src 'self' blob: https:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.supabase.co; upgrade-insecure-requests">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Albert+Sans:wght@400;500;600;700&family=Spline+Sans+Mono:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -2432,10 +2435,29 @@ function authServerReady(){
   pageAuth();
   return false;
 }
+const authSsoProviders={loaded:false,loading:false,google:false,azure:false};
+async function authLoadSsoProviders(){
+  if(authSsoProviders.loaded||authSsoProviders.loading)return;
+  if(!CFG?.url||!CFG?.key){authSsoProviders.loaded=true;return;}
+  authSsoProviders.loading=true;
+  try{
+    const response=await fetch(CFG.url.replace(/\/$/,'')+'/auth/v1/settings',{headers:{apikey:CFG.key}});
+    const settings=await response.json().catch(()=>({}));
+    if(response.ok){authSsoProviders.google=settings?.external?.google===true;authSsoProviders.azure=settings?.external?.azure===true;}
+  }catch(error){console.warn('[PILOZ Auth] Fournisseurs OAuth indisponibles',{message:error?.message||String(error)});}
+  finally{
+    authSsoProviders.loading=false;authSsoProviders.loaded=true;
+    if(document.body.classList.contains('auth-only'))pageAuth();
+  }
+}
 function authSsoMarkup(){
+  if(!authSsoProviders.loaded){void authLoadSsoProviders();return '';}
   const googleLogo=`<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.09-1.92 3.27-4.75 3.27-8.1Z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.29-2.65l-3.57-2.77c-.99.66-2.25 1.05-3.72 1.05-2.87 0-5.3-1.94-6.17-4.54H2.14v2.85A11 11 0 0 0 12 23Z"/><path fill="#FBBC05" d="M5.83 14.09A6.6 6.6 0 0 1 5.48 12c0-.73.13-1.43.35-2.09V7.06H2.14A11 11 0 0 0 1 12c0 1.77.42 3.44 1.14 4.94l3.69-2.85Z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.2 1.64l3.15-3.15A10.55 10.55 0 0 0 12 1a11 11 0 0 0-9.86 6.06l3.69 2.85c.87-2.6 3.3-4.53 6.17-4.53Z"/></svg>`;
   const microsoftLogo=`<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#F25022" d="M1 1h10v10H1z"/><path fill="#7FBA00" d="M13 1h10v10H13z"/><path fill="#00A4EF" d="M1 13h10v10H1z"/><path fill="#FFB900" d="M13 13h10v10H13z"/></svg>`;
-  return `<div class="auth-sso"><button type="button" class="btn btn-o" onclick="authOAuth('google')"><span class="auth-sso-mark">${googleLogo}</span>Continuer avec Google</button><button type="button" class="btn btn-o" onclick="authOAuth('azure')"><span class="auth-sso-mark">${microsoftLogo}</span>Continuer avec Microsoft</button></div><div class="auth-divider"><span>ou avec votre e-mail</span></div>`;
+  const buttons=[];
+  if(authSsoProviders.google)buttons.push(`<button type="button" class="btn btn-o" onclick="authOAuth('google')"><span class="auth-sso-mark">${googleLogo}</span>Continuer avec Google</button>`);
+  if(authSsoProviders.azure)buttons.push(`<button type="button" class="btn btn-o" onclick="authOAuth('azure')"><span class="auth-sso-mark">${microsoftLogo}</span>Continuer avec Microsoft</button>`);
+  return buttons.length?`<div class="auth-sso">${buttons.join('')}</div><div class="auth-divider"><span>ou avec votre e-mail</span></div>`:'';
 }
 async function authOAuth(provider){
   if(!authServerReady())return false;

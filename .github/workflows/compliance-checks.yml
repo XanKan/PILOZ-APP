@@ -11,7 +11,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -20,9 +20,22 @@ jobs:
       - name: Verify release metadata and static safety
         run: |
           node scripts/verify-release.mjs
-          node tests/document-template-selection-static.cjs
-          node tests/filter-layering-static.cjs
+          node tests/access-control-static.cjs
           node tests/accounting-item-types-static.cjs
+          node tests/auth-extensions-accounting-static.cjs
+          node tests/crm-command-center-static.cjs
+          node tests/crm-sales-rework-static.cjs
+          node tests/deposit-finalization-static.cjs
+          node tests/document-template-selection-static.cjs
+          node tests/document-visibility-static.cjs
+          node tests/filter-layering-static.cjs
+          node tests/navigation-multitab-static.cjs
+          node tests/oauth-license-static.cjs
+          node tests/platform-admin-mfa-static.cjs
+          node tests/security-hardening-static.cjs
+          node tests/settings-navigation-static.cjs
+          node tests/site-offer-static.cjs
+          node tests/stripe-billing-static.cjs
           test "$(tr -d '\r\n' < CNAME)" = "app.piloz.fr"
           ! git ls-files | grep -E '(^|/)\.env($|\.)'
           ! rg -n -S 'service_role.*eyJ|SUPABASE_SERVICE_ROLE_KEY.*eyJ|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' . --glob '!compliance/**' --glob '!docs/**' --glob '!.github/**'
@@ -63,34 +76,40 @@ jobs:
           node tests/crm-command-center-static.cjs
           node tests/crm-sales-rework-static.cjs
           node tests/crm-sales-rework-pglite.cjs
+      - name: Verify remaining database-backed modules
+        env:
+          PILOZ_PGLITE_ROOT: ${{ runner.temp }}/piloz-pglite/node_modules/@electric-sql/pglite
+        run: |
+          node tests/catalog-migration-pglite.cjs
+          node tests/crm-command-center-pglite.cjs
+          node tests/crm-performance-pglite.cjs
+          node tests/document-themes.cjs
       - name: Verify admin queries with 10k companies and 100k users
         env:
           PILOZ_PGLITE_ROOT: ${{ runner.temp }}/piloz-pglite/node_modules/@electric-sql/pglite
         run: node tests/platform-admin-performance-pglite.cjs
       - name: Verify archive tamper detection
         run: node tests/fiscal-archive-verifier.mjs
-      - name: Verify Stripe billing security contract
-        run: |
-          node tests/stripe-billing-static.cjs
-          node tests/site-offer-static.cjs
-      - name: Run browser suites
-        run: |
-          tests=(browser-tests.html api-response.html fiscal-domain.html electronic-invoice.html erp-smoke.html production-regression.html document-viewer-v2.html commercial-workspace.html)
-          for test in "${tests[@]}"; do
-            output=$(google-chrome --headless --no-sandbox --disable-gpu --virtual-time-budget=10000 --user-data-dir="$RUNNER_TEMP/chrome-${test}" --dump-dom "file://$PWD/tests/${test}")
-            echo "$output" | grep 'data-status="passed"'
-          done
-      - name: Install isolated mobile browser test dependency
+      - name: Install isolated browser test dependency
         run: npm install --prefix "$RUNNER_TEMP/piloz-playwright" playwright-core@1.56.1
-      - name: Verify dashboard in desktop and mobile viewports
+      - name: Run the complete desktop browser suite
         env:
           PILOZ_PLAYWRIGHT_ROOT: ${{ runner.temp }}/piloz-playwright/node_modules/playwright-core
         run: |
           export PILOZ_CHROME_PATH="$(command -v google-chrome)"
           test -x "$PILOZ_CHROME_PATH"
-          node tests/run-html-tests.cjs tests/dashboard-cockpit.html
-          node tests/run-html-tests.cjs tests/subscription-billing.html
-          node tests/run-html-tests.cjs tests/site-offer-selection.html
-          PILOZ_VIEWPORT_WIDTH=390 PILOZ_VIEWPORT_HEIGHT=844 node tests/run-html-tests.cjs tests/dashboard-cockpit.html
-          PILOZ_VIEWPORT_WIDTH=390 PILOZ_VIEWPORT_HEIGHT=844 node tests/run-html-tests.cjs tests/subscription-billing.html
-          PILOZ_VIEWPORT_WIDTH=390 PILOZ_VIEWPORT_HEIGHT=844 node tests/run-html-tests.cjs tests/site-offer-selection.html
+          tests=(access-control.html api-response.html auth-guard.html browser-tests.html catalog-workspace.html client-workspace.html commercial-workflows.html commercial-workspace.html company-settings-smoke.html dashboard-cockpit.html document-viewer-v2.html due-actions.html electronic-invoice.html erp-smoke.html fiscal-domain.html navigation-smoke.html no-flicker.html production-regression.html scroll-preservation.html settings-overview.html site-offer-selection.html subscription-billing.html template-footer-smoke.html template-list-layout.html)
+          for test in "${tests[@]}"; do
+            node tests/run-html-tests.cjs "tests/${test}"
+          done
+      - name: Run critical mobile browser journeys
+        env:
+          PILOZ_PLAYWRIGHT_ROOT: ${{ runner.temp }}/piloz-playwright/node_modules/playwright-core
+          PILOZ_VIEWPORT_WIDTH: 390
+          PILOZ_VIEWPORT_HEIGHT: 844
+        run: |
+          export PILOZ_CHROME_PATH="$(command -v google-chrome)"
+          tests=(dashboard-cockpit.html subscription-billing.html site-offer-selection.html client-workspace.html commercial-workspace.html document-viewer-v2.html catalog-workspace.html navigation-smoke.html)
+          for test in "${tests[@]}"; do
+            node tests/run-html-tests.cjs "tests/${test}"
+          done
