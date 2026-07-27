@@ -66,7 +66,7 @@
     commercial:{label:'Pipeline commercial',description:'Opportunités ouvertes, valeur et prévision pondérée'},
     recent_documents:{label:'Documents récents',description:'Devis, factures, avoirs et achats'},
     customers:{label:'Clients',description:'Nouveaux clients et principaux contributeurs'},
-    catalog:{label:'Articles et services',description:'Ventes et marge du catalogue'},
+    catalog:{label:'Articles et main d’œuvre',description:'Ventes et marge du catalogue'},
     stock:{label:'Stock et approvisionnement',description:'Ruptures et niveaux sous seuil'},
     agenda:{label:'Mon agenda',description:'Activités du jour et prochaines actions'},
     purchases:{label:'Achats',description:'Commandes et réceptions attendues'},
@@ -316,7 +316,7 @@
   function renderCatalog(data,summary){
     const rows=data?.items||[];
     const insights=`<div class="cockpit-catalog-metrics"><span><b>${esc(data?.best_seller?.name||'—')}</b>Meilleure vente</span><span><b>${number(data?.never_sold)}</b>Jamais vendus</span><span><b>${number(data?.missing_price)}</b>Sans prix</span></div>`;
-    return insights+(rows.length?`<ol class="cockpit-ranking">${rows.slice(0,5).map((row,index)=>`<li><button onclick="PilozDashboardCockpit.openItem('${row.id}')"><i>${index+1}</i><span>${esc(row.name)}<small>${number(row.quantity).toLocaleString('fr-FR')} vendu(s)</small></span><strong>${money(row.revenue,summary.currency)}${data.can_view_margin&&row.margin!==null?`<small>Marge ${money(row.margin,summary.currency)}</small>`:''}</strong></button></li>`).join('')}</ol>`:emptyBlock('Aucun article ou service facturé sur cette période.'));
+    return insights+(rows.length?`<ol class="cockpit-ranking">${rows.slice(0,5).map((row,index)=>`<li><button onclick="PilozDashboardCockpit.openItem('${row.id}')"><i>${index+1}</i><span>${esc(row.name)}<small>${number(row.quantity).toLocaleString('fr-FR')} vendu(s)</small></span><strong>${money(row.revenue,summary.currency)}${data.can_view_margin&&row.margin!==null?`<small>Marge ${money(row.margin,summary.currency)}</small>`:''}</strong></button></li>`).join('')}</ol>`:emptyBlock('Aucun article, aucune main d’œuvre, aucun abonnement ou frais facturé sur cette période.'));
   }
   function renderStock(data,summary){
     const rows=data?.alerts||[];
@@ -381,7 +381,7 @@
     if(permission.activities)secondary.push(`<button onclick="PilozDashboardCockpit.quick('activity')">Ajouter une activité</button>`);
     if(permission.customers)secondary.push(`<button onclick="PilozDashboardCockpit.quick('prospect')">Ajouter un prospect</button>`);
     if(permission.activities)secondary.push(`<button onclick="PilozDashboardCockpit.quick('opportunity')">Créer une opportunité</button>`);
-    if(permission.catalog_write)secondary.push(`<button onclick="PilozDashboardCockpit.quick('item')">Créer un article ou service</button>`);
+    if(permission.catalog_write)secondary.push(`<button onclick="PilozDashboardCockpit.quick('item')">Créer un élément du catalogue</button>`);
     if(permission.purchases)secondary.push(`<button onclick="PilozDashboardCockpit.quick('purchase')">Enregistrer un achat</button>`);
     if(!primary.length&&!secondary.length)return'';
     return`<div class="cockpit-quick-actions" aria-label="Actions rapides">${primary.slice(0,2).join('')}${secondary.length?`<details><summary>${icon('plus')}<span>Plus d’actions</span></summary><div>${secondary.join('')}</div></details>`:''}</div>`;
@@ -403,7 +403,7 @@
   }
   function isNewCompany(payload,state){return number(payload.summary?.invoice_count)===0&&number(payload.summary?.quote_count)===0&&number(payload.activity?.today)===0&&number(payload.activity?.upcoming)===0&&number(payload.crm?.open_opportunities)===0&&(state.data.clients||[]).length===0;}
   function renderOnboarding(){
-    return`<section class="cockpit-onboarding"><div><span>Premiers pas</span><h2>Bienvenue dans Piloz</h2><p>Commencez par créer votre premier client, puis transformez votre activité en devis et en factures.</p></div><div><button onclick="PilozDashboardCockpit.quick('client')">Ajouter un client</button><button class="primary" onclick="PilozDashboardCockpit.quick('quote')">Créer un devis</button><button onclick="PilozDashboardCockpit.quick('item')">Ajouter un article ou service</button></div></section>`;
+    return`<section class="cockpit-onboarding"><div><span>Premiers pas</span><h2>Bienvenue dans Piloz</h2><p>Commencez par créer votre premier client, puis transformez votre activité en devis et en factures.</p></div><div><button onclick="PilozDashboardCockpit.quick('client')">Ajouter un client</button><button class="primary" onclick="PilozDashboardCockpit.quick('quote')">Créer un devis</button><button onclick="PilozDashboardCockpit.quick('item')">Ajouter un élément du catalogue</button></div></section>`;
   }
   function skeleton(){
     return`<div class="cockpit-shell is-loading" aria-busy="true"><div class="cockpit-skeleton hero"></div><div class="cockpit-skeleton-row">${Array.from({length:4},()=>'<div class="cockpit-skeleton"></div>').join('')}</div><div class="cockpit-skeleton-grid"><div class="cockpit-skeleton chart"></div><div class="cockpit-skeleton chart"></div></div></div>`;

@@ -24,7 +24,7 @@
   crm:{label:'Suivi commercial',items:[['crm/pipeline','Pipeline'],['crm/activities','Activités'],['crm/reports','Rapports commerciaux']]},
   sales:{label:'Ventes',items:[['sales/quotes','Devis'],['sales/invoices','Factures'],['sales/due-dates','Échéances clients']]},
   purchases:{label:'Achats',items:[['purchases/orders','Commandes fournisseurs'],['purchases/receipts','Réceptions'],['purchases/invoices','Factures fournisseurs']]},
-  library:{label:'Bibliothèque',items:[['sales/clients','Clients'],['library/prospects','Prospects'],['purchases/suppliers','Fournisseurs'],['sales/catalog','Articles & services']]},
+  library:{label:'Bibliothèque',items:[['sales/clients','Clients'],['library/prospects','Prospects'],['purchases/suppliers','Fournisseurs'],['sales/catalog','Articles & main d’œuvre']]},
   stock:{label:'Stock',items:[['stock/items','Articles en stock'],['stock/movements','Mouvements'],['stock/inventories','Inventaires'],['stock/warehouses','Entrepôts']]}
  };
  function areaFor(path){if(['sales/clients','library/prospects','purchases/suppliers','sales/catalog'].some(item=>path===item||path.startsWith(item+'/')))return'library';if(path.startsWith('crm/'))return'crm';if(path.startsWith('sales/'))return'sales';if(path.startsWith('purchases/'))return'purchases';if(path.startsWith('stock/'))return'stock';return'';}

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.0-compliance.48 — 27 juillet 2026
+
+- remplacement du type visible « Service » par le véritable type d’élément « Main d’œuvre » dans le catalogue, les documents, les filtres, les imports, les exports et le paramétrage comptable ;
+- conservation de la clé technique historique `service` uniquement en interne afin de préserver les fiches, factures et intégrations existantes ;
+- normalisation des libellés API français et anglais vers les quatre types autorisés : Article, Main d’œuvre, Abonnement et Frais ;
+- comptes de vente par défaut `707000`, `706000`, `706000` et `708000`, toujours modifiables par entreprise ;
+- blocage des nouveaux pseudo-types Pack / Kit, Remise et Commentaire sans suppression des documents historiques ;
+- contrôles automatisés des écrans, de l’API, des migrations, de l’agrégation comptable, des remises, des commentaires et des packs historiques.
+
 ## 0.9.0-compliance.47 — 27 juillet 2026
 
 - refonte complète du suivi commercial autour de trois entrées claires : Pipeline, Activités et Rapports commerciaux ;

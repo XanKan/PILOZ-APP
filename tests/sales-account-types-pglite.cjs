@@ -24,8 +24,17 @@ async function main(){
   const expectedMappings={fee:'708000',product:'707000',service:'706000',subscription:'706000'};
   if(JSON.stringify(Object.fromEntries(mappings.map(row=>[row.scope_value,row.account_code])))!==JSON.stringify(expectedMappings))
     throw new Error(`Comptes de vente par défaut invalides ${JSON.stringify(mappings)}`);
-  if(mappings.some(row=>['package','discount','comment'].includes(row.scope_value)))
+  if(mappings.some(row=>['package','pack','kit','discount','remise','comment','commentaire'].includes(row.scope_value)))
     throw new Error(`Un ancien type comptable est encore configuré ${JSON.stringify(mappings)}`);
+  const aliases=['Main d’œuvre',"Main d'oeuvre",'main oeuvre','labor','service'];
+  for(const alias of aliases){
+    const canonical=(await db.query('select public.canonical_catalog_item_type($1) result',[alias])).rows[0].result;
+    if(canonical!=='service')throw new Error(`Le type Main d’œuvre n’est pas reconnu pour ${alias}: ${canonical}`);
+  }
+  await db.exec('reset role');
+  const laborLabel=(await db.query("select public.sales_account_type_label('service') result")).rows[0].result;
+  if(laborLabel!=='Main d’œuvre')throw new Error(`Libellé utilisateur incorrect : ${laborLabel}`);
+  await setIdentity(db,actor);
   const validation=(await db.query('select public.validate_sales_account_type_mappings($1) result',[company])).rows[0].result;
   if(!validation?.ok)throw new Error(`Configuration comptable annoncée incomplète ${JSON.stringify(validation)}`);
   const accountingFunction=(await db.query(
@@ -45,6 +54,12 @@ async function main(){
   try{await db.query("insert into public.catalog_items(id,company_id,item_type,reference,name,unit,sale_price,tax_rate,active,created_by) values($1,$2,'comment','COMMENT-TEST','Ancien commentaire','unité',0,0,true,$3)",[crypto.randomUUID(),company,actor]);}catch(error){obsoleteInsertBlocked=String(error.message).includes('catalog_item_type_not_selectable');}
   if(!obsoleteInsertBlocked)throw new Error('La création d’un ancien type de catalogue est encore autorisée.');
   await setIdentity(db,actor);
+  const apiLaborId=(await db.query(`select public.create_catalog_item($1,$2::jsonb,'[]'::jsonb,'[]'::jsonb) result`,[
+    company,JSON.stringify({item_type:'Main d’œuvre',name:'Pose par API',unit:'heure',sale_price:75,tax_rate:20,stock_managed:true})
+  ])).rows[0].result;
+  const apiLabor=(await db.query('select item_type,stock_managed from public.catalog_items where id=$1',[apiLaborId])).rows[0];
+  if(apiLabor?.item_type!=='service'||apiLabor?.stock_managed!==false)
+    throw new Error(`Le type Main d’œuvre n’est pas normalisé par l’API ${JSON.stringify(apiLabor)}`);
 
   const baseDocument=subject=>({company_id:company,document_type:'invoice',version:1,client_id:client,issue_date:'2026-07-27',due_date:'2026-08-26',subject,currency:'EUR',language:'fr',sale_type:'goods_and_services',payment_terms:'days_30',payment_method:'bank_transfer',discount_rate:0,deposit_rate:0,pipeline_stage:'draft',metadata:{pipeline_stage:'draft'}});
   const line=(position,itemId,name,price,type,extra={})=>({id:crypto.randomUUID(),position,line_type:type||'item',item_id:itemId||null,name,quantity:1,unit:'unité',unit_price:price,unit_cost_snapshot:0,discount_rate:0,tax_rate:20,optional:false,line_metadata:{accounting_item_type:extra.accounting_item_type||'service'},...extra});
@@ -66,6 +81,13 @@ async function main(){
   if(grouped706.length!==1||Number(grouped706[0].credit)!==800||grouped707.length!==1||Number(grouped707[0].credit)!==900||groupedVat.length!==1||Number(groupedVat[0].credit)!==340)
     throw new Error(`Regroupement comptable invalide ${JSON.stringify(grouped.lines)}`);
   if(grouped.lines.some(row=>/comment/i.test(row.account_label||'')))throw new Error('Un commentaire a généré une écriture comptable.');
+
+  const singleProduct=await finalize('Facture Article',[line(1,itemIds.product,'Article seul',100,'item',{accounting_item_type:'product'})]);
+  const singleLabor=await finalize('Facture Main d’œuvre',[line(1,itemIds.service,'Main d’œuvre seule',100,'item',{accounting_item_type:'service'})]);
+  if(Number(singleProduct.lines.find(row=>row.account_code==='707000')?.credit)!==100)
+    throw new Error(`Facture Article mal ventilée ${JSON.stringify(singleProduct.lines)}`);
+  if(Number(singleLabor.lines.find(row=>row.account_code==='706000')?.credit)!==100)
+    throw new Error(`Facture Main d’œuvre mal ventilée ${JSON.stringify(singleLabor.lines)}`);
 
   const discounted=await finalize('Remise rattachée au service',[
     line(1,itemIds.service,'Service remisé',100,'item',{accounting_item_type:'service',discount_rate:20})
@@ -91,9 +113,11 @@ async function main(){
     throw new Error(`Abonnement ou frais mal ventilé ${JSON.stringify(recurringAndFees.lines)}`);
 
   await db.exec('reset role');
+  await db.exec('alter table public.catalog_items drop constraint catalog_items_item_type_check');
   await db.exec("set session_replication_role='replica'");
   await db.query("insert into public.catalog_items(id,company_id,item_type,reference,name,unit,sale_price,tax_rate,active,created_by) values($1,$2,'package','PACK-LEGACY','Pack historique','unité',1400,20,true,$3)",[itemIds.package,company,actor]);
   await db.exec("set session_replication_role='origin'");
+  await db.exec("alter table public.catalog_items add constraint catalog_items_item_type_check check(item_type in('product','service','subscription','fee')) not valid");
   await db.query(`insert into public.item_bundle_components(company_id,bundle_item_id,component_item_id,quantity,position,created_by)
     values($1,$2,$3,1,1,$5),($1,$2,$4,1,2,$5)`,[company,itemIds.package,itemIds.service,itemIds.product,actor]);
   await setIdentity(db,actor);
@@ -112,7 +136,7 @@ async function main(){
   if(!exportBlocked)throw new Error('L’export reste possible avec un compte de vente manquant.');
 
   await db.close();
-  console.log(JSON.stringify({ok:true,mappings,grouped:{sales706:Number(grouped706[0].credit),sales707:Number(grouped707[0].credit),vat:Number(groupedVat[0].credit)},discount:Number(discounted706[0].credit),globalDiscount:{service:Number(global706.credit),product:Number(global707.credit)},subscription:Number(recurring706.credit),fees:Number(fees708.credit),pack:{service:Number(packed706.credit),product:Number(packed707.credit)},validation:missing}));
+  console.log(JSON.stringify({ok:true,mappings,labor:{label:laborLabel,api_type:apiLabor.item_type,account:'706000'},grouped:{sales706:Number(grouped706[0].credit),sales707:Number(grouped707[0].credit),vat:Number(groupedVat[0].credit)},discount:Number(discounted706[0].credit),globalDiscount:{service:Number(global706.credit),product:Number(global707.credit)},subscription:Number(recurring706.credit),fees:Number(fees708.credit),pack:{service:Number(packed706.credit),product:Number(packed707.credit)},validation:missing}));
 }
 
 main().catch(error=>{console.error(error);process.exit(1);});
