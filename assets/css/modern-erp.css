@@ -50,7 +50,7 @@ button:disabled,.btn:disabled,input:disabled,select:disabled,textarea:disabled{o
 .rail>.plier{width:calc(100% - 20px);margin:4px 10px!important;border-radius:8px;justify-content:flex-start;padding:9px 11px!important;color:var(--text-secondary)!important;min-height:40px}
 .rail>.plier:first-of-type{margin-top:auto!important}
 .rail>.plier:hover{background:var(--surface-hover)!important;color:var(--text-primary)!important}
-.rail>.plier.accounting-shortcut.on{background:var(--primary-soft)!important;border:1px solid #aee7e1;color:#0b9d91!important}
+.rail>.plier.accounting-shortcut.on,.rail>.plier.settings-shortcut.on{background:var(--primary-soft)!important;border:1px solid #aee7e1;color:#0b9d91!important}
 .erp-card-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:16px}.erp-card-heading h2,.erp-card-heading p{margin-top:0}.erp-sales-terms-library{margin-top:18px}.erp-template-terms-choice{display:grid;gap:4px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-subtle,#f7f9fb);margin:10px 0}.erp-template-terms-choice span{color:var(--text-secondary);font-size:.78rem}
 .rail>.plier .lbl{display:inline!important;white-space:nowrap}
 .nav-control-icon{width:20px;height:20px;display:grid;place-items:center;flex:0 0 20px}.nav-control-icon svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}

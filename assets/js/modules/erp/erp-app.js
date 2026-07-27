@@ -1,6 +1,25 @@
 (function(global){
  const api=()=>global.PilozERP,calc=()=>global.PilozCalculations;
  const state={companyId:null,loaded:false,loading:false,error:'',data:{},draft:null,purchaseDraft:null,route:'dashboard',panelOpen:true,busy:false};
+ const tabSync=(()=>{
+  const source=global.crypto?.randomUUID?.()||`${Date.now()}-${Math.random()}`,storageKey='piloz:erp:data-changed';
+  let dirty=false,timer=null,channel=null;
+  function schedule(delay=420){clearTimeout(timer);timer=setTimeout(syncNow,delay);}
+  async function syncNow(){
+   if(!dirty||document.hidden||!global.PilozRuntime?.session||state.loading||state.busy||state.draft||state.purchaseDraft){if(dirty)schedule(900);return;}
+   dirty=false;
+   try{state.loaded=false;await load(true);await render();}
+   catch(error){dirty=true;console.warn('[PILOZ Sync] Actualisation inter-onglets différée',{message:error?.message||String(error)});schedule(1400);}
+  }
+  function receive(payload){if(!payload||payload.source===source)return;if(payload.companyId&&state.companyId&&payload.companyId!==state.companyId)return;dirty=true;schedule();}
+  function notifyMutation(meta={}){const payload={source,companyId:state.companyId||null,at:Date.now(),...meta};try{channel?.postMessage(payload);}catch{}try{localStorage.setItem(storageKey,JSON.stringify(payload));}catch{}}
+  if('BroadcastChannel'in global){try{channel=new BroadcastChannel('piloz-erp-sync');channel.addEventListener('message',event=>receive(event.data));}catch{channel=null;}}
+  global.addEventListener('storage',event=>{if(event.key!==storageKey||!event.newValue)return;try{receive(JSON.parse(event.newValue));}catch{}});
+  global.addEventListener('focus',()=>{if(dirty)schedule(80);});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&dirty)schedule(80);});
+  return{notifyMutation,syncNow};
+ })();
+ global.PilozTabSync=tabSync;
  const routes={
   dashboard:'dashboard','crm/overview':'pipeline','crm/pipeline':'pipeline','crm/opportunities':'pipeline','crm/prospects':'prospects','library/prospects':'prospects','crm/activities':'activities','crm/reminders':'activities','crm/automations':'crm-automations','crm/reports':'crm-reports',pipeline:'pipeline',relances:'activities',reports:'reports',settings:'settings',
   'accounting/payments':'accounting-payments','accounting/exports':'accounting-exports','accounting/vat-cash':'accounting-vat-cash','accounting/settings':'accounting-settings',

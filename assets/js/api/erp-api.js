@@ -34,6 +34,13 @@
     if(method==='POST'&&rows.some(row=>FISCAL_DOCUMENT_TYPES.has(String(row.document_type||''))))throw Object.assign(new Error('La création d’un document fiscal exige le service transactionnel Supabase.'),{code:'fiscal_rpc_required'});
     if(['PATCH','PUT'].includes(method)&&rows.some(row=>Object.keys(row).some(key=>FISCAL_DOCUMENT_FIELDS.has(key))))throw Object.assign(new Error('La modification fiscale exige le service transactionnel Supabase.'),{code:'fiscal_rpc_required'});
   }
+  function notifySuccessfulMutation(path,method='GET'){
+    const verb=String(method||'GET').toUpperCase();
+    if(!['POST','PATCH','PUT','DELETE'].includes(verb))return;
+    const rpcName=decodeURIComponent((String(path||'').match(/\/rest\/v1\/rpc\/([^?]+)/)||[])[1]||'');
+    if(rpcName&&!/^(create|update|upsert|save|set|delete|remove|archive|restore|record|finalize|validate|convert|duplicate|move|link|unlink|accept|reject|complete|cancel|reopen|schedule|send|ensure|invite|resend|reset|assign|apply|toggle|register|bootstrap|run_due_)/i.test(rpcName))return;
+    global.PilozTabSync?.notifyMutation?.({path:String(path||''),method:verb});
+  }
   function translateError(message,status){
     const value=String(message||'').toLowerCase();
     if(value.includes('rate limit')||status===429)return'Trop de tentatives ont été effectuées. Réessayez plus tard.';
@@ -89,6 +96,7 @@
     try{data=await readBody(response,path);}catch(error){if(!response.ok)technicalLog('Réponse d’erreur illisible',response,path,error);throw error;}
     if(!response.ok){const message=typeof data==='object'&&data?(data.error||data.message||data.details):'Une erreur est survenue.',failure=new Error(translateError(message,response.status));failure.status=response.status;failure.code=data?.code||data?.error_code||'';technicalLog('Requête refusée',response,path,failure);throw failure;}
     if(data&&typeof data==='object'&&Object.prototype.hasOwnProperty.call(data,'text')){technicalLog('Réponse réussie non JSON',response,path);const failure=new Error('Le serveur a renvoyé une réponse inattendue. Réessayez dans quelques instants.');failure.status=response.status;failure.code='unexpected_content_type';throw failure;}
+    notifySuccessfulMutation(path,options.method);
     return data;
   }
   async function companyContext(){
@@ -105,7 +113,7 @@
   }
   async function invoke(name,body,signal){
     const runtime=global.PilozRuntime,response=await fetch(runtime.config.url.replace(/\/$/,'')+'/functions/v1/'+name,{method:'POST',signal,headers:{apikey:runtime.config.key,Authorization:'Bearer '+runtime.session.access_token,'Content-Type':'application/json'},body:serializeBody(body)});
-    const data=await readBody(response,'/functions/v1/'+name);if(!response.ok){const failure=new Error(translateError(data?.error||data?.message||'Service indisponible.',response.status));failure.status=response.status;failure.code=data?.code||'';technicalLog('Edge Function refusée',response,name,failure);throw failure;}return data;
+    const data=await readBody(response,'/functions/v1/'+name);if(!response.ok){const failure=new Error(translateError(data?.error||data?.message||'Service indisponible.',response.status));failure.status=response.status;failure.code=data?.code||'';technicalLog('Edge Function refusée',response,name,failure);throw failure;}global.PilozTabSync?.notifyMutation?.({path:'/functions/v1/'+name,method:'POST'});return data;
   }
   async function invokeBlob(name,body,signal){
     const runtime=global.PilozRuntime,response=await fetch(runtime.config.url.replace(/\/$/,'')+'/functions/v1/'+name,{method:'POST',signal,headers:{apikey:runtime.config.key,Authorization:'Bearer '+runtime.session.access_token,'Content-Type':'application/json'},body:serializeBody(body)});
@@ -131,7 +139,7 @@
   function update(table,id,data){return request(`/rest/v1/${table}?id=eq.${encodeURIComponent(id)}${restrictedReturns.has(table)?'&select=id':''}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:serializeBody(data)});}
   function remove(table,id){return request(`/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,{method:'DELETE',headers:{Prefer:'return=minimal'}});}
   function rpc(name,args={},options={}){return request(`/rest/v1/rpc/${name}`,{...options,method:'POST',body:serializeBody(args)});}
-  async function upload(bucket,path,file,upsert=true){const runtime=global.PilozRuntime,response=await fetch(`${runtime.config.url.replace(/\/$/,'')}/storage/v1/object/${bucket}/${path}`,{method:'POST',headers:{apikey:runtime.config.key,Authorization:`Bearer ${runtime.session.access_token}`,'Content-Type':file.type,'x-upsert':String(upsert)},body:file}),data=await readBody(response,`/storage/v1/object/${bucket}`);if(!response.ok){const failure=new Error(data?.message||data?.error||'Envoi impossible.');failure.status=response.status;technicalLog('Envoi de fichier refusé',response,bucket,failure);throw failure;}return data;}
+  async function upload(bucket,path,file,upsert=true){const runtime=global.PilozRuntime,response=await fetch(`${runtime.config.url.replace(/\/$/,'')}/storage/v1/object/${bucket}/${path}`,{method:'POST',headers:{apikey:runtime.config.key,Authorization:`Bearer ${runtime.session.access_token}`,'Content-Type':file.type,'x-upsert':String(upsert)},body:file}),data=await readBody(response,`/storage/v1/object/${bucket}`);if(!response.ok){const failure=new Error(data?.message||data?.error||'Envoi impossible.');failure.status=response.status;technicalLog('Envoi de fichier refusé',response,bucket,failure);throw failure;}global.PilozTabSync?.notifyMutation?.({path:`/storage/v1/object/${bucket}`,method:'POST'});return data;}
   async function signedUrl(bucket,path,expiresIn=3600){
     const data=await request(`/storage/v1/object/sign/${bucket}/${path}`,{method:'POST',body:serializeBody({expiresIn})});
     const raw=data?.signedURL||data?.signedUrl||data?.url||'';
