@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<title>Tests absence de clignotement PILOZ</title>
+<body><main id="main"><section class="initial-view"><article class="card">Initial</article></section></main><div id="result" data-status="running">RUNNING</div>
+<script src="../assets/js/piloz-premium-motion.js"></script>
+<script>
+(async()=>{
+ const checks=[],check=(name,value)=>checks.push([name,!!value]),wait=ms=>new Promise(resolve=>setTimeout(resolve,ms)),main=document.getElementById('main');
+ await wait(40);
+ check('animation initiale autorisée',main.firstElementChild.classList.contains('piloz-view-enter'));
+ main.innerHTML='<section class="same-view"><article class="card">Actualisation silencieuse</article></section>';
+ await wait(40);
+ check('actualisation de la même vue sans animation',!main.firstElementChild.classList.contains('piloz-view-enter'));
+ check('composants de la vue actualisée décorés sans fondu',main.querySelector('.card')?.classList.contains('piloz-motion-item'));
+ const failed=checks.filter(([,ok])=>!ok),result=document.getElementById('result');result.dataset.status=failed.length?'failed':'passed';result.textContent=failed.length?`Échec : ${failed.map(([name])=>name).join(', ')}`:`${checks.length}/${checks.length} contrôles anti-clignotement réussis`;
+})().catch(error=>{const result=document.getElementById('result');result.dataset.status='failed';result.textContent='Échec JavaScript : '+(error.stack||error.message);});
+</script>
+</body></html>

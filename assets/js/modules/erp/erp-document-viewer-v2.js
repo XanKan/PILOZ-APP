@@ -289,11 +289,34 @@
   return'';
  }
  function renderEmpty(kind){return`<section class="document-viewer-v2 empty"><div><h1>Aucun ${kind==='quote'?'devis':'document de facturation'}</h1><p>Créez un document pour utiliser la consultation en trois colonnes.</p>${actionButton(kind==='quote'?'Créer un devis':'Créer une facture',`PilozDocumentViewerV2.create('${kind}')`,'primary')}</div></section>`;}
+ function viewerMarkupRoot(markup){const template=document.createElement('template');template.innerHTML=String(markup||'').trim();return template.content.firstElementChild;}
+ function previewIdentity(node){const frame=node?.querySelector('iframe');return frame?`iframe:${frame.getAttribute('src')||''}`:`fallback:${node?.textContent?.trim()||''}`;}
+ function commitViewerMarkup(main,markup,documentId=''){
+  const nextRoot=viewerMarkupRoot(markup),currentRoot=main.firstElementChild;
+  if(!nextRoot)return;
+  nextRoot.dataset.documentId=documentId;
+  if(!documentId||!currentRoot?.classList.contains('document-viewer-v2')||currentRoot.dataset.documentId!==documentId){main.replaceChildren(nextRoot);return;}
+  currentRoot.className=nextRoot.className;
+  currentRoot.dataset.documentId=documentId;
+  const currentTop=currentRoot.querySelector(':scope > .document-viewer-topbar'),nextTop=nextRoot.querySelector(':scope > .document-viewer-topbar');
+  if(currentTop&&nextTop)currentTop.replaceWith(nextTop);
+  const currentShell=currentRoot.querySelector(':scope > .document-viewer-shell'),nextShell=nextRoot.querySelector(':scope > .document-viewer-shell');
+  if(currentShell&&nextShell){
+   const currentList=currentShell.querySelector(':scope > .document-viewer-list'),nextList=nextShell.querySelector(':scope > .document-viewer-list');
+   if(currentList&&nextList)currentList.replaceWith(nextList);
+   const currentPreview=currentShell.querySelector(':scope > .document-viewer-preview'),nextPreview=nextShell.querySelector(':scope > .document-viewer-preview');
+   if(currentPreview&&nextPreview&&previewIdentity(currentPreview)!==previewIdentity(nextPreview))currentPreview.replaceWith(nextPreview);
+   const currentSide=currentShell.querySelector(':scope > .document-viewer-side'),nextSide=nextShell.querySelector(':scope > .document-viewer-side');
+   if(currentSide&&nextSide)currentSide.replaceWith(nextSide);
+  }
+  const currentModal=currentRoot.querySelector(':scope > .document-viewer-modal-backdrop'),nextModal=nextRoot.querySelector(':scope > .document-viewer-modal-backdrop');
+  if(currentModal&&nextModal)currentModal.replaceWith(nextModal);else if(currentModal)currentModal.remove();else if(nextModal)currentRoot.appendChild(nextModal);
+ }
  function renderViewer(runtimeState){
    const scrollState=app()?.captureScrollState?.(),current=runtimeState||state(),data=current?.data||{},doc=ensureActive(data),main=document.getElementById('main');if(!main)return true;
     if(!doc){if(!documentsFor(data).length){main.innerHTML=renderEmpty(ui.kind);app()?.restoreScrollState?.(scrollState);return true;}main.innerHTML=`<section class="document-viewer-v2 list-only layout-${ui.layout}"><div id="document-viewer-live" class="sr-only" aria-live="polite"></div><div class="document-viewer-shell">${renderList(data)}</div></section>`;restoreListScroll();app()?.restoreScrollState?.(scrollState);return true;}
    if(!tabDefinitions().some(([key])=>key===ui.tab))ui.tab='all';
-   main.innerHTML=`<section class="document-viewer-v2 ${ui.listCollapsed?'list-collapsed':''} ${ui.infoOpen?'info-open':''} ${ui.mobileDocument?'mobile-document':''}"><header class="document-viewer-topbar"><span></span><div><button type="button" onclick="PilozDocumentViewerV2.previousDocument()">← Précédent</button><b>${esc(documentNumber(doc))}</b><button type="button" onclick="PilozDocumentViewerV2.nextDocument()">Suivant →</button></div><button type="button" class="document-viewer-close" aria-label="Fermer la consultation" title="Fermer la consultation" onclick="PilozDocumentViewerV2.clearSelection()">×</button></header><div id="document-viewer-live" class="sr-only" aria-live="polite"></div><div class="document-viewer-shell">${renderList(data)}${renderPreview(data,doc)}${renderSide(data,doc)}</div>${renderModal(data,doc)}</section>`;restoreListScroll();observePreviewSize();app()?.restoreScrollState?.(scrollState);
+   commitViewerMarkup(main,`<section class="document-viewer-v2 ${ui.listCollapsed?'list-collapsed':''} ${ui.infoOpen?'info-open':''} ${ui.mobileDocument?'mobile-document':''}"><header class="document-viewer-topbar"><span></span><div><button type="button" onclick="PilozDocumentViewerV2.previousDocument()">← Précédent</button><b>${esc(documentNumber(doc))}</b><button type="button" onclick="PilozDocumentViewerV2.nextDocument()">Suivant →</button></div><button type="button" class="document-viewer-close" aria-label="Fermer la consultation" title="Fermer la consultation" onclick="PilozDocumentViewerV2.clearSelection()">×</button></header><div id="document-viewer-live" class="sr-only" aria-live="polite"></div><div class="document-viewer-shell">${renderList(data)}${renderPreview(data,doc)}${renderSide(data,doc)}</div>${renderModal(data,doc)}</section>`,doc.id);restoreListScroll();observePreviewSize();app()?.restoreScrollState?.(scrollState);
   return true;
  }
 

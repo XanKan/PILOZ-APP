@@ -515,6 +515,7 @@ body::after{
 @keyframes piloz-view-enter{from{opacity:0;transform:translateY(9px);filter:saturate(.85)}to{opacity:1;transform:none;filter:none}}
 .piloz-view-enter .piloz-motion-item{animation:piloz-item-enter .58s var(--piloz-ease) both;animation-delay:calc(var(--piloz-order,0) * 34ms)}
 @keyframes piloz-item-enter{from{opacity:0;transform:translateY(13px) scale(.992)}to{opacity:1;transform:none}}
+.piloz-data-refresh .piloz-view-enter,.piloz-data-refresh .piloz-view-enter .piloz-motion-item{animation:none!important;opacity:1!important;transform:none!important;filter:none!important}
 
 .piloz-motion-item{--piloz-spot-x:50%;--piloz-spot-y:50%;position:relative;isolation:isolate;transition:transform .28s var(--piloz-ease),border-color .28s ease,box-shadow .28s ease!important}
 .piloz-motion-item:hover{transform:translateY(-2px);border-color:rgba(17,191,174,.28)!important;box-shadow:0 18px 46px rgba(10,38,66,.09),0 0 0 1px rgba(17,191,174,.045)!important}

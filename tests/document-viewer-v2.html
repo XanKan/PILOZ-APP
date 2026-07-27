@@ -61,6 +61,7 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   check('comptages réels devis',Array.from(document.querySelectorAll('.document-viewer-tabs button')).find(node=>node.textContent.includes('Facturés'))?.textContent.includes('1'));
   check('barre PDF totalement retirée',!document.querySelector('.document-viewer-pdf-controls')&&!main.textContent.includes('95 %'));
   check('PDF ajusté automatiquement à toute la largeur',document.querySelector('.document-viewer-stage iframe')?.getAttribute('src')?.includes('view=FitH&zoom=page-width'));
+  const stablePreviewFrame=document.querySelector('.document-viewer-stage iframe');
   check('aperçu PDF sans bord sombre',getComputedStyle(document.querySelector('.document-viewer-stage')).backgroundColor==='rgb(255, 255, 255)');
   check('aucun ancien bouton retour',!main.textContent.includes('Retour aux devis')&&!main.textContent.includes('Retour factures'));
   check('une fermeture accessible en haut',document.querySelectorAll('[aria-label="Fermer la consultation"]').length===1);
@@ -79,6 +80,7 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
 
   PilozDocumentViewerV2.toggleAdvancedFilters();
   check('panneau Plus de filtres',!!document.querySelector('.document-viewer-filter-panel:not([hidden])'));
+  check('aperçu PDF conservé sans clignotement pendant les actions',stablePreviewFrame===document.querySelector('.document-viewer-stage iframe'));
   const filterLayer=Number(getComputedStyle(document.querySelector('.document-viewer-filter-panel')).zIndex)||0,listLayer=Number(getComputedStyle(document.querySelector('.document-viewer-list-scroll')).zIndex)||0;
   check('filtres affichés devant le tableau',filterLayer>listLayer&&getComputedStyle(document.querySelector('.document-viewer-filter-panel')).overflow==='visible');
   check('périodes du au regroupées',document.querySelectorAll('.document-viewer-date-range').length===2&&document.querySelectorAll('.document-viewer-filter-panel input[type="date"]').length===0);

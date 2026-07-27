@@ -4,6 +4,9 @@
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const finePointer = window.matchMedia('(pointer: fine)');
   const decorated = new WeakSet();
+  let lastViewKey = '';
+  let routeTransitionPending = true;
+  let viewObserver = null;
   const cardSelector = [
     '.card', '.phase1-card', '.modern-card', '.modern-kpi',
     '.modern-table-shell', '.commercial-dashboard-block',
@@ -25,11 +28,20 @@
     }, { passive: true });
   }
 
+  function viewKey() {
+    return (window.location.hash || '#dashboard').slice(1).split('?')[0] || 'dashboard';
+  }
+
   function decorateView(main) {
     const root = main.firstElementChild;
     if (!root) return;
 
-    root.classList.add('piloz-view-enter');
+    const nextViewKey = viewKey();
+    const enteringView = routeTransitionPending || nextViewKey !== lastViewKey;
+    root.classList.toggle('piloz-view-enter', enteringView);
+    root.classList.toggle('piloz-view-visible', !enteringView);
+    lastViewKey = nextViewKey;
+    routeTransitionPending = false;
     const cards = [...main.querySelectorAll(cardSelector)].slice(0, 36);
     cards.forEach((card, index) => {
       card.classList.add('piloz-motion-item');
@@ -37,7 +49,7 @@
       bindSpotlight(card);
     });
 
-    requestAnimationFrame(() => root.classList.add('piloz-view-visible'));
+    if (enteringView) requestAnimationFrame(() => root.classList.add('piloz-view-visible'));
   }
 
   function initViewTransitions() {
@@ -45,11 +57,12 @@
     if (!main) return;
     decorateView(main);
 
-    const observer = new MutationObserver((mutations) => {
+    viewObserver?.disconnect();
+    viewObserver = new MutationObserver((mutations) => {
       if (!mutations.some((mutation) => mutation.addedNodes.length || mutation.removedNodes.length)) return;
       requestAnimationFrame(() => decorateView(main));
     });
-    observer.observe(main, { childList: true });
+    viewObserver.observe(main, { childList: true });
   }
 
   function initAmbientPointer() {
@@ -69,6 +82,10 @@
     initViewTransitions();
     initAmbientPointer();
   }
+
+  window.addEventListener('hashchange', () => {
+    routeTransitionPending = true;
+  });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
   else start();
