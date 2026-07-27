@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0-compliance.54 — 27 juillet 2026
+
+- Correction additive de l’ambiguïté PL/pgSQL dans l’enregistrement d’une transmission SUPER PDP sandbox.
+- Validation `supabase db lint --fail-on error` rétablie après le déploiement du connecteur.
+
 ## 0.9.0-compliance.53 — 27 juillet 2026
 
 - maintient PILOZ et ses données métier en production tout en verrouillant strictement l’API SUPER PDP sur son bac à sable ;

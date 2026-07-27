@@ -41,7 +41,7 @@ Remove-Variable superPdpClientId,superPdpSecret,superPdpSecretSecure -ErrorActio
 
 ## 3. Appliquer la migration et déployer la fonction
 
-Les migrations `202607270097_superpdp_sandbox_connector.sql` et `202607270098_superpdp_sandbox_invoice_exchange.sql` sont additives. Elles ne contiennent aucun secret. La seconde ajoute le registre des échanges et événements, les politiques RLS par entreprise et le stockage privé des artefacts PDF/XML.
+Les migrations `202607270097_superpdp_sandbox_connector.sql`, `202607270098_superpdp_sandbox_invoice_exchange.sql` et `202607270099_fix_superpdp_transmission_lint.sql` sont additives. Elles ne contiennent aucun secret. Elles ajoutent le connecteur, le registre des échanges et événements, les politiques RLS par entreprise, le stockage privé des artefacts PDF/XML et la correction de lint de la fonction d’audit.
 
 ```powershell
 npx.cmd --yes supabase@2.109.1 functions deploy platform-connector `
