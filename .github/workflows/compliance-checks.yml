@@ -43,6 +43,10 @@ jobs:
         env:
           PILOZ_PGLITE_ROOT: ${{ runner.temp }}/piloz-pglite/node_modules/@electric-sql/pglite
         run: node tests/accounting-engine-pglite.cjs
+      - name: Verify sales account types, grouping and discounts
+        env:
+          PILOZ_PGLITE_ROOT: ${{ runner.temp }}/piloz-pglite/node_modules/@electric-sql/pglite
+        run: node tests/sales-account-types-pglite.cjs
       - name: Verify dashboard metrics, RLS and preferences
         env:
           PILOZ_PGLITE_ROOT: ${{ runner.temp }}/piloz-pglite/node_modules/@electric-sql/pglite

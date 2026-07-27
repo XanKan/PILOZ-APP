@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.0-compliance.45 — 27 juillet 2026
+
+- simplification des comptes de vente aux quatre types comptables Article, Service, Abonnement et Frais ;
+- valeurs par défaut `707000`, `706000`, `706000` et `708000`, entièrement modifiables ;
+- suppression des pseudo-types Pack / Kit, Remise et Commentaire du catalogue et du paramétrage comptable ;
+- regroupement des montants HT par compte de vente, ventilation des remises sur les comptes concernés et exclusion des commentaires ;
+- ventilation des packs historiques selon le type comptable de chacun de leurs composants ;
+- contrôle bloquant des quatre comptes obligatoires avant la prévisualisation ou la validation d’un export comptable.
+
 ## 0.9.0-compliance.44 — 27 juillet 2026
 
 - correction globale de la superposition des filtres au-dessus des tableaux ;

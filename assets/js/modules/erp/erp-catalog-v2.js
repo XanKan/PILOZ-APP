@@ -65,11 +65,9 @@
     product: "Article",
     service: "Service",
     subscription: "Abonnement",
-    package: "Pack / kit",
     fee: "Frais",
-    discount: "Remise",
-    comment: "Commentaire",
   };
+  const selectableItemTypes = new Set(Object.keys(typeLabels));
   const statusLabels = {
     active: "Actif",
     inactive: "Inactif",
@@ -278,6 +276,7 @@
         st = statusOf(item),
         lv = levels(item.id),
         f = ui.filters;
+      if (!selectableItemTypes.has(item.item_type)) return false;
       if (query && !searchText(item).includes(query)) return false;
       if (ui.quick === "products" && item.item_type !== "product") return false;
       if (ui.quick === "services" && item.item_type !== "service") return false;
@@ -407,7 +406,7 @@
   }
   function quickCounts() {
     const s = stats(),
-      all = catalog();
+      all = catalog().filter((item) => selectableItemTypes.has(item.item_type));
     return {
       all: all.length,
       products: s.products,
