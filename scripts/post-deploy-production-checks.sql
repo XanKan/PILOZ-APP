@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607270096' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607270097' ok
   union all
   select 'company_access_system_roles',count(*)::text,count(*)=0
   from public.companies company
@@ -368,6 +368,18 @@ with controls as(
   where mode='production' and activation_status='production_active'
     and (signing_status<>'configured' or kms_key_id is null)
   union all
+  select 'superpdp_sandbox_connector_rpc',
+    coalesce(to_regprocedure('public.configure_superpdp_sandbox_connector(uuid,jsonb)')::text,'missing'),
+    to_regprocedure('public.configure_superpdp_sandbox_connector(uuid,jsonb)') is not null
+  union all
+  select 'superpdp_sandbox_audit_rpc',
+    coalesce(to_regprocedure('public.record_superpdp_sandbox_test_transmission(uuid,text,text)')::text,'missing'),
+    to_regprocedure('public.record_superpdp_sandbox_test_transmission(uuid,text,text)') is not null
+  union all
+  select 'superpdp_production_not_enabled',count(*)::text,count(*)=0
+  from public.platform_connectors
+  where connector_code='SUPERPDP' and production_enabled
+  union all
   select 'over_reversed_payments',count(*)::text,count(*)=0 from(
     select original.id from public.payments original
     left join public.payments reversal on reversal.reverses_payment_id=original.id and reversal.status='confirmed'
@@ -378,7 +390,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607270095',
+  'schema_version','202607270097',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;
