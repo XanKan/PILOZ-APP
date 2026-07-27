@@ -230,6 +230,58 @@ function vatCategory(rate: number, issuer: JsonObject) {
   return liable === false ? "O" : "Z";
 }
 
+function digits(value: unknown) {
+  return text(value).replace(/\D/g, "");
+}
+
+function sirenIdentifier(party: JsonObject) {
+  const direct = digits(party.siren);
+  const fromSiret = digits(party.siret).slice(0, 9);
+  const value = direct.length === 9 ? direct : fromSiret.length === 9 ? fromSiret : "";
+  return value ? { value, scheme: "0002" } : undefined;
+}
+
+function privatePartyIdentifiers(party: JsonObject) {
+  const siret = digits(party.siret);
+  return siret.length === 14 ? [{ value: siret, scheme: "0009" }] : undefined;
+}
+
+function normalizedBusinessText(value: unknown) {
+  return text(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+function billingProcessCode(invoice: JsonObject, lines: JsonObject[], totals: JsonObject, references: unknown) {
+  const operation = normalizedBusinessText(invoice.operation_category);
+  const lineTypes = lines.map(line => normalizedBusinessText(line.item_type || line.product_type || line.line_nature)).join(" ");
+  const source = `${operation} ${lineTypes}`;
+  const hasGoods = /\b(bien|biens|article|articles|produit|produits|marchandise|marchandises|goods?)\b/.test(source);
+  const hasServices = /\b(service|services|prestation|prestations|main.?d.?oeuvre|abonnement|subscription)\b/.test(source);
+  const family = hasGoods && hasServices ? "M" : hasGoods ? "B" : "S";
+  const paid = Math.abs(Number(totals.paid || 0));
+  const inclTax = Math.abs(Number(totals.incl_tax || 0));
+  if (inclTax > 0 && paid >= inclTax - 0.005) return `${family}2`;
+  const hasDeposit = invoice.type === "balance_invoice" || array(references).some(reference => {
+    const link = object(reference);
+    return /deposit|acompte/.test(normalizedBusinessText(link.link_type || link.document_type));
+  });
+  return `${family}${hasDeposit ? "4" : "1"}`;
+}
+
+function compactJson(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    const compacted = value.map(compactJson).filter(item => item !== undefined);
+    return compacted.length ? compacted : undefined;
+  }
+  if (value && typeof value === "object") {
+    const compacted = Object.fromEntries(Object.entries(value as JsonObject)
+      .map(([key, item]) => [key, compactJson(item)] as const)
+      .filter(([, item]) => item !== undefined));
+    return Object.keys(compacted).length ? compacted : undefined;
+  }
+  if (value === undefined || value === null || (typeof value === "string" && value.trim() === "")) return undefined;
+  return value;
+}
+
 function unitCode(value: unknown) {
   const raw = text(value, "C62").trim();
   const normalized = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[.\s_-]+/g, "");
@@ -271,6 +323,7 @@ function canonicalToEn16931(payload: JsonObject, connector: JsonObject) {
   const lines = invoiceLines.map((line, index) => {
     const quantity = Number(line.quantity || 1) || 1;
     const rate = Number(line.tax_rate || 0);
+    const category = vatCategory(rate, supplier);
     return {
       identifier: text(line.position, index + 1),
       invoiced_quantity: String(quantity),
@@ -286,17 +339,22 @@ function canonicalToEn16931(payload: JsonObject, connector: JsonObject) {
         description: text(line.description),
         seller_identifier: text(line.reference),
       },
-      vat_information: { invoiced_item_vat_category_code: vatCategory(rate, supplier), invoiced_item_vat_rate: String(rate) },
+      vat_information: {
+        invoiced_item_vat_category_code: category,
+        // EN 16931 BR-O-05 forbids BT-152 when VAT is outside scope (O).
+        ...(!["O", "E"].includes(category) ? { invoiced_item_vat_rate: String(rate) } : {}),
+      },
     };
   });
   const taxes = array(payload.tax_breakdown).map(object).map(row => {
     const rate = Number(row.rate || 0);
+    const category = vatCategory(rate, supplier);
     return {
       vat_category_taxable_amount: decimal(row.taxable_amount, true),
       vat_category_tax_amount: decimal(row.tax_amount, true),
-      vat_category_code: vatCategory(rate, supplier),
-      vat_category_rate: String(rate),
-      ...(rate === 0 && vatCategory(rate, supplier) === "O" ? { vat_exemption_reason: "TVA non applicable" } : {}),
+      vat_category_code: category,
+      ...(!["O", "E"].includes(category) ? { vat_category_rate: String(rate) } : {}),
+      ...(category === "O" ? { vat_exemption_reason: "TVA non applicable, art. 293 B du CGI" } : {}),
     };
   });
   if (!taxes.length) {
@@ -308,29 +366,44 @@ function canonicalToEn16931(payload: JsonObject, connector: JsonObject) {
       current.tax += Math.abs(Number(line.total_tax || 0));
       grouped.set(rate, current);
     }
-    for (const [rate, amount] of grouped) taxes.push({
-      vat_category_taxable_amount: decimal(amount.taxable),
-      vat_category_tax_amount: decimal(amount.tax),
-      vat_category_code: vatCategory(rate, supplier),
-      vat_category_rate: String(rate),
-      ...(rate === 0 && vatCategory(rate, supplier) === "O" ? { vat_exemption_reason: "TVA non applicable, art. 293 B du CGI" } : {}),
-    });
+    for (const [rate, amount] of grouped) {
+      const category = vatCategory(rate, supplier);
+      taxes.push({
+        vat_category_taxable_amount: decimal(amount.taxable),
+        vat_category_tax_amount: decimal(amount.tax),
+        vat_category_code: category,
+        ...(!["O", "E"].includes(category) ? { vat_category_rate: String(rate) } : {}),
+        ...(category === "O" ? { vat_exemption_reason: "TVA non applicable, art. 293 B du CGI" } : {}),
+      });
+    }
   }
+  const legalMentions = object(payload.legal_mentions);
+  const processCode = billingProcessCode(invoice, invoiceLines, totals, payload.references);
   const result: JsonObject = {
     number: text(invoice.number),
     issue_date: text(invoice.issue_date),
     type_code: invoiceTypeCode(invoice.type),
     currency_code: text(invoice.currency, "EUR"),
-    process_control: { specification_identifier: "urn:cen.eu:en16931:2017" },
+    process_control: {
+      specification_identifier: "urn:cen.eu:en16931:2017",
+      business_process_type: processCode,
+    },
+    notes: [
+      { subject_code: "PMT", note: text(legalMentions.collection_fee, "Indemnite forfaitaire pour frais de recouvrement due en cas de retard de paiement : 40 EUR.") },
+      { subject_code: "PMD", note: text(legalMentions.late_payment_penalties, "Penalites de retard : trois fois le taux d'interet legal en vigueur.") },
+      { subject_code: "AAB", note: text(legalMentions.early_payment_discount, "Escompte pour paiement anticipe : neant.") },
+    ],
     seller: {
       name: partyName(supplier), trading_name: text(supplier.trade_name), electronic_address: sellerAddress,
       postal_address: postalAddress(supplier), vat_identifier: text(supplier.vat_number),
-      legal_registration_identifier: supplier.siret ? { value: text(supplier.siret), scheme: "0009" } : undefined,
+      identifiers: privatePartyIdentifiers(supplier),
+      legal_registration_identifier: sirenIdentifier(supplier),
     },
     buyer: {
       name: partyName(customer), electronic_address: buyerAddress, postal_address: postalAddress(customer),
       vat_identifier: text(customer.vat_number),
-      legal_registration_identifier: customer.siret ? { value: text(customer.siret), scheme: "0009" } : undefined,
+      identifiers: privatePartyIdentifiers(customer),
+      legal_registration_identifier: sirenIdentifier(customer),
     },
     totals: {
       sum_invoice_lines_amount: decimal(totals.excl_tax, true),
@@ -350,7 +423,7 @@ function canonicalToEn16931(payload: JsonObject, connector: JsonObject) {
     purchase_order_reference: text(invoice.purchase_order_reference),
     contract_reference: text(invoice.contract_reference),
   };
-  return JSON.parse(JSON.stringify(result));
+  return compactJson(result) as JsonObject;
 }
 
 async function convertInvoice(token: string, from: "en16931" | "cii", to: "cii" | "factur-x", invoice: JsonObject | Uint8Array, pdf?: Uint8Array) {
@@ -420,7 +493,16 @@ async function sendDocument(userClient: SupabaseClient, adminClient: SupabaseCli
     if (created.error || !record) throw Object.assign(new Error("canonical_invoice_failed"), { status: 409 });
   }
   if (!record) throw Object.assign(new Error("canonical_invoice_failed"), { status: 409 });
-  const enInvoice = canonicalToEn16931(object(record.canonical_payload), connector);
+  const canonicalPayload = object(record.canonical_payload);
+  const { data: documentSettings } = await adminClient.from("company_document_settings")
+    .select("early_payment_discount_notice,late_payment_penalty_notice,collection_fee_notice")
+    .eq("company_id", companyId).maybeSingle();
+  canonicalPayload.legal_mentions = {
+    early_payment_discount: text(documentSettings?.early_payment_discount_notice),
+    late_payment_penalties: text(documentSettings?.late_payment_penalty_notice),
+    collection_fee: text(documentSettings?.collection_fee_notice),
+  };
+  const enInvoice = canonicalToEn16931(canonicalPayload, connector);
   const pdf = await downloadStored(adminClient, document.final_pdf_path);
   const cii = await convertInvoice(token, "en16931", "cii", enInvoice);
   const facturx = await convertInvoice(token, "en16931", "factur-x", enInvoice, pdf);
