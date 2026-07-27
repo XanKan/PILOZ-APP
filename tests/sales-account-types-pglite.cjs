@@ -28,6 +28,11 @@ async function main(){
     throw new Error(`Un ancien type comptable est encore configuré ${JSON.stringify(mappings)}`);
   const validation=(await db.query('select public.validate_sales_account_type_mappings($1) result',[company])).rows[0].result;
   if(!validation?.ok)throw new Error(`Configuration comptable annoncée incomplète ${JSON.stringify(validation)}`);
+  const accountingFunction=(await db.query(
+    "select pg_get_functiondef('public._generate_document_accounting_entry(uuid)'::regprocedure) definition"
+  )).rows[0].definition;
+  if(accountingFunction.includes('piloz_sales_account_totals')||!accountingFunction.includes('sales_account_totals jsonb'))
+    throw new Error('Le moteur comptable utilise encore une relation temporaire incompatible avec Supabase db lint.');
 
   const itemIds={product:crypto.randomUUID(),service:crypto.randomUUID(),subscription:crypto.randomUUID(),fee:crypto.randomUUID(),package:crypto.randomUUID()};
   await db.exec('reset role');
