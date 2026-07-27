@@ -2,7 +2,7 @@
  const api=()=>global.PilozERP,calc=()=>global.PilozCalculations;
  const state={companyId:null,loaded:false,loading:false,error:'',data:{},draft:null,purchaseDraft:null,route:'dashboard',panelOpen:true,busy:false};
  const routes={
-  dashboard:'dashboard','crm/overview':'pipeline','crm/pipeline':'pipeline','crm/opportunities':'pipeline','crm/prospects':'prospects','crm/activities':'activities','crm/reminders':'activities','crm/automations':'crm-automations','crm/reports':'crm-reports',pipeline:'pipeline',relances:'activities',reports:'reports',settings:'settings',
+  dashboard:'dashboard','crm/overview':'pipeline','crm/pipeline':'pipeline','crm/opportunities':'pipeline','crm/prospects':'prospects','library/prospects':'prospects','crm/activities':'activities','crm/reminders':'activities','crm/automations':'crm-automations','crm/reports':'crm-reports',pipeline:'pipeline',relances:'activities',reports:'reports',settings:'settings',
   'accounting/payments':'accounting-payments','accounting/exports':'accounting-exports','accounting/vat-cash':'accounting-vat-cash','accounting/settings':'accounting-settings',
   'accounting/settings/exercises':'accounting-settings','accounting/settings/journals':'accounting-settings','accounting/settings/tiers':'accounting-settings','accounting/settings/deposits':'accounting-settings','accounting/settings/sales':'accounting-settings','accounting/settings/purchases':'accounting-settings','accounting/settings/vat':'accounting-settings','accounting/settings/financial':'accounting-settings',
   'sales/overview':'sales-overview','sales/payments':'sales-payments','sales/due-dates':'sales-due-dates','sales/reminders-center':'sales-reminders-center',
@@ -56,8 +56,8 @@
  const stockRoutes=new Set(['stock','warehouses','inventories','stock-alerts','stock-reservations']),purchaseRoutes=new Set(['suppliers','supplier-requests','purchase-orders','purchase-order-editor','receipts','supplier-returns']);
  function featureLockedRoute(route){if(stockRoutes.has(route)||route.startsWith('stock-movements'))return'inventory';if(purchaseRoutes.has(route))return'purchases';return null;}
  function hash(){return(location.hash||'#dashboard').slice(1).split('?')[0];}
- function current(){const path=hash();return path.startsWith('sales/clients/')?'client-detail':path.startsWith('sales/items/')?'catalog-detail':routes[path]||path;}
- function managedPath(path=hash()){return!!routes[path]||path.startsWith('crm/')||path.startsWith('sales/clients/')||path.startsWith('sales/items/')||path==='sales/catalog/new'||['document-editor','template-editor'].includes(path);}
+ function current(){const path=hash();return path.startsWith('sales/clients/')?'client-detail':path.startsWith('library/prospects/')?'prospect-detail':path.startsWith('sales/items/')?'catalog-detail':routes[path]||path;}
+ function managedPath(path=hash()){return!!routes[path]||path.startsWith('crm/')||path.startsWith('library/prospects/')||path.startsWith('sales/clients/')||path.startsWith('sales/items/')||path==='sales/catalog/new'||['document-editor','template-editor'].includes(path);}
  function go(path){location.hash=path;}
  function notice(message,kind='info'){global.toast?.(message);const node=document.getElementById('erp-live');if(node){node.textContent=message;node.dataset.kind=kind;}}
  function top(title,actions=''){const path=hash(),back=path.startsWith('settings/')&&path!=='settings/overview'?button('Retour aux paramètres',"PilozApp.go('settings/overview')",'btn-o'):'';return`<div class="topbar erp-top"><div><h1>${e(title)}</h1><p class="erp-subtitle">Données de l’entreprise connectée</p></div><div class="actions">${back}${actions}</div></div><div id="erp-live" class="sr-only" aria-live="polite"></div>`;}

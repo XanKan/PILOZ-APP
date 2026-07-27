@@ -55,6 +55,13 @@ jobs:
         env:
           PILOZ_PGLITE_ROOT: ${{ runner.temp }}/piloz-pglite/node_modules/@electric-sql/pglite
         run: node tests/dashboard-performance-pglite.cjs
+      - name: Verify CRM sales rework, tenant isolation and document amounts
+        env:
+          PILOZ_PGLITE_ROOT: ${{ runner.temp }}/piloz-pglite/node_modules/@electric-sql/pglite
+        run: |
+          node tests/crm-command-center-static.cjs
+          node tests/crm-sales-rework-static.cjs
+          node tests/crm-sales-rework-pglite.cjs
       - name: Verify admin queries with 10k companies and 100k users
         env:
           PILOZ_PGLITE_ROOT: ${{ runner.temp }}/piloz-pglite/node_modules/@electric-sql/pglite

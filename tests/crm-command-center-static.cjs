@@ -9,19 +9,25 @@ const app=read('assets/js/modules/erp/erp-app.js');
 const nav=read('assets/js/modules/erp/erp-modern.js');
 const crm=read('assets/js/modules/erp/erp-crm-command-center.js');
 const enterprise=read('assets/js/modules/erp/erp-crm-enterprise.js');
+const rework=read('assets/js/modules/erp/erp-crm-rework.js');
 const dashboard=read('assets/js/modules/erp/erp-dashboard-cockpit.js');
 const css=read('assets/css/crm-command-center.css');
+const reworkCss=read('assets/css/crm-rework.css');
 const migration=read('supabase/migrations/202607260077_crm_command_center.sql');
 const enterpriseMigration=read('supabase/migrations/202607260078_crm_enterprise_operations.sql');
 const workspaceMigration=read('supabase/migrations/202607260079_crm_enterprise_workspace.sql');
 const integrations=read('supabase/functions/external-integrations/index.ts');
 
-assert(index.includes('assets/css/crm-command-center.css')&&index.includes('assets/js/modules/erp/erp-crm-command-center.js')&&index.includes('assets/js/modules/erp/erp-crm-enterprise.js'),'assets CRM non chargés');
+assert(index.includes('assets/css/crm-command-center.css')&&index.includes('assets/js/modules/erp/erp-crm-command-center.js')&&index.includes('assets/js/modules/erp/erp-crm-enterprise.js')&&index.includes('assets/css/crm-rework.css')&&index.includes('assets/js/modules/erp/erp-crm-rework.js'),'assets CRM non chargés');
 const crmNavigation=nav.match(/crm:\{label:'Suivi commercial',items:\[[^\n]+/)?.[0]||'';
-assert(crmNavigation.includes("['crm/pipeline','Pipeline']")&&crmNavigation.includes("['crm/prospects','Prospects']")&&crmNavigation.includes("['crm/activities','Activités']")&&crmNavigation.includes("['crm/automations','Automatisations']")&&crmNavigation.includes("['crm/reports','Rapports CRM']"),'navigation Suivi commercial incomplète');
+assert(crmNavigation.includes("['crm/pipeline','Pipeline']")&&crmNavigation.includes("['crm/activities','Activités']")&&crmNavigation.includes("['crm/reports','Rapports commerciaux']"),'navigation Suivi commercial incomplète');
+assert(!crmNavigation.includes("crm/prospects")&&!crmNavigation.includes("crm/automations"),'ancien menu Suivi commercial encore affiché');
+const libraryNavigation=nav.match(/library:\{label:'Bibliothèque',items:\[[^\n]+/)?.[0]||'';
+assert(libraryNavigation.includes("['library/prospects','Prospects']"),'Prospects absent de la Bibliothèque');
 assert(!crmNavigation.includes("Vue d’ensemble"),'Vue d’ensemble CRM encore affichée');
 assert(!crmNavigation.includes("Opportunités"),'entrée Opportunités séparée encore affichée');
 assert(app.includes("path.startsWith('crm/')"),'routes CRM dynamiques non gérées');
+assert(app.includes("path.startsWith('library/prospects/')")&&app.includes("'library/prospects':'prospects'"),'routes Prospects de la Bibliothèque non gérées');
 
 for(const view of ['kanban','list','forecast','calendar'])assert(crm.includes(`['${view}'`)||crm.includes(`===\'${view}\'`)||crm.includes(`==='${view}'`),`vue ${view} absente`);
 for(const route of ['crm/pipeline','crm/prospects','crm/activities','crm/automations','crm/reports'])assert(crm.includes(route),`route ${route} absente`);
@@ -43,10 +49,15 @@ assert(enterprise.includes('reschedule_crm_activity')&&crm.includes('dropCrmActi
 assert(enterprise.includes('save_crm_view')&&enterprise.includes('crm_saved_views'),'vues enregistrées non branchées');
 assert(enterprise.includes('downloadProspectTemplate')&&enterprise.includes('modele-import-prospects-piloz.csv'),'modèle CSV absent');
 assert(crm.includes('crm-report-toolbar')&&crm.includes('setReportFilter')&&crm.includes('printReports'),'filtres ou impression des rapports absents');
+assert(rework.includes('save_crm_opportunity_v2')&&rework.includes('get_crm_party_picker')&&rework.includes('create_crm_party'),'nouvelle saisie opportunité ou recherche tiers absente');
+assert(rework.includes('contextmenu')&&rework.includes('crm-context-menu'),'menu contextuel des opportunités absent');
+assert(rework.includes("['today','Aujourd’hui']")&&rework.includes("['week','Semaine']")&&rework.includes("['timeline','Chronologie']"),'centre d’activité incomplet');
+assert(rework.includes('link_crm_opportunity_document')&&rework.includes("crm.newOpportunityDocument(id,type)"),'liaison opportunité-documents absente');
 
 assert(dashboard.includes("get_dashboard_command_center")&&dashboard.includes('renderCrmPipeline'),'Command Center non connecté au CRM');
 assert(dashboard.includes("pipeline_weighted")&&dashboard.includes("quick('opportunity')")&&dashboard.includes("quick('prospect')"),'KPI/actions CRM du tableau de bord absents');
 assert(css.includes('@media(max-width:720px)')&&css.includes('@media(max-width:1150px)')&&css.includes('.crm-kanban')&&css.includes('.crm-drawer'),'responsive CRM incomplet');
+assert(reworkCss.includes('.crm-modal{')&&reworkCss.includes('width:min(780px')&&reworkCss.includes('.crm-party-dropdown'),'modale centrée ou sélecteur tiers absent');
 
 for(const object of ['crm_pipelines','crm_automation_rules','crm_sequences','crm_score_history','crm_timeline_events','crm_saved_views'])assert(migration.includes(`public.${object}`),`objet SQL ${object} absent`);
 for(const rpc of ['get_crm_pipeline_workspace','create_crm_prospect','convert_crm_prospect','move_crm_opportunity','close_crm_opportunity','get_dashboard_command_center'])assert(migration.includes(`function public.${rpc}`),`RPC ${rpc} absent`);

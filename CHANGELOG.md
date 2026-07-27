@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.0-compliance.47 — 27 juillet 2026
+
+- refonte complète du suivi commercial autour de trois entrées claires : Pipeline, Activités et Rapports commerciaux ;
+- déplacement des prospects dans la Bibliothèque avec redirection des anciennes routes et conservation des données ;
+- pipeline commercial ramené à neuf étapes actives, avec migration non destructive des anciennes étapes et de leurs opportunités ;
+- nouvelle modale centrée de création et modification des opportunités, recherche clients/prospects, création rapide et contacts associés ;
+- calcul serveur canonique du montant des opportunités à partir des devis principaux et complémentaires actifs, tout en conservant l’estimation initiale ;
+- qualification des liens documentaires (principal, variante, complément, remplacé) et conversion prospect-client sans recréer les opportunités ;
+- menu d’actions complet sur les cartes et centre d’activités multi-vues relié aux clients, contacts, opportunités et documents ;
+- rapports commerciaux agrégés côté serveur avec comparaison de période, prévisions, qualité du pipeline, activités, devis, sources, pertes et performance par collaborateur ;
+- durcissement des droits lecture seule, de l’isolation par entreprise et ajout de tests statiques et PostgreSQL dédiés.
+
 ## 0.9.0-compliance.45 — 27 juillet 2026
 
 - simplification des comptes de vente aux quatre types comptables Article, Service, Abonnement et Frais ;

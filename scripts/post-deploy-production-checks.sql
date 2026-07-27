@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607270091' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607270092' ok
   union all
   select 'company_access_system_roles',count(*)::text,count(*)=0
   from public.companies company
@@ -78,6 +78,29 @@ with controls as(
   union all
   select 'crm_activity_reschedule_rpc',coalesce(to_regprocedure('public.reschedule_crm_activity(uuid,timestamptz,uuid)')::text,'missing'),
     to_regprocedure('public.reschedule_crm_activity(uuid,timestamptz,uuid)') is not null
+  union all
+  select 'crm_party_picker_rpc',coalesce(to_regprocedure('public.get_crm_party_picker(text,integer,text)')::text,'missing'),
+    to_regprocedure('public.get_crm_party_picker(text,integer,text)') is not null
+  union all
+  select 'crm_opportunity_v2_rpc',coalesce(to_regprocedure('public.save_crm_opportunity_v2(uuid,jsonb)')::text,'missing'),
+    to_regprocedure('public.save_crm_opportunity_v2(uuid,jsonb)') is not null
+  union all
+  select 'crm_document_amount_rpc',coalesce(to_regprocedure('public.recalculate_crm_opportunity_amount(uuid)')::text,'missing'),
+    to_regprocedure('public.recalculate_crm_opportunity_amount(uuid)') is not null
+  union all
+  select 'crm_rework_columns',count(*)::text,count(*)=7
+  from information_schema.columns
+  where table_schema='public' and (
+    (table_name='opportunities' and column_name in('estimated_amount','documentary_amount','amount_source','origin_prospect_id','tags'))
+    or (table_name='documents' and column_name in('crm_relation_type','crm_replaced_by_id'))
+  )
+  union all
+  select 'crm_default_pipeline_stages',count(*)::text,count(*)=0
+  from public.crm_pipelines pipeline
+  where pipeline.is_default and pipeline.status<>'archived' and coalesce((
+    select array_agg(stage.slug order by stage.position,stage.id)
+    from public.pipeline_stages stage where stage.pipeline_id=pipeline.id and stage.active
+  ),'{}'::text[])<>array['new','to_qualify','qualified','meeting','need_identified','quote_preparation','quote_sent','won','lost']::text[]
   union all
   select 'crm_saved_view_rpc',coalesce(to_regprocedure('public.save_crm_view(uuid,text,text,jsonb,jsonb,jsonb,boolean,boolean)')::text,'missing'),
     to_regprocedure('public.save_crm_view(uuid,text,text,jsonb,jsonb,jsonb,boolean,boolean)') is not null
@@ -345,7 +368,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607270091',
+  'schema_version','202607270092',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;
