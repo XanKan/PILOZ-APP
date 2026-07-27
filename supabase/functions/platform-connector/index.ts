@@ -200,6 +200,34 @@ async function sendSuperPdpTestInvoice(userClient: SupabaseClient, companyId: st
   return { ok: true, provider: "SUPER PDP", environment: "sandbox", externalId, invoiceId: Number(result.id) || null, transmissionId };
 }
 
+async function sandboxRoutedInvoice(token: string, invoice: JsonObject) {
+  // A SUPER PDP sandbox token is bound to one of their fictitious companies.
+  // Real French companies are not registered in the sandbox Peppol directory,
+  // so an otherwise valid production invoice would be rejected at routing time.
+  // SUPER PDP exposes a generated EN16931 invoice containing the token company
+  // and a valid sandbox recipient. Only these two parties are substituted; the
+  // Piloz invoice number, dates, lines, taxes and totals stay unchanged.
+  const generated = await superPdpRequest("/v1.beta/invoices/generate_test_invoice?format=en16931", token);
+  const envelope = object(generated.payload);
+  const template = object(envelope.en_invoice || envelope.invoice || generated.payload);
+  const seller = object(template.seller), buyer = object(template.buyer);
+  if (!generated.response.ok || !Object.keys(seller).length || !Object.keys(buyer).length) {
+    console.error("[PILOZ SUPER PDP] routage sandbox indisponible", {
+      status: generated.response.status,
+      providerCode: text(envelope.code),
+      providerMessage: text(envelope.message).slice(0, 240),
+    });
+    throw Object.assign(new Error("superpdp_sandbox_routing_failed"), { status: 502 });
+  }
+  return {
+    invoice: compactJson({ ...invoice, seller, buyer }) as JsonObject,
+    routing: {
+      seller: { name: partyName(seller), electronic_address: object(seller.electronic_address) },
+      buyer: { name: partyName(buyer), electronic_address: object(buyer.electronic_address) },
+    },
+  };
+}
+
 function countryCode(party: JsonObject) {
   return text(party.country_code, party.country, "FR").slice(0, 2).toUpperCase();
 }
@@ -519,30 +547,42 @@ async function sendDocument(userClient: SupabaseClient, adminClient: SupabaseCli
     collection_fee: text(documentSettings?.collection_fee_notice),
   };
   const enInvoice = canonicalToEn16931(canonicalPayload, connector);
-  const pdf = await downloadStored(adminClient, document.final_pdf_path);
-  const cii = await convertInvoice(token, "en16931", "cii", enInvoice);
-  const facturx = await convertInvoice(token, "en16931", "factur-x", enInvoice, pdf);
+  // The legal Piloz PDF remains immutable and keeps its real parties. The
+  // sandbox artifact is rendered separately with SUPER PDP test parties so it
+  // cannot be mistaken for, or overwrite, the production document.
+  const sandbox = await sandboxRoutedInvoice(token, enInvoice);
+  const transmittedInvoice = sandbox.invoice;
+  const cii = await convertInvoice(token, "en16931", "cii", transmittedInvoice);
+  const facturx = await convertInvoice(token, "en16931", "factur-x", transmittedInvoice);
   const externalId = `PILOZ-${documentId}`.slice(0, 36);
   const sent = await superPdpRequest(`/v1.beta/invoices?external_id=${encodeURIComponent(externalId)}`, token, {
     method: "POST", headers: { "Content-Type": "application/pdf" }, body: facturx.bytes,
   });
   if (!sent.response.ok) {
     console.error("[PILOZ SUPER PDP] envoi sandbox refusé", { status: sent.response.status, payload: sent.payload, documentId });
-    throw Object.assign(new Error("superpdp_invoice_send_failed"), { status: 502 });
+    const refusal = object(sent.payload);
+    throw Object.assign(new Error("superpdp_invoice_send_failed"), {
+      status: sent.response.status >= 400 && sent.response.status < 500 ? 409 : 502,
+      provider: { code: refusal.code, message: text(refusal.message).slice(0, 240) },
+    });
   }
   const provider = object(sent.payload), providerId = text(provider.id, provider.invoice_id, provider.uuid);
   const base = `${companyId}/electronic-invoices/sandbox/outgoing/${documentId}/${recordId}`;
   const pdfPath = await storageUpload(adminClient, `${base}.factur-x.pdf`, facturx.bytes, "application/pdf");
   const xmlPath = await storageUpload(adminClient, `${base}.cii.xml`, cii.bytes, "application/xml");
   const [pdfHash, xmlHash, requestHash, responseHash] = await Promise.all([
-    sha256(facturx.bytes), sha256(cii.bytes), sha256(JSON.stringify(enInvoice)), sha256(JSON.stringify(provider)),
+    sha256(facturx.bytes), sha256(cii.bytes), sha256(JSON.stringify(transmittedInvoice)), sha256(JSON.stringify(provider)),
   ]);
   const { data: transmission, error: transmissionError } = await adminClient.from("platform_transmissions").insert({
     company_id: companyId, connector_id: connector.id, electronic_invoice_record_id: recordId,
     operation: "send_invoice", idempotency_key: externalId, status: "succeeded", is_simulation: false,
     attempt_count: 1, external_transmission_id: providerId || null, external_status: text(provider.status, "sandbox_queued"),
     request_hash: requestHash, response_hash: responseHash, completed_at: new Date().toISOString(), created_by: document.created_by,
-    metadata: { provider: "SUPER PDP", environment: "sandbox", app_environment: "production", sent_to_production: false, external_id: externalId },
+    metadata: {
+      provider: "SUPER PDP", environment: "sandbox", app_environment: "production", sent_to_production: false,
+      external_id: externalId, sandbox_party_substitution: true, sandbox_routing: sandbox.routing,
+      local_parties: { seller: partyName(object(canonicalPayload.supplier)), buyer: partyName(object(canonicalPayload.customer)) },
+    },
   }).select("id").single();
   if (transmissionError) throw Object.assign(new Error("superpdp_transmission_audit_failed"), { status: 502 });
   const { data: exchange, error: exchangeError } = await adminClient.from("superpdp_invoice_exchanges").insert({
@@ -551,7 +591,7 @@ async function sendDocument(userClient: SupabaseClient, adminClient: SupabaseCli
     direction: "outgoing", environment: "sandbox", status: text(provider.status, "queued"), xml_format: "cii",
     original_storage_path: pdfPath, pdf_storage_path: pdfPath, xml_storage_path: xmlPath,
     original_sha256: pdfHash, pdf_sha256: pdfHash, xml_sha256: xmlHash,
-    canonical_payload: enInvoice, provider_payload: provider, last_synced_at: new Date().toISOString(), created_by: document.created_by,
+    canonical_payload: transmittedInvoice, provider_payload: provider, last_synced_at: new Date().toISOString(), created_by: document.created_by,
   }).select("*").single();
   if (exchangeError) throw Object.assign(new Error("superpdp_exchange_audit_failed"), { status: 502 });
   const platformEvent = await adminClient.from("platform_transmission_events").insert({
@@ -789,6 +829,7 @@ Deno.serve(async req => {
       superpdp_buyer_electronic_address_required: "L’identifiant électronique du client est manquant.",
       superpdp_invoice_lines_required: "La facture doit contenir au moins une ligne facturable.",
       superpdp_invoice_conversion_failed: "SUPER PDP n’a pas pu convertir cette facture en Factur-X et CII. Vérifiez les montants, la TVA et les coordonnées des deux entreprises.",
+      superpdp_sandbox_routing_failed: "SUPER PDP n’a pas fourni les entreprises de test nécessaires au routage dans le bac à sable.",
       superpdp_xml_unavailable: "Aucun XML électronique n’est encore disponible pour ce document.",
       superpdp_invoice_send_failed: "SUPER PDP a refusé cette facture dans le bac à sable.",
       superpdp_artifact_storage_failed: "Les fichiers Factur-X et CII ont été créés, mais Piloz n’a pas pu les archiver.",
@@ -799,6 +840,9 @@ Deno.serve(async req => {
       superpdp_artifact_audit_failed: "Les justificatifs électroniques n’ont pas pu être inscrits dans le registre Piloz.",
       superpdp_incoming_list_failed: "SUPER PDP n’a pas pu fournir la liste des factures reçues. Vérifiez que l’entreprise sandbox est bien validée, puis réessayez.",
     };
-    return json({ error: messages[code] || "L’opération SUPER PDP n’a pas pu aboutir.", code }, status);
+    const provider = object((error as { provider?: unknown })?.provider);
+    const providerMessage = text(provider.message).replace(/[\r\n\t]+/g, " ").slice(0, 240);
+    const baseMessage = messages[code] || "L’opération SUPER PDP n’a pas pu aboutir.";
+    return json({ error: providerMessage ? `${baseMessage} Détail SUPER PDP : ${providerMessage}` : baseMessage, code }, status);
   }
 });
