@@ -94,7 +94,7 @@
     const response=await runtime.request(path,options);
     let data;
     try{data=await readBody(response,path);}catch(error){if(!response.ok)technicalLog('Réponse d’erreur illisible',response,path,error);throw error;}
-    if(!response.ok){const message=typeof data==='object'&&data?(data.error||data.message||data.details):'Une erreur est survenue.',failure=new Error(translateError(message,response.status));failure.status=response.status;failure.code=data?.code||data?.error_code||'';technicalLog('Requête refusée',response,path,failure);throw failure;}
+    if(!response.ok){const message=typeof data==='object'&&data?(data.error||data.message||data.details):'Une erreur est survenue.',failure=new Error(translateError(message,response.status));failure.status=response.status;failure.code=data?.code||data?.error_code||'';failure.detail=typeof data?.detail==='string'?data.detail:'';technicalLog('Requête refusée',response,path,failure);throw failure;}
     if(data&&typeof data==='object'&&Object.prototype.hasOwnProperty.call(data,'text')){technicalLog('Réponse réussie non JSON',response,path);const failure=new Error('Le serveur a renvoyé une réponse inattendue. Réessayez dans quelques instants.');failure.status=response.status;failure.code='unexpected_content_type';throw failure;}
     notifySuccessfulMutation(path,options.method);
     return data;
@@ -113,11 +113,11 @@
   }
   async function invoke(name,body,signal){
     const runtime=global.PilozRuntime,response=await fetch(runtime.config.url.replace(/\/$/,'')+'/functions/v1/'+name,{method:'POST',signal,headers:{apikey:runtime.config.key,Authorization:'Bearer '+runtime.session.access_token,'Content-Type':'application/json'},body:serializeBody(body)});
-    const data=await readBody(response,'/functions/v1/'+name);if(!response.ok){const failure=new Error(translateError(data?.error||data?.message||'Service indisponible.',response.status));failure.status=response.status;failure.code=data?.code||'';technicalLog('Edge Function refusée',response,name,failure);throw failure;}global.PilozTabSync?.notifyMutation?.({path:'/functions/v1/'+name,method:'POST'});return data;
+    const data=await readBody(response,'/functions/v1/'+name);if(!response.ok){const failure=new Error(translateError(data?.error||data?.message||'Service indisponible.',response.status));failure.status=response.status;failure.code=data?.code||'';failure.detail=typeof data?.detail==='string'?data.detail:'';technicalLog('Edge Function refusée',response,name,failure);throw failure;}global.PilozTabSync?.notifyMutation?.({path:'/functions/v1/'+name,method:'POST'});return data;
   }
   async function invokeBlob(name,body,signal){
     const runtime=global.PilozRuntime,response=await fetch(runtime.config.url.replace(/\/$/,'')+'/functions/v1/'+name,{method:'POST',signal,headers:{apikey:runtime.config.key,Authorization:'Bearer '+runtime.session.access_token,'Content-Type':'application/json'},body:serializeBody(body)});
-    if(!response.ok){const data=await readBody(response,'/functions/v1/'+name),failure=new Error(translateError(data?.error||data?.message||'Service indisponible.',response.status));failure.status=response.status;failure.code=data?.code||'';technicalLog('Edge Function refusée',response,name,failure);throw failure;}
+    if(!response.ok){const data=await readBody(response,'/functions/v1/'+name),failure=new Error(translateError(data?.error||data?.message||'Service indisponible.',response.status));failure.status=response.status;failure.code=data?.code||'';failure.detail=typeof data?.detail==='string'?data.detail:'';technicalLog('Edge Function refusée',response,name,failure);throw failure;}
     const contentType=String(response.headers?.get?.('content-type')||'').split(';')[0].trim().toLowerCase();
     if(!contentType||(!contentType.startsWith('application/pdf')&&!contentType.startsWith('application/octet-stream'))){technicalLog('Réponse binaire inattendue',response,name);const failure=new Error('Le service n’a pas renvoyé un PDF valide. Réessayez dans quelques instants.');failure.status=response.status;failure.code='unexpected_binary_content_type';throw failure;}
     const blob=await response.blob();if(!blob.size){const failure=new Error('Le PDF généré est vide. Réessayez dans quelques instants.');failure.status=response.status;failure.code='empty_pdf_response';throw failure;}return blob;

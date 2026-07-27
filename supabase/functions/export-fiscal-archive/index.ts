@@ -74,7 +74,11 @@ Deno.serve(async req => {
     if (!signatureRecord) {
       const signerStatus = await fiscalSigner.status();
       if (signerStatus.provider !== "none" && !signerStatus.configured) {
-        throw new Error(signerStatus.reason || "KMS_UNAVAILABLE");
+        console.warn("fiscal_archive_signing_unavailable", {
+          archiveId: archive.id,
+          provider: signerStatus.provider,
+          code: signerStatus.reason || "KMS_UNAVAILABLE",
+        });
       }
       if (signerStatus.configured) {
         const newSignature = await fiscalSigner.signDigest(archive.archive_hash);
