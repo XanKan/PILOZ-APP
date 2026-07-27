@@ -14,7 +14,7 @@
   'sales/overview':['sales.quotes.read','sales.invoices.read'],'sales/quotes':['sales.quotes.read'],'sales/invoices':['sales.invoices.read'],'sales/deposit-invoices':['sales.invoices.read'],'sales/credit-notes':['sales.invoices.read'],'sales/clients':['clients.read'],'sales/catalog':['catalog.read'],'sales/due-dates':['sales.receivables.read'],'sales/reminders-center':['sales.receivables.remind'],
   'purchases/overview':['purchases.orders.read'],'purchases/suppliers':['suppliers.read'],'purchases/orders':['purchases.orders.read'],'purchases/receipts':['purchases.orders.read'],'purchases/invoices':['purchases.invoices.read'],
   reports:['reports.company.read','crm.reports.read'],'settings/users':['company.users.read'],'settings/company':['company.settings.manage'],'settings/subscription':['company.subscription.manage'],'settings/templates':['company.templates.manage'],templates:['company.templates.manage'],
-  'accounting/payments':['payments.read'],'accounting/exports':['accounting.exports.manage'],'accounting/vat-cash':['accounting.vat.manage'],'accounting/settings':['accounting.settings.manage']
+  'accounting/payments':['payments.read'],'accounting/exports':['accounting.exports.manage'],'accounting/vat-cash':['accounting.vat.manage'],'accounting/fiscal-archives':['accounting.exports.manage'],'accounting/settings':['accounting.settings.manage']
  };
  function can(key){return app()?.allowed?.(key)===true;}
  function any(keys){return!keys?.length||keys.some(can);}

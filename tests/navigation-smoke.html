@@ -90,7 +90,7 @@
       checks.push(['opportunités regroupées dans le pipeline',!crmItems.includes('Opportunités')]);
       PilozModern.renderNavigation(document.getElementById('tabs'),state,'accounting/settings/exercises');
       const accountingItems=[...document.querySelectorAll('.modern-secondary-item')].map(x=>x.textContent.trim());
-      checks.push(['sous-menu comptable complet',accountingItems.join('|')==='Règlements|Exports comptables|TVA sur encaissements|Exercices fiscaux|Journaux|Tiers|Acomptes|Ventes|Achats|TVA|Comptes financiers']);
+      checks.push(['sous-menu comptable complet',accountingItems.join('|')==='Règlements|Exports comptables|TVA sur encaissements|Archives fiscales|Exercices fiscaux|Journaux|Tiers|Acomptes|Ventes|Achats|TVA|Comptes financiers']);
       checks.push(['rubriques comptables utiles présentes',accountingItems.includes('Exercices fiscaux')&&accountingItems.includes('Journaux')&&accountingItems.includes('Acomptes')&&!accountingItems.includes('Comptes complémentaires')]);
       PilozModern.openArea('accounting');
       checks.push(['ouverture comptabilité',PilozApp.lastRoute==='accounting/payments']);

@@ -22,7 +22,7 @@
  global.PilozTabSync=tabSync;
  const routes={
   dashboard:'dashboard','crm/overview':'pipeline','crm/pipeline':'pipeline','crm/opportunities':'pipeline','crm/prospects':'prospects','library/prospects':'prospects','crm/activities':'activities','crm/reminders':'activities','crm/automations':'crm-automations','crm/reports':'crm-reports',pipeline:'pipeline',relances:'activities',reports:'reports',settings:'settings',
-  'accounting/payments':'accounting-payments','accounting/exports':'accounting-exports','accounting/vat-cash':'accounting-vat-cash','accounting/settings':'accounting-settings',
+  'accounting/payments':'accounting-payments','accounting/exports':'accounting-exports','accounting/vat-cash':'accounting-vat-cash','accounting/fiscal-archives':'accounting-fiscal-archives','accounting/settings':'accounting-settings',
   'accounting/settings/exercises':'accounting-settings','accounting/settings/journals':'accounting-settings','accounting/settings/tiers':'accounting-settings','accounting/settings/deposits':'accounting-settings','accounting/settings/sales':'accounting-settings','accounting/settings/purchases':'accounting-settings','accounting/settings/vat':'accounting-settings','accounting/settings/financial':'accounting-settings',
   'sales/overview':'sales-overview','sales/payments':'sales-payments','sales/due-dates':'sales-due-dates','sales/reminders-center':'sales-reminders-center',
   'sales/quotes':'documents:quote','sales/invoices':'documents:invoice','sales/deposit-invoices':'documents:deposit_invoice','sales/credit-notes':'documents:credit_note','sales/orders':'documents:sales_order','sales/contracts':'documents:contract','sales/reminders':'documents:reminder','sales/statements':'documents:statement',

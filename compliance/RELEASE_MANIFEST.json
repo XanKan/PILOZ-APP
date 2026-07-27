@@ -1,9 +1,9 @@
 {
   "application": "PILOZ-APP",
-  "version": "0.9.0-compliance.49",
+  "version": "0.9.0-compliance.50",
   "release_status": "pre-release",
   "release_date": "2026-07-27",
-  "source_base_commit": "a22cb7f",
+  "source_base_commit": "1ff0a91",
   "build_commit": "injected-at-deployment",
   "schema_version": "202607270095",
   "calculation_version": "financial-v2-deposit-deduction",

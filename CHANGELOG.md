@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.0-compliance.50 — 27 juillet 2026
+
+- ajoute la rubrique « Archives fiscales » à la Comptabilité pour toutes les entreprises, sans alourdir l’onboarding ;
+- propose automatiquement le mois précédent et interdit l’archivage d’une période non terminée ;
+- refuse depuis l’interface les archives incomplètes lorsque le PDF original d’une facture définitive manque ;
+- enchaîne la création immuable, la signature AWS KMS, la vérification cryptographique et le téléchargement du paquet ;
+- affiche le registre par période avec complétude, état de signature et dernier export ;
+- documente les moments utiles : fin de mois, changement de logiciel, clôture importante et contrôle.
+
 ## 0.9.0-compliance.49 — 27 juillet 2026
 
 - Ajoute un connecteur AWS KMS asymétrique serveur pour signer et vérifier les empreintes SHA-256 des archives fiscales.
