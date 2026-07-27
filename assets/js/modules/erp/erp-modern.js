@@ -23,7 +23,7 @@
  };
  const nav={
   crm:{label:'Suivi commercial',items:[['crm/pipeline','Pipeline'],['crm/activities','Activités'],['crm/reports','Rapports commerciaux']]},
-  sales:{label:'Ventes',items:[['sales/quotes','Devis'],['sales/invoices','Factures'],['sales/due-dates','Échéances'],['sales/clients','Clients']]},
+  sales:{label:'Ventes',items:[['sales/quotes','Devis'],['sales/invoices','Factures'],['sales/due-dates','Échéances']]},
   purchases:{label:'Achats',items:[['purchases/overview','Vue d’ensemble'],['purchases/orders','Commandes fournisseurs'],['purchases/receipts','Réceptions'],['purchases/invoices','Factures fournisseurs']]},
   library:{label:'Bibliothèque',items:[['sales/clients','Clients'],['library/prospects','Prospects'],['purchases/suppliers','Fournisseurs'],['sales/catalog','Articles & main d’œuvre']]},
   stock:{label:'Stock',items:[['stock/overview','Vue d’ensemble'],['stock/items','Articles en stock'],['stock/movements','Mouvements'],['stock/inventories','Inventaires'],['stock/warehouses','Entrepôts']]},

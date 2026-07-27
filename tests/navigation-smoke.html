@@ -44,8 +44,9 @@
       checks.push(['sous-menu visible',!!secondary&&secondary.textContent.includes('Devis')&&secondary.textContent.includes('Factures')]);
       checks.push(['aucune vue d’ensemble',!document.getElementById('tabs').textContent.includes('Vue d’ensemble')]);
       checks.push(['échéances présentes',secondary.textContent.includes('Échéances')]);
-      checks.push(['sous-menu ventes normalisé',[...secondary.querySelectorAll('.modern-secondary-item')].map(x=>x.textContent.trim()).join('|')==='Devis|Factures|Échéances|Clients']);
-      checks.push(['ouverture nouvel onglet disponible partout',secondary.querySelectorAll('.modern-secondary-new-tab').length===4&&[...secondary.querySelectorAll('.modern-secondary-new-tab')].every(x=>x.title.includes('nouvel onglet'))]);
+      checks.push(['sous-menu ventes normalisé',[...secondary.querySelectorAll('.modern-secondary-item')].map(x=>x.textContent.trim()).join('|')==='Devis|Factures|Échéances']);
+      checks.push(['clients uniquement dans la bibliothèque',!secondary.textContent.includes('Clients')]);
+      checks.push(['ouverture nouvel onglet disponible partout',secondary.querySelectorAll('.modern-secondary-new-tab').length===3&&[...secondary.querySelectorAll('.modern-secondary-new-tab')].every(x=>x.title.includes('nouvel onglet'))]);
       checks.push(['rail clair',getComputedStyle(rail).backgroundColor==='rgb(255, 255, 255)']);
       const brandLogo=document.querySelector('.plogo'),brandImage=brandLogo.querySelector('img');
       checks.push(['logo PILOZ chargé',brandImage.complete&&brandImage.naturalWidth>0]);
