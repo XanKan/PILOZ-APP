@@ -515,7 +515,14 @@ async function providerInvoice(token: string, id: string, format: "en16931" | "c
   if (format === "en16931") {
     const result = await superPdpRequest(`/v1.beta/invoices/${encodeURIComponent(id)}?format=en16931`, token);
     if (!result.response.ok) throw Object.assign(new Error("superpdp_invoice_download_failed"), { status: 502 });
-    return { payload: object(result.payload), bytes: new TextEncoder().encode(JSON.stringify(result.payload)), contentType: "application/json" };
+    const envelope = object(result.payload);
+    // The current SUPER PDP API wraps the EN16931 document in `en_invoice`.
+    // Keep accepting the former unwrapped payload so existing sandbox fixtures
+    // and a future backwards-compatible provider response remain importable.
+    const expandedInvoice = object(envelope.en_invoice);
+    const payload = Object.keys(expandedInvoice).length ? expandedInvoice : envelope;
+    if (!Object.keys(payload).length) throw Object.assign(new Error("superpdp_invoice_download_failed"), { status: 502 });
+    return { payload, bytes: new TextEncoder().encode(JSON.stringify(payload)), contentType: "application/json" };
   }
   const result = await superPdpBinary(`/v1.beta/invoices/${encodeURIComponent(id)}?format=${format}`, token, format === "factur-x" ? "application/pdf" : "application/xml");
   return { payload: {}, ...result };
@@ -612,7 +619,15 @@ async function syncIncoming(userClient: SupabaseClient, adminClient: SupabaseCli
       results.push({ imported: false, providerInvoiceId: text(item.id), error: (error as Error).message });
     }
   }
-  return { ok: true, environment: "sandbox", appEnvironment: "production", found: providerItems(list.payload).length, imported: results.filter(item => object(item).imported).length, results };
+  return {
+    ok: true,
+    environment: "sandbox",
+    appEnvironment: "production",
+    found: providerItems(list.payload).length,
+    imported: results.filter(item => object(item).imported).length,
+    failed: results.filter(item => object(item).imported === false).length,
+    results,
+  };
 }
 
 Deno.serve(async req => {
