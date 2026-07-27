@@ -12,7 +12,12 @@
     const started=Date.now();
     while(Date.now()-started<15000){
       const doc=frame.contentDocument;
-      if(doc?.body?.classList.contains('auth-only')&&!doc.body.classList.contains('auth-checking')&&doc.getElementById('auth'))return;
+      const ready=doc?.body?.classList.contains('auth-only')&&!doc.body.classList.contains('auth-checking')&&doc.getElementById('auth')&&doc.getElementById('tabs')?.children.length===0&&doc.getElementById('main')?.children.length===0;
+      if(ready){
+        await wait(250);
+        const stable=frame.contentDocument===doc&&doc.body.classList.contains('auth-only')&&!doc.body.classList.contains('auth-checking')&&doc.getElementById('tabs')?.children.length===0&&doc.getElementById('main')?.children.length===0;
+        if(stable)return;
+      }
       await wait(50);
     }
     throw new Error('La page d\u2019authentification n\u2019a pas terminé son initialisation.');
