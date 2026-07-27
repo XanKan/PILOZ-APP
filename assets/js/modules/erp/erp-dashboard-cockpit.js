@@ -27,6 +27,28 @@
     const client=(state.data.clients||[]).find(row=>row.id===id);
     return client?.legal_name||client?.trade_name||[client?.first_name,client?.last_name].filter(Boolean).join(' ')||'Client';
   };
+  const icon=name=>{
+    const paths={
+      chart:'<path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/>',
+      wallet:'<path d="M3 7h15a2 2 0 0 1 2 2v9H5a2 2 0 0 1-2-2V7Zm0 0V5a2 2 0 0 1 2-2h11v4m0 5h4"/>',
+      clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+      margin:'<path d="m4 16 5-5 4 4 7-8"/><path d="M15 7h5v5"/>',
+      document:'<path d="M6 2h8l4 4v16H6z"/><path d="M14 2v5h5M9 12h6m-6 4h6"/>',
+      check:'<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
+      target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M15 9l5-5"/>',
+      pipeline:'<path d="M4 5h7v5H4zM13 14h7v5h-7zM11 7h3a3 3 0 0 1 3 3v4"/>',
+      receipt:'<path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6m-6 4h6"/>',
+      warning:'<path d="M12 3 2.5 20h19z"/><path d="M12 9v5m0 3h.01"/>',
+      users:'<path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 20v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+      cart:'<circle cx="9" cy="20" r="1"/><circle cx="19" cy="20" r="1"/><path d="M3 4h2l2.5 11h11l2-7H6"/>',
+      box:'<path d="m3 7 9-4 9 4-9 4zM3 7v10l9 4 9-4V7M12 11v10"/>',
+      plus:'<path d="M12 5v14M5 12h14"/>',
+      refresh:'<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
+      sliders:'<path d="M4 6h9m4 0h3M4 12h3m4 0h9M4 18h7m4 0h5"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="13" cy="18" r="2"/>'
+    };
+    return`<svg class="cockpit-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[name]||paths.chart}</svg>`;
+  };
+  const metricIcons={revenue_ht:'chart',collected:'wallet',outstanding:'clock',gross_margin:'margin',quote_count:'document',accepted_quote_count:'check',conversion_rate:'target',pipeline_weighted:'pipeline',average_invoice_ht:'receipt',overdue_count:'warning',new_clients:'users',purchases_ht:'cart',stock_value:'box',gross_result:'margin'};
 
   const periods=[
     ['today','Aujourd’hui'],['current_week','Cette semaine'],['last_7_days','7 derniers jours'],
@@ -81,7 +103,7 @@
 
   const ui={
     context:'',data:null,error:'',loading:false,requestId:0,controller:null,
-    cache:new Map(),cacheTtl:120000,period:'current_month',comparison:'previous',
+    cache:new Map(),cacheTtl:30000,period:'current_month',comparison:'previous',
     customStart:'',customEnd:'',preferences:null,preferencesReady:false,
     edit:false,draft:null,dragged:'',dropTarget:'',dropSide:'before',
     customDragType:'',customDragKey:'',customDropSide:'before',
@@ -210,8 +232,8 @@
     const summary=payload.summary||{};
     const changes={revenue_ht:summary.revenue_change_percent,collected:summary.collected_change_percent};
     return`<section class="cockpit-kpis" aria-label="Indicateurs principaux">${visibleMetrics(payload).map(key=>{
-      const definition=metricDefinitions[key];
-      return`<button type="button" class="cockpit-kpi" onclick="PilozDashboardCockpit.navigate('${definition.route}')" title="${esc(definition.definition)}"><span>${esc(definition.label)}</span><strong>${metricValue(key,payload)}</strong><div>${variation(changes[key])}<small>${esc(metricContext(key,payload))}</small></div></button>`;
+      const definition=metricDefinitions[key],raw=metricRaw(key,payload),empty=raw===null||raw===undefined||number(raw)===0;
+      return`<button type="button" class="cockpit-kpi ${empty?'is-zero':''}" onclick="PilozDashboardCockpit.navigate('${definition.route}')" title="${esc(definition.definition)}"><span class="cockpit-kpi-top"><i>${icon(metricIcons[key])}</i><em>Ouvrir</em></span><span class="cockpit-kpi-label">${esc(definition.label)}</span><strong>${metricValue(key,payload)}</strong><div>${variation(changes[key])}<small>${esc(metricContext(key,payload))}</small></div></button>`;
     }).join('')}</section>`;
   }
   function pointPath(points,key,width,height,min,max){
@@ -353,7 +375,7 @@
   }
   function quickActions(summary){
     const permission=summary.permissions||{},primary=[] ,secondary=[];
-    if(permission.sales_documents){primary.push(`<button class="primary" onclick="PilozDashboardCockpit.quick('quote')">＋ Créer un devis</button>`,`<button onclick="PilozDashboardCockpit.quick('invoice')">Créer une facture</button>`);}
+    if(permission.sales_documents){primary.push(`<button class="primary" onclick="PilozDashboardCockpit.quick('quote')">${icon('plus')}<span>Créer un devis</span></button>`,`<button onclick="PilozDashboardCockpit.quick('invoice')">${icon('document')}<span>Créer une facture</span></button>`);}
     if(permission.customers)secondary.push(`<button onclick="PilozDashboardCockpit.quick('client')">Ajouter un client</button>`);
     if(permission.payments)secondary.push(`<button onclick="PilozDashboardCockpit.quick('payment')">Saisir un règlement</button>`);
     if(permission.activities)secondary.push(`<button onclick="PilozDashboardCockpit.quick('activity')">Ajouter une activité</button>`);
@@ -362,11 +384,22 @@
     if(permission.catalog_write)secondary.push(`<button onclick="PilozDashboardCockpit.quick('item')">Créer un article ou service</button>`);
     if(permission.purchases)secondary.push(`<button onclick="PilozDashboardCockpit.quick('purchase')">Enregistrer un achat</button>`);
     if(!primary.length&&!secondary.length)return'';
-    return`<div class="cockpit-quick-actions">${primary.slice(0,2).join('')}${secondary.length?`<details><summary>Créer</summary><div>${secondary.join('')}</div></details>`:''}</div>`;
+    return`<div class="cockpit-quick-actions" aria-label="Actions rapides">${primary.slice(0,2).join('')}${secondary.length?`<details><summary>${icon('plus')}<span>Plus d’actions</span></summary><div>${secondary.join('')}</div></details>`:''}</div>`;
+  }
+  function scopeLabel(summary){return summary?.scope==='company'?'Toute l’entreprise':'Mes données';}
+  function refreshLabel(payload){
+    if(!payload?.generated_at)return'Données actualisées';
+    const value=new Date(payload.generated_at);
+    if(Number.isNaN(value.getTime()))return'Données actualisées';
+    return`Actualisé à ${new Intl.DateTimeFormat('fr-FR',{hour:'2-digit',minute:'2-digit'}).format(value)}`;
+  }
+  function periodShortcuts(){
+    const shortcuts=[['last_7_days','7 jours'],['current_month','Ce mois'],['current_quarter','Trimestre'],['current_year','Cette année']];
+    return`<nav class="cockpit-period-shortcuts" aria-label="Périodes rapides">${shortcuts.map(([key,label])=>`<button type="button" class="${ui.period===key?'active':''}" aria-pressed="${ui.period===key}" onclick="PilozDashboardCockpit.setPeriod('${key}')">${esc(label)}</button>`).join('')}</nav>`;
   }
   function renderHeader(payload){
-    const first=String(payload.first_name||'').trim(),title=first?`Bonjour ${first}, voici où en est votre activité.`:'Bonjour, voici où en est votre activité.';
-    return`<header class="cockpit-header"><div class="cockpit-welcome"><span>${esc(todayLabel())}</span><h1>${esc(title)}</h1><p>${esc(periodLabel(payload.summary))}</p></div><div class="cockpit-header-actions"><div class="cockpit-period"><label><span>Période analysée</span><select onchange="PilozDashboardCockpit.setPeriod(this.value)">${periods.map(([key,label])=>`<option value="${key}" ${ui.period===key?'selected':''}>${esc(label)}</option>`).join('')}</select></label><label><span>Comparer les résultats avec</span><select onchange="PilozDashboardCockpit.setComparison(this.value)">${comparisons.map(([key,label])=>`<option value="${key}" ${ui.comparison===key?'selected':''}>${esc(label)}</option>`).join('')}</select></label></div><p class="cockpit-comparison-help">${esc(comparisonHelp(payload.summary))}</p>${ui.period==='custom'?`<div class="cockpit-custom-dates"><label>Du<input type="date" value="${esc(ui.customStart)}" max="${esc(ui.customEnd||'')}" onchange="PilozDashboardCockpit.setCustomDate('start',this.value)"></label><label>Au<input type="date" value="${esc(ui.customEnd)}" min="${esc(ui.customStart||'')}" onchange="PilozDashboardCockpit.setCustomDate('end',this.value)"></label></div>`:''}<div class="cockpit-header-buttons"><button onclick="PilozDashboardCockpit.refresh()" aria-label="Actualiser le tableau de bord">↻ Actualiser</button><button onclick="PilozDashboardCockpit.startCustomize()">Personnaliser</button></div></div>${quickActions(payload.summary)}</header>`;
+    const first=String(payload.first_name||'').trim(),title=first?`Bonjour 👋 ${first}`:'Bonjour 👋';
+    return`<header class="cockpit-header"><div class="cockpit-hero"><div class="cockpit-welcome"><span>${esc(todayLabel())}</span><h1>${esc(title)}</h1><p>Voici les éléments qui méritent votre attention aujourd’hui.</p><div class="cockpit-hero-meta"><span class="cockpit-scope-badge">${icon('users')}${esc(scopeLabel(payload.summary))}</span><span>${esc(refreshLabel(payload))}</span><span>${esc(periodLabel(payload.summary))}</span></div></div>${quickActions(payload.summary)}</div><div class="cockpit-filterbar"><div class="cockpit-filterbar-main cockpit-period">${periodShortcuts()}<label class="cockpit-select-field"><span>Autre période</span><select aria-label="Choisir une période" onchange="PilozDashboardCockpit.setPeriod(this.value)">${periods.map(([key,label])=>`<option value="${key}" ${ui.period===key?'selected':''}>${esc(label)}</option>`).join('')}</select></label><label class="cockpit-select-field"><span>Comparaison</span><select aria-label="Choisir une comparaison" onchange="PilozDashboardCockpit.setComparison(this.value)">${comparisons.map(([key,label])=>`<option value="${key}" ${ui.comparison===key?'selected':''}>${esc(label)}</option>`).join('')}</select></label></div>${ui.period==='custom'?`<div class="cockpit-custom-dates"><label>Du<input type="date" value="${esc(ui.customStart)}" max="${esc(ui.customEnd||'')}" onchange="PilozDashboardCockpit.setCustomDate('start',this.value)"></label><label>Au<input type="date" value="${esc(ui.customEnd)}" min="${esc(ui.customStart||'')}" onchange="PilozDashboardCockpit.setCustomDate('end',this.value)"></label></div>`:''}<div class="cockpit-filterbar-actions"><span class="cockpit-comparison-help">${esc(comparisonHelp(payload.summary))}</span><button class="cockpit-icon-button" onclick="PilozDashboardCockpit.refresh()" aria-label="Actualiser le tableau de bord" title="Actualiser">${icon('refresh')}</button><button class="cockpit-customize-button" onclick="PilozDashboardCockpit.startCustomize()">${icon('sliders')}<span>Personnaliser</span></button></div></div></header>`;
   }
   function isNewCompany(payload,state){return number(payload.summary?.invoice_count)===0&&number(payload.summary?.quote_count)===0&&number(payload.activity?.today)===0&&number(payload.activity?.upcoming)===0&&number(payload.crm?.open_opportunities)===0&&(state.data.clients||[]).length===0;}
   function renderOnboarding(){

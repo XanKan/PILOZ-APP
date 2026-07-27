@@ -46,7 +46,7 @@ window.PilozCommercialWorkspace={openClient:id=>calls.push({name:'openClient',id
  const isAnalyticalCall=call=>['get_dashboard_command_center','get_dashboard_cockpit'].includes(call.name);
  try{
   PilozModern.renderRoute('dashboard',state);check('skeleton prioritaire sans blocage global',!!document.querySelector('.cockpit-shell.is-loading[aria-busy="true"]'));await wait(40);
-  check('prénom réel affiché',main.textContent.includes('Bonjour Alex'));
+  check('prénom réel affiché',main.textContent.includes('Bonjour')&&main.textContent.includes('Alex'));
   check('sélecteur avec toutes les périodes',document.querySelectorAll('.cockpit-period select')[0]?.options.length===10);
   check('comparaison disponible',document.querySelectorAll('.cockpit-period select')[1]?.options.length===3);
   check('comparaisons expliquées sans jargon N-1',main.textContent.includes('Juste avant (ex. juillet → juin)')&&main.textContent.includes('Mêmes dates l’année dernière')&&!main.textContent.includes('N-1'));

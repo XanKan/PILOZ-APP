@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.0-compliance.41 — 27 juillet 2026
+
+- correction des droits du tableau de bord avec les permissions centrales `dashboard.read`, `catalog.margin.read`, paiements, CRM, catalogue et achats ;
+- suppression de la régression où l’ancienne valeur par défaut `view_margins=false` masquait la marge d’un administrateur ;
+- maintien d’un périmètre personnel pour les commerciaux et d’un périmètre entreprise pour les administrateurs, affiché clairement dans l’interface ;
+- refonte complète du tableau de bord : accueil, filtres rapides, comparaison, actions, cartes KPI, boutons, états vides et personnalisation ;
+- conservation du glisser-déposer, du redimensionnement, de la densité et des préférences enregistrées par utilisateur ;
+- rafraîchissement des données ramené à 30 secondes et affichage de l’heure de dernière actualisation ;
+- validation des calculs réels sur factures, avoirs, règlements et coûts, de l’isolation RLS, des performances et du responsive mobile.
+
 ## 0.9.0-compliance.40 — 27 juillet 2026
 
 - correction du compte collectif client : les nouvelles écritures utilisent `411` au lieu de `411000` ;

@@ -146,3 +146,107 @@
 @media(max-width:390px){.cockpit-kpis{grid-template-columns:1fr}.cockpit-period,.cockpit-custom-dates{grid-template-columns:1fr}.cockpit-quick-actions{grid-template-columns:1fr}.cockpit-quick-actions>details{grid-column:1}}
 @media(prefers-reduced-motion:reduce){.cockpit-kpi,.cockpit-skeleton{transition:none;animation:none}}
 @media print{.cockpit-header-actions,.cockpit-quick-actions,.cockpit-customizer,.cockpit-chart-modes,.cockpit-priority button,.cockpit-text-action{display:none!important}.cockpit-shell{max-width:none}.cockpit-block,.cockpit-chart-panel,.cockpit-forecast,.cockpit-priority,.cockpit-kpi{box-shadow:none}}
+
+/* Cockpit Piloz 2026 — interface de pilotage claire, dense et personnalisable. */
+.cockpit-shell{
+  --cockpit-ink:#102946;
+  --cockpit-muted:#6c7f91;
+  --cockpit-line:#dde8ea;
+  --cockpit-teal:#0ca99b;
+  --cockpit-teal-dark:#087f77;
+  --cockpit-teal-soft:#e9f8f6;
+  --cockpit-card-shadow:0 12px 36px rgba(16,41,70,.055);
+  gap:18px;
+}
+.cockpit-icon{display:block;width:18px;height:18px;flex:0 0 auto}
+.cockpit-shell button:focus-visible,.cockpit-shell select:focus-visible,.cockpit-shell input:focus-visible{outline:3px solid color-mix(in srgb,var(--cockpit-teal) 28%,transparent);outline-offset:2px}
+.cockpit-header{display:block;padding:0}
+.cockpit-hero{position:relative;display:flex;align-items:center;justify-content:space-between;gap:26px;overflow:visible;padding:25px 27px;border:1px solid var(--cockpit-line);border-radius:22px;background:linear-gradient(125deg,#fff 0%,#fbfefe 58%,#edf9f7 100%);box-shadow:var(--cockpit-card-shadow)}
+.cockpit-hero:before{position:absolute;right:20%;bottom:-45px;width:165px;height:165px;border-radius:50%;background:radial-gradient(circle,rgba(12,169,155,.1),transparent 67%);content:"";pointer-events:none}
+.cockpit-welcome{position:relative;z-index:1;min-width:0}
+.cockpit-welcome>span{margin-bottom:8px;color:var(--cockpit-teal-dark);font-size:.66rem;letter-spacing:.105em}
+.cockpit-welcome h1{max-width:none;color:var(--cockpit-ink);font-size:clamp(1.65rem,2.5vw,2.28rem);font-weight:810;letter-spacing:-.045em}
+.cockpit-welcome>p{margin-top:7px;color:var(--cockpit-muted);font-size:.78rem}
+.cockpit-hero-meta{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:17px}
+.cockpit-hero-meta>span{display:inline-flex;align-items:center;gap:6px;min-height:27px;padding:5px 9px;border:1px solid rgba(170,193,198,.65);border-radius:999px;background:rgba(255,255,255,.74);color:var(--cockpit-muted);font-size:.6rem;font-weight:670;letter-spacing:0;text-transform:none}
+.cockpit-hero-meta .cockpit-scope-badge{border-color:#bde8e3;background:var(--cockpit-teal-soft);color:var(--cockpit-teal-dark);font-weight:790}
+.cockpit-hero-meta .cockpit-icon{width:13px;height:13px}
+.cockpit-quick-actions{position:relative;z-index:2;grid-column:auto;justify-content:flex-end;flex:0 0 auto;margin:0}
+.cockpit-header .cockpit-quick-actions>button,.cockpit-header .cockpit-quick-actions summary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:43px;padding:9px 14px;border-color:#cddbdd;border-radius:12px;background:rgba(255,255,255,.94);box-shadow:0 3px 10px rgba(16,41,70,.035);color:var(--cockpit-ink);font-size:.69rem;transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease,background .15s ease}
+.cockpit-header .cockpit-quick-actions>button:hover,.cockpit-header .cockpit-quick-actions summary:hover{transform:translateY(-1px);border-color:#a9ceca;background:#fff;box-shadow:0 8px 18px rgba(16,41,70,.08)}
+.cockpit-header .cockpit-quick-actions>button.primary{border-color:var(--cockpit-teal-dark);background:linear-gradient(135deg,var(--cockpit-teal-dark),var(--cockpit-teal));box-shadow:0 8px 20px rgba(12,169,155,.2);color:#fff}
+.cockpit-header .cockpit-quick-actions>button.primary:hover{box-shadow:0 11px 25px rgba(12,169,155,.27)}
+.cockpit-quick-actions details>div{top:calc(100% + 9px);min-width:240px;border-color:var(--cockpit-line);border-radius:14px;box-shadow:0 18px 45px rgba(16,41,70,.14)}
+.cockpit-quick-actions details>div button{min-height:36px;font-size:.68rem}
+.cockpit-filterbar{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-top:10px;padding:10px;border:1px solid var(--cockpit-line);border-radius:17px;background:#fff;box-shadow:0 8px 24px rgba(16,41,70,.035)}
+.cockpit-filterbar-main{display:flex;align-items:flex-end;gap:8px;min-width:0;flex-wrap:wrap}
+.cockpit-period-shortcuts{display:flex;gap:4px;padding:4px;border-radius:11px;background:#f2f6f7}
+.cockpit-period-shortcuts button{min-height:33px;padding:7px 10px;border:0;border-radius:8px;background:transparent;color:var(--cockpit-muted);font-size:.62rem;font-weight:720;white-space:nowrap;transition:.14s ease}
+.cockpit-period-shortcuts button:hover{background:#fff;color:var(--cockpit-ink)}
+.cockpit-period-shortcuts button.active{background:#fff;box-shadow:0 3px 9px rgba(16,41,70,.09);color:var(--cockpit-teal-dark)}
+.cockpit-select-field,.cockpit-custom-dates label{display:grid;gap:4px;color:var(--cockpit-muted);font-size:.56rem;font-weight:750}
+.cockpit-select-field>span{padding-left:3px}
+.cockpit-select-field select,.cockpit-custom-dates input{min-height:41px;padding:8px 32px 8px 11px;border:1px solid #cfdddf;border-radius:10px;background:#fff;color:var(--cockpit-ink);font-size:.65rem;font-weight:650}
+.cockpit-filterbar-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;min-width:0}
+.cockpit-filterbar .cockpit-comparison-help{max-width:260px;margin:0 7px 0 0;color:var(--cockpit-muted);font-size:.55rem;line-height:1.35;text-align:right}
+.cockpit-icon-button,.cockpit-customize-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:41px;border:1px solid #cfdddf;border-radius:10px;background:#fff;color:var(--cockpit-ink);font-size:.65rem;font-weight:750}
+.cockpit-icon-button{width:41px;padding:0}
+.cockpit-customize-button{padding:8px 12px}
+.cockpit-icon-button:hover,.cockpit-customize-button:hover{border-color:#9dccca;background:var(--cockpit-teal-soft);color:var(--cockpit-teal-dark)}
+.cockpit-custom-dates{justify-content:flex-start;margin:9px 0 0;padding:0 4px}
+
+.cockpit-kpis{gap:11px}
+.cockpit-kpi{display:flex;flex-direction:column;min-height:168px;padding:17px 18px 16px;border:1px solid var(--cockpit-line);border-radius:18px;background:linear-gradient(155deg,#fff,#fcfefe);box-shadow:var(--cockpit-card-shadow);transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
+.cockpit-kpi:hover{transform:translateY(-3px);border-color:#b9d8d5;box-shadow:0 18px 42px rgba(16,41,70,.09)}
+.cockpit-kpi-top{display:flex!important;align-items:center;justify-content:space-between;width:100%;margin:0!important}
+.cockpit-kpi-top>i{display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:var(--cockpit-teal-soft);color:var(--cockpit-teal-dark);font-style:normal}
+.cockpit-kpi-top>i .cockpit-icon{width:18px;height:18px}
+.cockpit-kpi-top>em{opacity:0;color:var(--cockpit-teal-dark);font-size:.55rem;font-style:normal;font-weight:760;transition:opacity .15s ease}
+.cockpit-kpi:hover .cockpit-kpi-top>em{opacity:1}
+.cockpit-kpi-label{display:block!important;align-self:auto!important;margin:13px 0 5px!important;color:var(--cockpit-muted)!important;font-size:.65rem!important;font-weight:730!important}
+.cockpit-kpi>strong{align-self:auto;margin-bottom:auto;color:var(--cockpit-ink);font-size:clamp(1.45rem,2.2vw,2.08rem)}
+.cockpit-kpi>div{align-items:center;width:100%;margin-top:12px;padding-top:10px;border-top:1px solid #e9eff0}
+.cockpit-kpi small{max-width:70%;color:var(--cockpit-muted);font-size:.56rem}
+.cockpit-kpi.is-zero>strong{color:#6e8091}
+.cockpit-kpi.is-zero .cockpit-kpi-top>i{background:#f1f5f6;color:#718594}
+.cockpit-variation{padding:4px 6px;border-radius:7px;background:#f1f5f6;font-size:.57rem}
+.cockpit-variation.positive{background:#e8f7ef}.cockpit-variation.negative{background:#fff0f0}
+
+.cockpit-chart-panel,.cockpit-forecast,.cockpit-priority,.cockpit-block,.cockpit-customizer,.cockpit-onboarding,.cockpit-no-blocks{border-color:var(--cockpit-line);box-shadow:var(--cockpit-card-shadow)}
+.cockpit-chart-panel,.cockpit-forecast,.cockpit-priority,.cockpit-block{border-radius:18px}
+.cockpit-chart-panel h2,.cockpit-forecast h2,.cockpit-priority h2,.cockpit-block h2,.cockpit-customizer h2,.cockpit-onboarding h2{color:var(--cockpit-ink)}
+.cockpit-chart-modes,.cockpit-tabs{background:#f2f6f7}
+.cockpit-chart-modes button.active,.cockpit-tabs button.active{box-shadow:0 3px 9px rgba(16,41,70,.08);color:var(--cockpit-teal-dark)}
+.cockpit-chart-line{stroke-width:3}
+.cockpit-chart circle{stroke-width:2.5}
+.cockpit-performance-summary{background:#f5f8f9}
+.cockpit-forecast{background:linear-gradient(155deg,#fff 26%,#eef9f7)}
+.cockpit-forecast-bars button,.cockpit-forecast-highlights button{border:1px solid rgba(221,232,234,.75);background:rgba(255,255,255,.78)}
+.cockpit-priority article>button,.cockpit-due-list article>div button,.cockpit-complete{border-color:#cddcde;border-radius:9px;color:var(--cockpit-teal-dark)}
+.cockpit-priority article>button:hover,.cockpit-due-list article>div button:hover,.cockpit-complete:hover{border-color:#9ccdc8;background:var(--cockpit-teal-soft)}
+.cockpit-block{padding:19px}
+.cockpit-block.editing{border:1px dashed var(--cockpit-teal);background:#fbfffe}
+.cockpit-drag-handle{background:var(--cockpit-teal-soft);color:var(--cockpit-teal-dark)}
+.cockpit-customizer{padding:20px;border-radius:20px;border-color:#a8dfda;background:linear-gradient(145deg,#f9fffe,#f1faf9)}
+.cockpit-customizer>header button{min-height:38px;border-color:#cddcde;border-radius:10px}
+.cockpit-customizer>header button.primary{border-color:var(--cockpit-teal-dark);background:linear-gradient(135deg,var(--cockpit-teal-dark),var(--cockpit-teal))}
+.cockpit-customizer fieldset{border-color:#d8e5e6;border-radius:14px}
+.cockpit-customizer-sortable{border-color:#d8e5e6;border-radius:11px}
+.cockpit-customizer-sortable:hover{border-color:#a9d4d0}
+.cockpit-customizer-grip{background:var(--cockpit-teal-soft);color:var(--cockpit-teal-dark)}
+.cockpit-onboarding{background:linear-gradient(135deg,#fff,#edf9f7)}
+
+@media(max-width:1180px){
+  .cockpit-hero{align-items:flex-start;flex-direction:column}.cockpit-quick-actions{justify-content:flex-start;width:100%}
+  .cockpit-filterbar{align-items:stretch;flex-direction:column}.cockpit-filterbar-actions{justify-content:flex-start}.cockpit-filterbar .cockpit-comparison-help{text-align:left}
+}
+@media(max-width:760px){
+  .cockpit-hero{padding:20px;border-radius:18px}.cockpit-hero-meta>span:last-child{width:100%;border:0;padding-left:0;background:transparent}
+  .cockpit-filterbar{padding:9px}.cockpit-filterbar-main{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}.cockpit-period-shortcuts{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}.cockpit-period-shortcuts button{padding-inline:4px}.cockpit-select-field,.cockpit-select-field select{width:100%;min-width:0}
+  .cockpit-filterbar-actions{flex-wrap:wrap}.cockpit-filterbar .cockpit-comparison-help{order:3;max-width:none;width:100%}.cockpit-customize-button{flex:1}
+}
+@media(max-width:620px){
+  .cockpit-header .cockpit-quick-actions{display:grid;grid-template-columns:1fr 1fr}.cockpit-header .cockpit-quick-actions>button,.cockpit-header .cockpit-quick-actions>details,.cockpit-header .cockpit-quick-actions summary{width:100%}.cockpit-header .cockpit-quick-actions details{grid-column:1/-1}
+  .cockpit-kpi{min-height:148px;padding:14px}.cockpit-kpi-top>i{width:32px;height:32px}.cockpit-kpi-label{margin-top:10px!important}.cockpit-kpi>div{align-items:flex-start}.cockpit-kpi small{max-width:100%}
+}
+@media(max-width:430px){.cockpit-period-shortcuts{grid-template-columns:1fr 1fr}.cockpit-filterbar-main{grid-template-columns:1fr}.cockpit-period-shortcuts{grid-column:1}.cockpit-hero-meta{align-items:flex-start;flex-direction:column}.cockpit-kpis{grid-template-columns:1fr}}
