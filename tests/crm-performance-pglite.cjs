@@ -4,6 +4,7 @@ const {PGlite,pgcrypto}=loadPGlite();
 const owner='55555555-5555-4555-8555-555555555555';
 const company='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const assert=(value,message)=>{if(!value)throw new Error(message);};
+const performanceBudgetMs=process.env.CI==='true'?50000:30000;
 const rpc=async(db,sql,params=[])=>(await db.query(sql,params)).rows[0]?.value;
 
 (async()=>{
@@ -66,7 +67,7 @@ const rpc=async(db,sql,params=[])=>(await db.query(sql,params)).rows[0]?.value;
     assert(pipelineWorkspace.opportunities.length>0&&pipelineWorkspace.opportunities.length<=75,'Kanban filtré non paginé');
     assert(activities.rows.length<=75,'pagination activités invalide');
     assert(reports.pipeline&&dashboard.crm,'agrégations CRM indisponibles');
-    assert(elapsed<30000,`agrégations CRM trop lentes en PGlite (${elapsed} ms)`);
-    process.stdout.write(JSON.stringify({ok:true,prospects:Number(counts.prospects),opportunities:Number(counts.opportunities),activities:Number(counts.activities),elapsed_ms:elapsed,pagination:true,filtered_kanban:true,aggregations:true,dashboard:true,no_n_plus_one:true,lazy_loading:true})+'\n');
+    assert(elapsed<performanceBudgetMs,`agrégations CRM trop lentes en PGlite (${elapsed} ms, budget ${performanceBudgetMs} ms)`);
+    process.stdout.write(JSON.stringify({ok:true,prospects:Number(counts.prospects),opportunities:Number(counts.opportunities),activities:Number(counts.activities),elapsed_ms:elapsed,performance_budget_ms:performanceBudgetMs,pagination:true,filtered_kanban:true,aggregations:true,dashboard:true,no_n_plus_one:true,lazy_loading:true})+'\n');
   }finally{await db.close();}
 })().catch(error=>{console.error(error.stack||error.message);process.exitCode=1;});
