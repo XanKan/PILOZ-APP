@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0-compliance.43 — 27 juillet 2026
+
+- correction de la cause résiduelle des exports `411 + auxiliaire` : les écritures non figées sont désormais remises en conformité avant chaque prévisualisation et validation ;
+- garantie du format `CompteNum = 411NOMCLIENT`, `CompteLib = nom réel`, `CompAuxNum` et `CompAuxLib` vides dans le mode par défaut ;
+- conservation durable du compte individualisé sur la fiche client et réutilisation pour ses factures, avoirs et règlements ;
+- ajout d’une réconciliation automatique lors du changement de mode comptable, sans modifier les exports déjà validés ;
+- ajout d’un test de régression reproduisant une ancienne ligne `411;Client - SOLUNEO;SOLUNEO;SOLUNEO` avant de vérifier sa correction à l’export.
+
 ## 0.9.0-compliance.42 — 27 juillet 2026
 
 - remplacement du mode client `411 + auxiliaire` par le compte individualisé `411NOMCLIENT` directement dans `CompteNum` ;

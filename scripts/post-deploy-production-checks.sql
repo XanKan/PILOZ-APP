@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607270088' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607270089' ok
   union all
   select 'company_access_system_roles',count(*)::text,count(*)=0
   from public.companies company
@@ -21,6 +21,12 @@ with controls as(
   union all
   select 'accounting_customer_mode_default',count(*)::text,count(*)=0
   from public.accounting_settings where customer_account_mode<>'individualized'
+  union all
+  select 'accounting_customer_reconciliation_rpc',
+    coalesce(to_regprocedure('public.reconcile_unexported_customer_account_lines(uuid)')::text,'missing'),
+    to_regprocedure('public.reconcile_unexported_customer_account_lines(uuid)') is not null
+      and not has_function_privilege('anon','public.reconcile_unexported_customer_account_lines(uuid)','EXECUTE')
+      and not has_function_privilege('authenticated','public.reconcile_unexported_customer_account_lines(uuid)','EXECUTE')
   union all
   select 'accounting_auxiliary_length_max_10',count(*)::text,count(*)=0
   from public.accounting_settings where auxiliary_length not between 1 and 10
@@ -339,7 +345,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607270088',
+  'schema_version','202607270089',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;

@@ -106,11 +106,29 @@ async function main(){
   if(vat10?.account_code!=='445713'||Number(vat10.credit)!==10||vat20?.account_code!=='445712'||Number(vat20.credit)!==20)
     throw new Error(`Ventilation TVA incorrecte ${JSON.stringify(vatLines)}`);
 
+  // Reproduit exactement la regression observee en production : une ligne
+  // persistante au vieux format doit etre reparee avant toute previsualisation.
+  await db.exec('reset role');
+  await db.query(`update public.accounting_entry_lines
+    set account_code='411',account_label='Client - SOLUNEO',
+        auxiliary_code='SOLUNEO',auxiliary_label='SOLUNEO'
+    where entry_id=$1 and third_party_id=$2`,[entry.id,client]);
+  await setIdentity(db,actor);
+
   const preview=(await db.query("select public.preview_accounting_export($1,'sales','2026-07-01','2026-07-31','csv_debit_credit',false) result",[company])).rows[0].result;
   if(!preview?.ok||!preview.entries?.every(row=>row.balanced)||Number(preview.entry_count)!==1)throw new Error(`Prévisualisation comptable invalide ${JSON.stringify(preview)}`);
   const previewCustomerLine=preview.entries[0]?.lines?.find(row=>row.account_code==='411SOLUNEO');
   if(previewCustomerLine?.account_label!=='SOLUNEO'||previewCustomerLine?.auxiliary_code!==null||previewCustomerLine?.auxiliary_label!==null||previewCustomerLine?.combined_account_code!=='411SOLUNEO'||preview.customer_account_mode!=='individualized')
     throw new Error(`Prévisualisation du compte client individualisé invalide ${JSON.stringify(previewCustomerLine)}`);
+  const repairedCustomerLine=(await db.query("select account_code,account_label,auxiliary_code,auxiliary_label from public.accounting_entry_lines where entry_id=$1 and third_party_id=$2",[entry.id,client])).rows[0];
+  const repairedExportedLine={
+    CompteNum:repairedCustomerLine?.account_code||'',
+    CompteLib:repairedCustomerLine?.account_label||'',
+    CompAuxNum:repairedCustomerLine?.auxiliary_code||'',
+    CompAuxLib:repairedCustomerLine?.auxiliary_label||'',
+  };
+  if(repairedExportedLine.CompteNum!=="411SOLUNEO"||repairedExportedLine.CompteLib!=="SOLUNEO"||repairedExportedLine.CompAuxNum!==""||repairedExportedLine.CompAuxLib!=="")
+    throw new Error(`Ancienne ligne 411 non reparee avant export ${JSON.stringify(repairedExportedLine)}`);
   const forbiddenDefaultAccounts=(await db.query("select count(*)::int count from public.accounting_entry_lines where third_party_id=$1 and account_code in('411','411000')",[client])).rows[0].count;
   if(Number(forbiddenDefaultAccounts)!==0)throw new Error('Une ligne client utilise encore 411 ou 411000 dans le mode par défaut.');
   const firstExport=(await db.query("select public.validate_accounting_export($1,'sales','2026-07-01','2026-07-31','csv_debit_credit',false,false,'Test export fige') id",[company])).rows[0].id;

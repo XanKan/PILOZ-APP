@@ -134,7 +134,7 @@ function anomalyCard(summary){
   const summary=cache.get(s.companyId)?.summary||{};
   document.getElementById('main').innerHTML=header('À propos et conformité','Version, périmètre de preuve et validations externes restantes.')+
    `<div class="modern-settings-grid">
-    <section class="phase1-card"><h2>Version de Piloz</h2><dl class="company-summary-list"><div><dt>Application</dt><dd>0.9.0-compliance.42</dd></div><div><dt>Schéma attendu</dt><dd>202607270088</dd></div><div><dt>Moteur de calcul</dt><dd>financial-v2-deposit-deduction</dd></div><div><dt>Générateur PDF</dt><dd>pdf-v3-cgv</dd></div><div><dt>Déploiement</dt><dd>27 juillet 2026</dd></div></dl></section>
+    <section class="phase1-card"><h2>Version de Piloz</h2><dl class="company-summary-list"><div><dt>Application</dt><dd>0.9.0-compliance.43</dd></div><div><dt>Schéma attendu</dt><dd>202607270089</dd></div><div><dt>Moteur de calcul</dt><dd>financial-v2-deposit-deduction</dd></div><div><dt>Générateur PDF</dt><dd>pdf-v3-cgv</dd></div><div><dt>Déploiement</dt><dd>27 juillet 2026</dd></div></dl></section>
     <section class="phase1-card"><h2>Formats électroniques</h2><p>${Number(summary.verified_format_profiles||0)} profil officiel vérifié.</p><p class="modern-card-desc">UBL, CII et Factur-X restent bloqués tant que les artefacts officiels et validateurs ne sont pas installés.</p></section>
     <section class="phase1-card"><h2>Plateforme agréée</h2><p>${Number(summary.production_connectors||0)} connecteur de production actif.</p><p class="modern-card-desc">Connexion prévue; aucune qualité de plateforme agréée n’est revendiquée par Piloz.</p></section>
     <section class="phase1-card" style="grid-column:1/-1"><h2>Certifications obtenues</h2>${certificationBlock(summary)}</section>

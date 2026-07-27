@@ -19,6 +19,7 @@ const m74=read('supabase/migrations/202607260074_external_sync_observability.sql
 const m85=read('supabase/migrations/202607260085_accounting_export_backfill_diagnostics.sql');
 const m86=read('supabase/migrations/202607270086_accounting_customer_auxiliaries.sql');
 const m88=read('supabase/migrations/202607270088_individualized_customer_accounts.sql');
+const m89=read('supabase/migrations/202607270089_customer_account_export_reconciliation.sql');
 
 const browserSources=[index,ui,read('assets/js/modules/subscription/site-offer.js')].join('\n');
 const checks={
@@ -37,6 +38,7 @@ const checks={
  sales_terms_pdf_frozen:pdf.includes('appendFrozenSalesTerms')&&pdf.includes('sales_terms_pdf_integrity_failed')&&pdf.includes('copyPages'),
  sales_terms_per_client:ui.includes('Toutes les entreprises clientes')&&m73.includes('assignment.client_id=doc.client_id'),
  accounting_balanced_engine:m72.includes('_generate_document_accounting_entry')&&m72.includes('documents_generate_accounting')&&m72.includes('payments_generate_accounting'),
+ accounting_customer_reconciliation:m89.includes('reconcile_unexported_customer_account_lines')&&m89.includes('patch_preview_customer_reconciliation')&&m89.includes("account_code='411'" )===false,
  accounting_append_only:ui.includes('reverse_payment_receipt')&&ui.includes('Aucun règlement n’est supprimé'),
  export_is_frozen:m72.includes('snapshot_sha256')&&m72.includes('accounting_export_batch_entries')&&m72.includes("status='validated'"),
  export_package_integrity:exportPackage.includes('manifest.json')&&exportPackage.includes('async function sha256')&&exportPackage.includes('final_pdf_sha256'),
