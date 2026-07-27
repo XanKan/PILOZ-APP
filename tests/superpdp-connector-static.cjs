@@ -8,6 +8,7 @@ const migration=read('supabase/migrations/202607270097_superpdp_sandbox_connecto
 const ui=read('assets/js/modules/erp/erp-electronic-invoicing.js');
 const app=read('assets/js/modules/erp/erp-app.js');
 const modern=read('assets/js/modules/erp/erp-modern.js');
+const extensions=read('assets/js/modules/erp/erp-accounting-extensions.js');
 const html=read('index.html');
 
 const checks={
@@ -24,6 +25,7 @@ const checks={
   tenant_permission_guard:migration.includes("has_company_permission(target_company_id,'electronic_invoice_manage')"),
   rpcs_not_public:migration.includes('revoke all on function public.configure_superpdp_sandbox_connector')&&migration.includes('revoke all on function public.record_superpdp_sandbox_test_transmission'),
   settings_route:app.includes("'settings/einvoicing':'settings'")&&modern.includes("['settings/einvoicing','Facturation électronique']"),
+  extension_catalog:extensions.includes("id:'superpdp'")&&extensions.includes("internalRoute:'settings/einvoicing'")&&extensions.includes("['einvoicing','Facturation électronique']"),
   ui_loaded:html.includes('erp-electronic-invoicing.js'),
   ui_never_claims_production:ui.includes('Production non activée')&&ui.includes('Elle ne part jamais en production.'),
   piloz_remains_production:edge.includes('appEnvironment: "production"')
