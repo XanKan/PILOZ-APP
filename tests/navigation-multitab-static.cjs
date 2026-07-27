@@ -31,5 +31,9 @@ assert(api.includes('notifySuccessfulMutation')&&api.includes('PilozTabSync?.not
 assert(crm.includes("layer.id='crm-quick-party-layer'")&&crm.includes('crm-quick-party-dialog'),'création client/prospect non rendue dans une vraie fenêtre');
 assert(!crm.includes('id="crm-quick-party" class="crm-quick-party"'),'ancien formulaire écrasé encore imbriqué dans le sélecteur');
 assert(crmCss.includes('.crm-quick-party-layer')&&crmCss.includes('@media(max-width:620px)'),'fenêtre de création client/prospect non responsive');
+assert(crm.includes('Création client / prospect'),'titre unifié de création client/prospect absent');
+assert(crm.includes("api().invoke('company-search',{query,perPage:6})"),'recherche INPI absente de la création depuis le pipeline');
+assert(crm.includes('selectQuickPartyCompany')&&crm.includes("ape_code:'apeCode'")&&crm.includes("address_line_1:'addressLine1'"),'préremplissage des données officielles incomplet');
+assert(crmCss.includes('.crm-official-company-results')&&crmCss.includes('.crm-official-company-result'),'styles des résultats INPI absents');
 
-process.stdout.write(JSON.stringify({ok:true,reports_removed:true,settings_after_accounting:true,new_tab:true,multitab_sync:true,quick_party_modal:true})+'\n');
+process.stdout.write(JSON.stringify({ok:true,reports_removed:true,settings_after_accounting:true,new_tab:true,multitab_sync:true,quick_party_modal:true,inpi_search:true})+'\n');

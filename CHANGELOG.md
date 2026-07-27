@@ -2,6 +2,7 @@
 
 ## 0.9.0-compliance.48 — 27 juillet 2026
 
+- ajout de la recherche INPI dans la création rapide d’un client ou prospect depuis le pipeline, avec conservation des informations officielles sélectionnées ;
 - remplacement du type visible « Service » par le véritable type d’élément « Main d’œuvre » dans le catalogue, les documents, les filtres, les imports, les exports et le paramétrage comptable ;
 - conservation de la clé technique historique `service` uniquement en interne afin de préserver les fiches, factures et intégrations existantes ;
 - normalisation des libellés API français et anglais vers les quatre types autorisés : Article, Main d’œuvre, Abonnement et Frais ;
