@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.0-compliance.42 — 27 juillet 2026
+
+- remplacement du mode client `411 + auxiliaire` par le compte individualisé `411NOMCLIENT` directement dans `CompteNum` ;
+- normalisation déterministe des noms (majuscules, accents, espaces, apostrophes, tirets et caractères spéciaux) et conservation durable du compte sur la fiche client ;
+- colonnes `CompAuxNum` et `CompAuxLib` laissées vides dans le mode par défaut, avec `CompteLib` limité au nom réel du client sans préfixe ;
+- conservation optionnelle de l’ancien mode collectif uniquement lorsqu’il est explicitement sélectionné dans le paramétrage comptable ;
+- mise à niveau des écritures non exportées sans modifier les lots comptables déjà validés ;
+- adaptation de la fiche client, de la prévisualisation, des contrôles de production et des tests factures, avoirs et règlements.
+
 ## 0.9.0-compliance.41 — 27 juillet 2026
 
 - correction des droits du tableau de bord avec les permissions centrales `dashboard.read`, `catalog.margin.read`, paiements, CRM, catalogue et achats ;

@@ -90,7 +90,7 @@ expect('résolveur chargé par application', app.includes("resolve_company_permi
 
 expect('Edge Function vérifie la permission', edge.includes("company.users.manage"));
 expect('Edge Function contrôle la limite de licence', /max_users|maxUsers/.test(edge));
-expect('Edge Function ne contient pas de clé service_role littérale', !/eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/.test(edge));
+expect('Edge Function ne contient pas de JWT privilégié littéral', !/eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/.test(edge));
 expect('ancien formulaire de mot de passe temporaire retiré', !index.includes('adminCreerCompte'));
 expect('aucune clé service_role dans le navigateur', !/SUPABASE_SERVICE_ROLE_KEY|service_role/.test(index + accessUi + app));
 expect('CNAME intact', read('CNAME').trim() === 'app.piloz.fr');

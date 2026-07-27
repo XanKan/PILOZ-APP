@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607270087' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607270088' ok
   union all
   select 'company_access_system_roles',count(*)::text,count(*)=0
   from public.companies company
@@ -19,16 +19,26 @@ with controls as(
   select 'company_access_users_rpc',coalesce(to_regprocedure('public.list_company_access_users(uuid,text,text,uuid,text,text,text,integer,integer)')::text,'missing'),
     to_regprocedure('public.list_company_access_users(uuid,text,text,uuid,text,text,text,integer,integer)') is not null
   union all
-  select 'accounting_customer_collective_411',count(*)::text,count(*)=0
-  from public.accounting_settings where customer_collective_account='411000'
+  select 'accounting_customer_mode_default',count(*)::text,count(*)=0
+  from public.accounting_settings where customer_account_mode<>'individualized'
   union all
   select 'accounting_auxiliary_length_max_10',count(*)::text,count(*)=0
   from public.accounting_settings where auxiliary_length not between 1 and 10
   union all
-  select 'accounting_unexported_customer_411000',count(*)::text,count(*)=0
+  select 'accounting_individual_accounts_persisted',count(*)::text,count(*)=0
+  from public.clients client
+  left join public.client_accounting_profiles profile
+    on profile.company_id=client.company_id and profile.client_id=client.id and profile.active
+  where profile.individual_account_code is null
+     or profile.individual_account_code!~'^411[A-Z0-9]+$'
+  union all
+  select 'accounting_unexported_customer_collective',count(*)::text,count(*)=0
   from public.accounting_entry_lines line
   join public.accounting_entries entry on entry.id=line.entry_id
-  where line.account_code='411000'
+  join public.accounting_settings settings on settings.company_id=entry.company_id
+  join public.clients client on client.id=line.third_party_id and client.company_id=entry.company_id
+  where settings.customer_account_mode='individualized'
+    and (line.account_code in('411','411000') or line.auxiliary_code is not null or line.auxiliary_label is not null)
     and not exists(
       select 1 from public.accounting_export_batch_entries exported
       join public.accounting_export_batches batch on batch.id=exported.export_batch_id
@@ -329,7 +339,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607270087',
+  'schema_version','202607270088',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;

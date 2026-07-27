@@ -112,7 +112,7 @@
     email: "E-mail",
     phone: "Téléphone",
     city: "Ville",
-    account: "Compte auxiliaire",
+    account: "Compte client",
     owner: "Responsable",
     invoiced: "Total facturé",
     paid: "Total encaissé",
@@ -291,7 +291,8 @@
         contact_last_name: contact?.last_name,
         contact_email: contact?.email,
         contact_phone: contact?.phone_e164,
-        auxiliary_account: account?.auxiliary_account || "",
+        individual_account_code: account?.individual_account_code || "",
+        auxiliary_account: account?.individual_account_code || account?.auxiliary_account || "",
         total_invoiced: invoiced,
         total_paid: paid,
         outstanding: Math.max(0, invoiced - paid),
@@ -500,7 +501,7 @@
     if (key === "city")
       return `<td data-label="Ville">${esc(row.city || "—")}</td>`;
     if (key === "account")
-      return `<td class="client-mono" data-label="Compte auxiliaire">${esc(row.auxiliary_account || "—")}</td>`;
+      return `<td class="client-mono" data-label="Compte client">${esc(row.individual_account_code || row.auxiliary_account || "—")}</td>`;
     if (key === "owner")
       return `<td data-label="Responsable">${esc(memberName(state, row.assigned_user_id))}</td>`;
     if (key === "invoiced")
@@ -561,7 +562,7 @@
         "E-mail",
         "Téléphone",
         "Ville",
-        "Compte auxiliaire",
+        "Compte client",
         "Responsable",
         "Total facturé",
         "Total encaissé",
@@ -580,7 +581,7 @@
           row.email || "",
           row.phone_e164 || "",
           row.city || "",
-          row.auxiliary_account || "",
+          row.individual_account_code || row.auxiliary_account || "",
           memberName(currentState, row.assigned_user_id),
           row.total_invoiced || 0,
           row.total_paid || 0,
@@ -805,7 +806,7 @@
         ]);
       else if (tab === "accounting") {
         const profiles = await queryPath("client_accounting_profiles", [
-          `select=client_id,auxiliary_account`,
+          `select=client_id,individual_account_code,auxiliary_account`,
           `client_id=eq.${cid}`,
           `limit=1`,
         ]);
@@ -864,7 +865,7 @@
         0,
         Number(metrics.invoiced) - Number(metrics.paid),
       );
-    return `<header class="client-detail-header"><div class="client-detail-nav"><button onclick="PilozApp.go('sales/clients')">← Clients</button><span>Fiche client</span></div><div class="client-detail-title"><span class="client-avatar large">${esc(clientName(c).slice(0, 2).toUpperCase())}</span><div><div class="client-title-line"><h1>${esc(clientName(c))}</h1>${statusBadge(c.customer_status || "active")}<span class="client-type">${c.kind === "person" ? "Particulier" : "Professionnel"}</span></div><p>${esc([contact && [contact.first_name, contact.last_name].filter(Boolean).join(" "), c.email, c.phone_e164, address?.city, c.siret && `SIRET ${c.siret}`, c.vat_number && `TVA ${c.vat_number}`].filter(Boolean).join(" · ") || "Coordonnées à compléter")}</p><small>Créé le ${date(c.created_at)} · Dernière activité ${date(data.last_activity_at)}</small><div class="client-header-meta"><span>Responsable : ${esc(memberName(state, c.assigned_user_id))}</span><span>Compte : ${esc(data.accounting?.auxiliary_account || "non attribué")}</span>${(c.tags || []).map((tag) => `<i>${esc(tag)}</i>`).join("")}</div></div><div class="client-detail-actions">${button("Créer un devis", `PilozApp.newClientDocument('${id}','quote')`, "btn-p")}${button("Créer une facture", `PilozApp.newClientDocument('${id}','invoice')`)}<details><summary class="btn btn-o">Actions</summary><div>${button("Modifier", `PilozClients.setTab('${id}','coordinates')`, "btn-ghost")}${button("Ajouter un contact", `PilozClients.openContactModal('${id}')`, "btn-ghost")}${button("Ajouter une adresse", `PilozClients.openAddressModal('${id}')`, "btn-ghost")}${button("Ajouter une activité", `PilozClients.openActivityModal('${id}')`, "btn-ghost")}${button("Ajouter une note", `PilozClients.openNoteModal('${id}')`, "btn-ghost")}${button("Ajouter un document", `PilozClients.setTab('${id}','documents')`, "btn-ghost")}${button("Rapport de doublons", `PilozClients.showDuplicates('${id}')`, "btn-ghost")}${button(c.customer_status === "inactive" ? "Réactiver" : "Désactiver", `PilozClients.changeClientStatus('${id}','${c.customer_status === "inactive" ? "active" : "inactive"}')`, "btn-ghost")}${button(c.customer_status === "archived" ? "Réactiver" : "Archiver", `PilozClients.changeClientStatus('${id}','${c.customer_status === "archived" ? "active" : "archived"}')`, "btn-ghost")}</div></details></div></div><section class="client-detail-kpis">${metric("Total devisé", money(metrics.quoted))}${metric("Total accepté", money(metrics.accepted))}${metric("Total facturé", money(metrics.invoiced))}${metric("Total encaissé", money(metrics.paid))}${metric("Reste à payer", money(outstanding))}${metric("Factures en retard", String(metrics.overdue || 0))}${metric("Activités en cours", String(metrics.open_activities || 0))}</section><nav class="client-tabs" aria-label="Rubriques du client">${tabs.map(([key, label]) => `<button class="${tab === key ? "active" : ""}" onclick="PilozClients.setTab('${id}','${key}')">${label}</button>`).join("")}</nav></header>`;
+    return `<header class="client-detail-header"><div class="client-detail-nav"><button onclick="PilozApp.go('sales/clients')">← Clients</button><span>Fiche client</span></div><div class="client-detail-title"><span class="client-avatar large">${esc(clientName(c).slice(0, 2).toUpperCase())}</span><div><div class="client-title-line"><h1>${esc(clientName(c))}</h1>${statusBadge(c.customer_status || "active")}<span class="client-type">${c.kind === "person" ? "Particulier" : "Professionnel"}</span></div><p>${esc([contact && [contact.first_name, contact.last_name].filter(Boolean).join(" "), c.email, c.phone_e164, address?.city, c.siret && `SIRET ${c.siret}`, c.vat_number && `TVA ${c.vat_number}`].filter(Boolean).join(" · ") || "Coordonnées à compléter")}</p><small>Créé le ${date(c.created_at)} · Dernière activité ${date(data.last_activity_at)}</small><div class="client-header-meta"><span>Responsable : ${esc(memberName(state, c.assigned_user_id))}</span><span>Compte : ${esc(data.accounting?.individual_account_code || data.accounting?.auxiliary_account || "non attribué")}</span>${(c.tags || []).map((tag) => `<i>${esc(tag)}</i>`).join("")}</div></div><div class="client-detail-actions">${button("Créer un devis", `PilozApp.newClientDocument('${id}','quote')`, "btn-p")}${button("Créer une facture", `PilozApp.newClientDocument('${id}','invoice')`)}<details><summary class="btn btn-o">Actions</summary><div>${button("Modifier", `PilozClients.setTab('${id}','coordinates')`, "btn-ghost")}${button("Ajouter un contact", `PilozClients.openContactModal('${id}')`, "btn-ghost")}${button("Ajouter une adresse", `PilozClients.openAddressModal('${id}')`, "btn-ghost")}${button("Ajouter une activité", `PilozClients.openActivityModal('${id}')`, "btn-ghost")}${button("Ajouter une note", `PilozClients.openNoteModal('${id}')`, "btn-ghost")}${button("Ajouter un document", `PilozClients.setTab('${id}','documents')`, "btn-ghost")}${button("Rapport de doublons", `PilozClients.showDuplicates('${id}')`, "btn-ghost")}${button(c.customer_status === "inactive" ? "Réactiver" : "Désactiver", `PilozClients.changeClientStatus('${id}','${c.customer_status === "inactive" ? "active" : "inactive"}')`, "btn-ghost")}${button(c.customer_status === "archived" ? "Réactiver" : "Archiver", `PilozClients.changeClientStatus('${id}','${c.customer_status === "archived" ? "active" : "archived"}')`, "btn-ghost")}</div></details></div></div><section class="client-detail-kpis">${metric("Total devisé", money(metrics.quoted))}${metric("Total accepté", money(metrics.accepted))}${metric("Total facturé", money(metrics.invoiced))}${metric("Total encaissé", money(metrics.paid))}${metric("Reste à payer", money(outstanding))}${metric("Factures en retard", String(metrics.overdue || 0))}${metric("Activités en cours", String(metrics.open_activities || 0))}</section><nav class="client-tabs" aria-label="Rubriques du client">${tabs.map(([key, label]) => `<button class="${tab === key ? "active" : ""}" onclick="PilozClients.setTab('${id}','${key}')">${label}</button>`).join("")}</nav></header>`;
   }
   function renderDetail(id, state, tab = "summary") {
     currentState = state;
@@ -931,8 +932,8 @@
         ],
         ["Responsable", esc(memberName(state, c.assigned_user_id))],
         [
-          "Compte auxiliaire",
-          esc(s.accounting?.auxiliary_account || "Non attribué"),
+          "Compte client",
+          esc(s.accounting?.individual_account_code || s.accounting?.auxiliary_account || "Non attribué"),
         ],
         [
           "Conditions de paiement",
@@ -1139,8 +1140,8 @@
     return `<section class="client-section-heading"><div><h2>Activités</h2><p>Appels, e-mails, rendez-vous, tâches, relances et suivis.</p></div>${button("Ajouter une activité", `PilozClients.openActivityModal('${id}')`, "btn-p")}</section>${data.rows.length ? `<div class="client-activity-list">${data.rows.map((row) => `<article><span class="client-activity-icon">${esc((row.activity_type || "note").slice(0, 1).toUpperCase())}</span><div><b>${esc(row.subject)}</b><p>${esc(row.description || row.comment || "")}</p><small>${datetime(row.due_at || row.scheduled_at || row.created_at)} · ${esc(memberName(currentState, row.assigned_user_id))}</small></div><span class="modern-status ${row.status === "completed" ? "success" : "neutral"}">${esc(row.status || "À faire")}</span></article>`).join("")}</div>` : empty("Aucune activité", "Ajoutez un appel, une tâche ou un rendez-vous.", button("Ajouter une activité", `PilozClients.openActivityModal('${id}')`, "btn-p"))}`;
   }
   function renderAccounting(id, entry, data) {
-    const profile = data.extra.profile || entry.summary.accounting || {};
-    return `<form id="client-account-form" class="client-form client-auxiliary-account-form" onsubmit="event.preventDefault();PilozClients.saveAccounting('${id}')"><header><div><h2>Identifiant client</h2><p>Cet identifiant comptable est propre à ce client, qu’il soit particulier ou professionnel. Utilisez par exemple sa raison sociale ou son nom, jamais un préfixe générique.</p></div>${button("Enregistrer", "", "btn-p", 'type="submit" data-client-save')}</header><label><span>Identifiant client</span><input name="auxiliary_account" value="${esc(profile.auxiliary_account || "")}" maxlength="10" placeholder="Ex. DUPONT" autocomplete="off" required></label></form>`;
+    const profile = data.extra.profile || entry.summary.accounting || {},client=entry.summary.client||{},realName=client.legal_name||[client.first_name,client.last_name].filter(Boolean).join(' ')||'Client',suggested=`411${String(realName).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]/g,'')||'CLIENT'}`;
+    return `<form id="client-account-form" class="client-form client-auxiliary-account-form" onsubmit="event.preventDefault();PilozClients.saveAccounting('${id}')"><header><div><h2>Compte comptable client</h2><p>Ce compte est enregistré durablement sur la fiche client et exporté directement dans la colonne CompteNum. Les colonnes auxiliaires restent vides.</p></div>${button("Enregistrer", "", "btn-p", 'type="submit" data-client-save')}</header><label><span>Compte client individualisé</span><input name="individual_account_code" value="${esc(profile.individual_account_code || suggested)}" maxlength="64" pattern="411[A-Z0-9]+" placeholder="Ex. 411SOLUNEO" autocomplete="off" required oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"></label><small>Format : 411 suivi du nom normalisé du client, par exemple <b>${esc(suggested)}</b>.</small></form>`;
   }
   function renderClientFiles(id, data) {
     return `<section class="client-section-heading"><div><h2>Documents</h2><p>Contrats, bons de commande, attestations et fichiers administratifs.</p></div><label class="btn btn-p client-upload">Ajouter un document<input type="file" hidden onchange="PilozClients.uploadClientFile('${id}',this.files[0])"></label></section>${data.rows.length ? `<div class="client-files">${data.rows.map((row) => `<article><span>▤</span><div><b>${esc(row.file_name)}</b><small>${esc(row.document_type)} · ${row.size_bytes ? Math.ceil(row.size_bytes / 1024) + " Ko" : "Taille inconnue"} · ${date(row.document_date || row.created_at)}</small></div>${button("Télécharger", `PilozClients.downloadClientFile('${row.id}')`, "btn-ghost")}</article>`).join("")}</div>` : empty("Aucun document", "Ajoutez un contrat, un bon de commande ou une attestation.")}`;
@@ -1533,38 +1534,26 @@
       setBusy(false);
     }
   }
-  async function saveAccounting(clientId, confirmed = false) {
+  async function saveAccounting(clientId) {
     const raw = formData("client-account-form"),
-      auxiliaryAccount = String(raw.auxiliary_account || "").trim();
-    if (!auxiliaryAccount) {
-      notify("Renseignez le code auxiliaire du client.", "error");
+      individualAccount = String(raw.individual_account_code || "").trim();
+    if (!/^411[A-Z0-9]+$/.test(individualAccount)) {
+      notify("Le compte doit commencer par 411 et contenir uniquement des lettres et des chiffres.", "error");
       return;
     }
     setBusy(true);
     try {
-      await api().rpc("assign_client_auxiliary_account", {
+      await api().rpc("assign_client_individual_account", {
         target_client_id: clientId,
-        target_assignment_mode: "manual",
-        target_auxiliary_account: auxiliaryAccount,
-        target_collective_account: null,
-        target_effective_from: null,
+        target_account_code: individualAccount,
         target_reason: null,
-        target_confirm_existing_documents: confirmed,
       });
       invalidate(clientId);
       await loadSummary(clientId, currentState);
       await loadTab(clientId, "accounting", currentState, true);
-      notify("Code auxiliaire enregistré.", "success");
+      notify("Compte client enregistré.", "success");
     } catch (error) {
-      if (
-        /confirmation/i.test(error.message || "") &&
-        !confirmed &&
-        confirm(
-          "Ce client possède déjà des documents. Confirmer le changement du compte auxiliaire ?",
-        )
-      )
-        return saveAccounting(clientId, true);
-      notify(error.message, "error");
+      notify(/locked_by_export/i.test(error.message||"")?"Ce compte est verrouillé car il figure déjà dans un export comptable validé.":error.message, "error");
     } finally {
       setBusy(false);
     }

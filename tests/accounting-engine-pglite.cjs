@@ -20,14 +20,23 @@ async function main(){
     ) values($1,'Entreprise TVA multiple','SARL',1000,'123456789','12345678900012','FR00123456789',
       '1 rue du Test','75001','Paris','France','compta@example.test',true,20,now())`,[company]);
   await db.query("insert into public.company_document_settings(company_id,invoice_prefix,default_payment_terms,default_payment_method) values($1,'FAC','days_30','bank_transfer') on conflict(company_id) do nothing",[company]);
-  await db.query("insert into public.clients(id,company_id,kind,legal_name,email,address_line_1,postal_code,city,country_code,created_by) values($1,$2,'company','Client TVA multiple','client@example.test','2 rue Client','69001','Lyon','FR',$3)",[client,company,actor]);
-  await db.query("insert into public.client_accounting_profiles(company_id,client_id,collective_account,auxiliary_account,assignment_mode,accounting_label,created_by) values($1,$2,'411000','CLI000001','automatic','Client TVA multiple',$3)",[company,client,actor]);
+  await db.query("insert into public.clients(id,company_id,kind,legal_name,email,address_line_1,postal_code,city,country_code,created_by) values($1,$2,'company','SOLUNEO','client@example.test','2 rue Client','69001','Lyon','FR',$3)",[client,company,actor]);
+  await db.query("insert into public.client_accounting_profiles(company_id,client_id,collective_account,auxiliary_account,assignment_mode,accounting_label,created_by) values($1,$2,'411000','CLI000001','automatic','SOLUNEO',$3)",[company,client,actor]);
   const ownConnection=crypto.randomUUID(),otherConnection=crypto.randomUUID();
   await db.query("insert into public.external_connections(id,company_id,user_id,provider,connection_scope,status,created_by) values($1,$2,$3,'gmail','personal','connected',$3),($4,$5,$6,'gmail','personal','connected',$6)",[ownConnection,company,actor,otherConnection,otherCompany,otherActor]);
   await db.query("insert into public.external_connection_secrets(connection_id,ciphertext,initialization_vector,key_version) values($1,'cipher-a','iv-a','v1'),($2,'cipher-b','iv-b','v1')",[ownConnection,otherConnection]);
   await db.query("insert into public.external_mail_links(company_id,connection_id,direction,subject,recipients,status,created_by) values($1,$2,'outbound','Message A',array['a@example.test'],'sent',$3),($4,$5,'outbound','Message B',array['b@example.test'],'sent',$6)",[company,ownConnection,actor,otherCompany,otherConnection,otherActor]);
   await db.query("insert into public.sales_terms(company_id,name,created_by) values($1,'CGV A',$2),($3,'CGV B',$4)",[company,actor,otherCompany,otherActor]);
   await setIdentity(db,actor);
+  const normalizedAccounts=(await db.query(`select
+    public.normalized_customer_account_suffix('SOLUNEO') soluneo,
+    public.normalized_customer_account_suffix('Quentin JERNOT') quentin,
+    public.normalized_customer_account_suffix('Société ABC') societe,
+    public.normalized_customer_account_suffix('L''Atelier du Bois') atelier`)).rows[0];
+  if(JSON.stringify(normalizedAccounts)!==JSON.stringify({soluneo:'SOLUNEO',quentin:'QUENTINJERNOT',societe:'SOCIETEABC',atelier:'LATELIERDUBOIS'}))
+    throw new Error(`Normalisation des comptes clients invalide ${JSON.stringify(normalizedAccounts)}`);
+  if(`411${normalizedAccounts.quentin}`!=='411QUENTINJERNOT')
+    throw new Error(`Compte particulier complet invalide : 411${normalizedAccounts.quentin}`);
   await db.query("select public.save_company_numbering_configuration($1,'DEV',73,'year_prefix','FAC',42,'prefix_year_month','AV',30)",[company]);
 
   const visibleConnections=(await db.query('select company_id,user_id from public.external_connections order by company_id')).rows;
@@ -81,8 +90,17 @@ async function main(){
   const totals=(await db.query('select round(sum(debit),2) debit,round(sum(credit),2) credit from public.accounting_entry_lines where entry_id=$1',[entry.id])).rows[0];
   if(Number(totals.debit)!==230||Number(totals.credit)!==230)throw new Error(`Écriture déséquilibrée ${JSON.stringify(totals)}`);
   const customerLine=(await db.query("select account_code,account_label,auxiliary_code,auxiliary_label from public.accounting_entry_lines where entry_id=$1 and third_party_id=$2",[entry.id,client])).rows[0];
-  if(customerLine?.account_code!=='411'||customerLine?.auxiliary_code!=='CLIENTTVAM'||customerLine?.auxiliary_code?.length>10||!customerLine?.account_label?.startsWith('Client - '))
-    throw new Error(`Compte client ou auxiliaire incorrect ${JSON.stringify(customerLine)}`);
+  const exportedLine={
+    CompteNum:customerLine?.account_code||'',
+    CompteLib:customerLine?.account_label||'',
+    CompAuxNum:customerLine?.auxiliary_code||'',
+    CompAuxLib:customerLine?.auxiliary_label||'',
+  };
+  if(exportedLine.CompteNum!=='411SOLUNEO'||exportedLine.CompteLib!=='SOLUNEO'||exportedLine.CompAuxNum!==''||exportedLine.CompAuxLib!=='')
+    throw new Error(`Compte client individualisé incorrect ${JSON.stringify(exportedLine)}`);
+  const persistedAccount=(await db.query('select individual_account_code from public.client_accounting_profiles where client_id=$1',[client])).rows[0]?.individual_account_code;
+  const stableAccount=(await db.query("select (public.assign_client_individual_account($1,'411SOLUNEO',null)->>'individual_account_code') account",[client])).rows[0]?.account;
+  if(persistedAccount!=='411SOLUNEO'||stableAccount!=='411SOLUNEO')throw new Error(`Compte client non persistant ${JSON.stringify({persistedAccount,stableAccount})}`);
   const vatLines=(await db.query("select account_code,tax_rate,credit from public.accounting_entry_lines where entry_id=$1 and account_code like '4457%' order by tax_rate",[entry.id])).rows;
   const vat10=vatLines.find(row=>Number(row.tax_rate)===10),vat20=vatLines.find(row=>Number(row.tax_rate)===20);
   if(vat10?.account_code!=='445713'||Number(vat10.credit)!==10||vat20?.account_code!=='445712'||Number(vat20.credit)!==20)
@@ -90,9 +108,11 @@ async function main(){
 
   const preview=(await db.query("select public.preview_accounting_export($1,'sales','2026-07-01','2026-07-31','csv_debit_credit',false) result",[company])).rows[0].result;
   if(!preview?.ok||!preview.entries?.every(row=>row.balanced)||Number(preview.entry_count)!==1)throw new Error(`Prévisualisation comptable invalide ${JSON.stringify(preview)}`);
-  const previewCustomerLine=preview.entries[0]?.lines?.find(row=>row.account_code==='411');
-  if(previewCustomerLine?.auxiliary_code!=='CLIENTTVAM'||previewCustomerLine?.combined_account_code!=='411CLIENTTVAM'||Number(preview.auxiliary_max_length)!==10)
-    throw new Error(`Prévisualisation du compte auxiliaire invalide ${JSON.stringify(previewCustomerLine)}`);
+  const previewCustomerLine=preview.entries[0]?.lines?.find(row=>row.account_code==='411SOLUNEO');
+  if(previewCustomerLine?.account_label!=='SOLUNEO'||previewCustomerLine?.auxiliary_code!==null||previewCustomerLine?.auxiliary_label!==null||previewCustomerLine?.combined_account_code!=='411SOLUNEO'||preview.customer_account_mode!=='individualized')
+    throw new Error(`Prévisualisation du compte client individualisé invalide ${JSON.stringify(previewCustomerLine)}`);
+  const forbiddenDefaultAccounts=(await db.query("select count(*)::int count from public.accounting_entry_lines where third_party_id=$1 and account_code in('411','411000')",[client])).rows[0].count;
+  if(Number(forbiddenDefaultAccounts)!==0)throw new Error('Une ligne client utilise encore 411 ou 411000 dans le mode par défaut.');
   const firstExport=(await db.query("select public.validate_accounting_export($1,'sales','2026-07-01','2026-07-31','csv_debit_credit',false,false,'Test export fige') id",[company])).rows[0].id;
   const frozen=(await db.query("select status,entry_count,total_debit,total_credit,snapshot_sha256 from public.accounting_export_batches where id=$1",[firstExport])).rows[0];
   const frozenFile=(await db.query("select content_text,sha256 from public.accounting_export_files where export_batch_id=$1 and file_kind='entries'",[firstExport])).rows[0];
@@ -100,8 +120,10 @@ async function main(){
     throw new Error(`Export valide incomplet ${JSON.stringify(frozen)}`);
   if(!frozenFile?.content_text?.startsWith('Journal;Date;Ecriture;Piece;Compte;')||!frozenFile.sha256)
     throw new Error('Le CSV generique ne possede pas sa structure documentee.');
-  if(!frozenFile.content_text.includes(';411;Client - Client TVA multiple;CLIENTTVAM;Client TVA multiple;'))
-    throw new Error(`Le compte collectif et l'auxiliaire client sont absents du fichier ${frozenFile.content_text}`);
+  if(!frozenFile.content_text.includes(';411SOLUNEO;SOLUNEO;;;'))
+    throw new Error(`Le compte client individualisé est absent du fichier ${frozenFile.content_text}`);
+  if(frozenFile.content_text.includes(';411;')||frozenFile.content_text.includes(';411000;'))
+    throw new Error(`Un compte collectif client interdit subsiste dans le fichier ${frozenFile.content_text}`);
   const excluded=(await db.query("select public.preview_accounting_export($1,'sales','2026-07-01','2026-07-31','csv_debit_credit',false) result",[company])).rows[0].result;
   if(Number(excluded.entry_count)!==0||excluded.accounts.length!==0)throw new Error('Une ecriture validee reste exportable.');
   const cancellation=(await db.query("select public.cancel_accounting_export($1,'Correction du lot de test') id",[firstExport])).rows[0].id;
@@ -121,6 +143,8 @@ async function main(){
   if(Number(paymentTotals.debit)!==115||Number(paymentTotals.credit)!==115)throw new Error(`Reglement desequilibre ${JSON.stringify(paymentTotals)}`);
   const bankPreview=(await db.query("select public.preview_accounting_export($1,'bank','2026-07-01','2026-07-31','csv_aux_separate',true) result",[company])).rows[0].result;
   if(Number(bankPreview.entry_count)!==1||!bankPreview.entries[0]?.balanced)throw new Error('Journal de banque incomplet.');
+  const bankCustomerLine=bankPreview.entries[0]?.lines?.find(row=>row.account_code==='411SOLUNEO');
+  if(!bankCustomerLine||bankCustomerLine.auxiliary_code!==null||bankCustomerLine.auxiliary_label!==null)throw new Error(`Compte client du règlement incorrect ${JSON.stringify(bankCustomerLine)}`);
   const vatPreview=(await db.query("select public.preview_vat_cash_collection($1,'2026-07-01','2026-07-31',true) result",[company])).rows[0].result;
   const vat10Collected=vatPreview.lines.find(row=>Number(row.tax_rate)===10),vat20Collected=vatPreview.lines.find(row=>Number(row.tax_rate)===20);
   if(Number(vatPreview.total_collected)!==115||Number(vatPreview.total_tax_base)!==100||Number(vatPreview.total_vat)!==15||
@@ -150,6 +174,16 @@ async function main(){
 
   const audit=(await db.query("select count(*)::int count from public.accounting_config_history where company_id=$1 and table_name in('accounting_settings','accounting_fiscal_years')",[company])).rows[0];
   if(Number(audit.count)<2)throw new Error('Historique des paramètres comptables incomplet.');
+
+  await db.query("update public.accounting_settings set customer_account_mode='collective_auxiliary' where company_id=$1",[company]);
+  const collectiveDocument={...document,issue_date:'2026-07-27',due_date:'2026-08-26',subject:'Facture mode collectif explicite'};
+  const collectiveLines=lines.map(line=>({...line,id:crypto.randomUUID()}));
+  const collectiveDraft=(await db.query('select public.save_document_draft(null,$1::jsonb,$2::jsonb) result',[JSON.stringify(collectiveDocument),JSON.stringify(collectiveLines)])).rows[0].result;
+  await db.query('select public.finalize_document($1)',[collectiveDraft.id]);
+  const collectiveLine=(await db.query("select line.account_code,line.auxiliary_code from public.accounting_entry_lines line join public.accounting_entries entry on entry.id=line.entry_id where entry.document_id=$1 and line.third_party_id=$2",[collectiveDraft.id,client])).rows[0];
+  if(collectiveLine?.account_code!=='411'||!collectiveLine?.auxiliary_code)
+    throw new Error(`Le mode collectif explicite n'est plus disponible ${JSON.stringify(collectiveLine)}`);
+  await db.query("update public.accounting_settings set customer_account_mode='individualized' where company_id=$1",[company]);
 
   await db.close();
   console.log(JSON.stringify({ok:true,documentNumber:finalized.number,reconciledQuoteNumber,reconciledQuoteNext,entryId:entry.id,totals,vatLines,

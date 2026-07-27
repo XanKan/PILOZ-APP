@@ -18,6 +18,7 @@ const m73=read('supabase/migrations/202607260073_sales_terms_snapshots_and_sync_
 const m74=read('supabase/migrations/202607260074_external_sync_observability.sql');
 const m85=read('supabase/migrations/202607260085_accounting_export_backfill_diagnostics.sql');
 const m86=read('supabase/migrations/202607270086_accounting_customer_auxiliaries.sql');
+const m88=read('supabase/migrations/202607270088_individualized_customer_accounts.sql');
 
 const browserSources=[index,ui,read('assets/js/modules/subscription/site-offer.js')].join('\n');
 const checks={
@@ -42,7 +43,7 @@ const checks={
  proprietary_formats_disabled:m72.includes("'proprietary','to_configure'")&&!m72.includes("'proprietary','available'"),
  fec_not_falsely_certified:m72.includes('Revue comptable requise')&&ui.includes('Revue comptable requise'),
  accounting_legacy_backfill_visible:m85.includes('_piloz_accounting_document_is_final')&&m85.includes('diagnose_accounting_export')&&m85.includes("'failures',failure_details")&&ui.includes('previewExport:previewExportDetailed')&&ui.includes('Toutes les écritures de cette période ont déjà été incluses dans un export validé.'),
- accounting_customer_auxiliary:m86.includes("customer_collective_account set default '411'")&&m86.includes("identifier~'^[A-Z0-9]{1,10}$'")&&m86.includes("'auxiliary_max_length'")&&ui.includes('Compte auxiliaire')&&ui.includes('accountingExportLineRows'),
+ accounting_customer_individualized:m88.includes("customer_account_mode text not null default 'individualized'")&&m88.includes('normalized_customer_account_suffix')&&m88.includes('ensure_client_individual_account')&&m88.includes('individual_account_code')&&ui.includes('Compte client individualisé dans CompteNum')&&ui.includes('411SOLUNEO')&&ui.includes('accountingExportLineRows'),
  company_isolation:m71.includes('public.is_company_member(company_id)')&&m71.includes("connection_scope in('personal','shared','company')")&&m72.includes("connection.connection_scope in('shared','company')")&&m72.includes('enable row level security')&&m74.includes('public.is_company_member(company_id)')
 };
 
