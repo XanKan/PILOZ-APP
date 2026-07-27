@@ -35,5 +35,7 @@ for(const token of ['Période précédente','Analyse des devis','Prévisions','c
 for(const token of ['name="contact_id"','name="document_id"','name="meeting_url"','cancelActivity'])assert(ui.includes(token),`activité enrichie ${token} absente`);
 assert(css.includes('position:fixed')&&css.includes('width:min(780px'),'modale CRM non centrée');
 assert(css.includes('@media(max-width:900px)')&&css.includes('@media(max-width:560px)'),'responsive CRM absent');
+assert(ui.includes('pipelineDecorationScheduled')&&ui.includes('requestAnimationFrame(()=>{pipelineDecorationScheduled=false'),'protection anti-boucle de rendu du pipeline absente');
+assert(ui.includes("option.textContent!==priorityLabel")&&!ui.includes("queueMicrotask(decoratePipeline)"),'décoration du pipeline non idempotente');
 
-process.stdout.write(JSON.stringify({ok:true,navigation:true,pipeline:true,party_picker:true,opportunity_modal:true,context_actions:true,activities:true,reports:true,document_amount:true,prospect_conversion:true,security:true,responsive:true})+'\n');
+process.stdout.write(JSON.stringify({ok:true,navigation:true,pipeline:true,pipeline_render_guard:true,party_picker:true,opportunity_modal:true,context_actions:true,activities:true,reports:true,document_amount:true,prospect_conversion:true,security:true,responsive:true})+'\n');
