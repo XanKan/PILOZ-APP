@@ -594,8 +594,16 @@ async function syncIncoming(userClient: SupabaseClient, adminClient: SupabaseCli
   const token = await superPdpToken();
   await verifiedSandbox(token);
   const connector = await connectorFor(adminClient, companyId);
-  const list = await superPdpRequest("/v1.beta/invoices?direction=incoming&limit=100", token);
-  if (!list.response.ok) throw Object.assign(new Error("superpdp_incoming_list_failed"), { status: 502 });
+  // SUPER PDP exposes the wire values `in` and `out` for this filter.
+  // `incoming` remains the internal value stored in PILOZ's audit tables.
+  const list = await superPdpRequest("/v1.beta/invoices?direction=in&limit=100", token);
+  if (!list.response.ok) {
+    console.error("[PILOZ SUPER PDP] liste des factures entrantes refusée", {
+      status: list.response.status,
+      providerCode: text(object(list.payload).code, object(list.payload).error),
+    });
+    throw Object.assign(new Error("superpdp_incoming_list_failed"), { status: 502 });
+  }
   const results = [];
   for (const item of providerItems(list.payload)) {
     try { results.push(await importIncomingInvoice(adminClient, companyId, connector, token, item)); }
@@ -664,6 +672,7 @@ Deno.serve(async req => {
       superpdp_buyer_electronic_address_required: "L’identifiant électronique du client est manquant.",
       superpdp_xml_unavailable: "Aucun XML électronique n’est encore disponible pour ce document.",
       superpdp_invoice_send_failed: "SUPER PDP a refusé cette facture dans le bac à sable.",
+      superpdp_incoming_list_failed: "SUPER PDP n’a pas pu fournir la liste des factures reçues. Vérifiez que l’entreprise sandbox est bien validée, puis réessayez.",
     };
     return json({ error: messages[code] || "L’opération SUPER PDP n’a pas pu aboutir.", code }, status);
   }
