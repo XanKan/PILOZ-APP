@@ -21,6 +21,7 @@ assert(accounting.includes("api().invoke('export-fiscal-archive',{archiveId})"),
 assert(accounting.includes("value==='valid'?'signed':value==='not_configured'?'unsigned':'invalid'"),'statut signé ou non signé non géré');
 assert(accounting.includes("Archive créée, vérifiée et téléchargée sans signature KMS."),'export sans KMS non confirmé explicitement');
 assert(accounting.includes("error?.detail"),'détail contrôlé des erreurs d’archive non exploité');
+assert(accounting.includes("||detail||error?.message"),'cause Edge Function encore masquée par un message générique');
 assert(api.includes("failure.detail=typeof data?.detail==='string'?data.detail:''"),'détail Edge Function non conservé par le client API');
 assert(edge.includes('fiscal_archive_signing_unavailable')&&!edge.includes('throw new Error(signerStatus.reason || "KMS_UNAVAILABLE")'),'échec KMS encore bloquant pour une archive non signée');
 assert(accounting.includes('target_allow_incomplete:false'),'une archive incomplète peut être créée depuis l’interface');
