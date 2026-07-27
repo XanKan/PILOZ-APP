@@ -37,14 +37,14 @@
     try{
       PilozModern.renderNavigation(document.getElementById('tabs'),state,'sales/quotes');
       const rail=document.querySelector('.rail'),items=[...document.querySelectorAll('.modern-primary-item')],secondary=document.querySelector('.modern-secondary-panel');
-      checks.push(['sept rubriques principales',items.length===7]);
-      checks.push(['rubriques attendues',items.map(x=>x.textContent.trim()).join('|')==='Tableau de bord|Suivi commercial|Ventes|Achats|Bibliothèque|Rapports|Paramètres']);
+      checks.push(['cinq rubriques principales',items.length===5]);
+      checks.push(['rubriques attendues',items.map(x=>x.textContent.trim()).join('|')==='Tableau de bord|Suivi commercial|Ventes|Achats|Bibliothèque']);
       checks.push(['stock masqué de la navigation',!items.some(x=>x.textContent.trim()==='Stock')]);
       checks.push(['ventes active',document.querySelector('.modern-primary-item.active')?.textContent.trim()==='Ventes']);
       checks.push(['sous-menu visible',!!secondary&&secondary.textContent.includes('Devis')&&secondary.textContent.includes('Factures')]);
       checks.push(['aucune vue d’ensemble',!document.getElementById('tabs').textContent.includes('Vue d’ensemble')]);
-      checks.push(['échéances clients présentes',secondary.textContent.includes('Échéances clients')]);
-      checks.push(['clients et catalogue retirés des ventes',!secondary.textContent.includes('Clients')&&!secondary.textContent.includes('Articles & main d’œuvre')]);
+      checks.push(['échéances présentes',secondary.textContent.includes('Échéances')]);
+      checks.push(['sous-menu ventes normalisé',[...secondary.querySelectorAll('.modern-secondary-item')].map(x=>x.textContent.trim()).join('|')==='Devis|Factures|Échéances|Clients']);
       checks.push(['rail clair',getComputedStyle(rail).backgroundColor==='rgb(255, 255, 255)']);
       const brandLogo=document.querySelector('.plogo'),brandImage=brandLogo.querySelector('img');
       checks.push(['logo PILOZ chargé',brandImage.complete&&brandImage.naturalWidth>0]);

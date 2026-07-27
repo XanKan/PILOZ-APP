@@ -34,6 +34,7 @@ for(const route of ['crm/pipeline','crm/prospects','crm/activities','crm/automat
 assert(crm.includes("row.pipeline_stage_id=stageId")&&crm.includes("row.pipeline_stage_id=previous"),'optimisme/rollback du glisser-déposer absent');
 assert(crm.includes("close_crm_opportunity")&&crm.includes("Motif de perte"),'clôture gagnée/perdue incomplète');
 assert(crm.includes("get_crm_opportunity_detail")&&crm.includes("get_crm_prospect_detail"),'fiches détaillées non branchées');
+assert(crm.includes("PilozModern.openDocumentInViewer('")&&!crm.includes('PilozApp.editDocument('),'documents CRM ouverts en consultation');
 assert(crm.includes("create_crm_activity")&&crm.includes("complete_crm_activity"),'cycle des activités incomplet');
 assert(crm.includes("Recalculer")&&crm.includes("recalculate_crm_score"),'scoring explicable non branché');
 assert(crm.includes("Aucun e-mail ne sera considéré comme envoyé")||crm.includes("aucun envoi ne sera simulé")||crm.includes("aucun envoi fictif"),'garde-fou connecteur e-mail absent');
