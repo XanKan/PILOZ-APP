@@ -67,7 +67,7 @@ npx.cmd --yes supabase@2.109.1 secrets list --project-ref hpxcbemezvynofxiffzs
 
 ## 4. Déployer la base et l'Edge Function
 
-Appliquer d'abord la migration `202607270095_fiscal_archive_kms_signatures.sql`, puis déployer `export-fiscal-archive` :
+Appliquer les migrations jusqu’à `202607270096_fix_fiscal_archive_signature_registration.sql`, puis déployer `export-fiscal-archive` :
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
@@ -89,7 +89,7 @@ Au premier export d'une archive non signée, l'Edge Function :
 4. l'inscrit de façon immuable ;
 5. journalise l'événement et l'export avec le statut `valid`.
 
-Contrôler ensuite qu'une ligne existe dans `fiscal_archive_signatures`, que `company_fiscal_configurations.signing_status` vaut `configured` et que l'export JSON contient `signature.status=valid`. En cas de KMS configuré mais inaccessible ou de signature invalide, l'export est bloqué.
+Contrôler ensuite qu'une ligne existe dans `fiscal_archive_signatures`, que `company_fiscal_configurations.signing_status` vaut `configured` et que l'export JSON contient `signature.status=valid`. Une signature invalide bloque toujours l’export. Si KMS n’est pas disponible avant toute signature, le paquet reste exportable mais porte explicitement le statut `not_configured` et ne doit jamais être présenté comme signé.
 
 ## Limites restantes
 

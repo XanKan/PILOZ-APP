@@ -94,7 +94,14 @@ Deno.serve(async req => {
           target_signed_by: user.id,
           target_metadata: { source: "export-fiscal-archive", verified_before_registration: true },
         });
-        if (registerSignatureError) throw new Error("KMS_SIGNATURE_REGISTRATION_FAILED");
+        if (registerSignatureError) {
+          console.error("fiscal_archive_signature_registration_failed", {
+            archiveId: archive.id,
+            code: registerSignatureError.code || "unknown",
+            message: registerSignatureError.message,
+          });
+          throw new Error(`KMS_SIGNATURE_REGISTRATION_FAILED:${registerSignatureError.code || "unknown"}:${registerSignatureError.message}`);
+        }
         signatureRecord = {
           digest_sha256: archive.archive_hash,
           provider: signerStatus.provider,

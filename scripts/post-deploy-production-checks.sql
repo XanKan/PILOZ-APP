@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607270095' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607270096' ok
   union all
   select 'company_access_system_roles',count(*)::text,count(*)=0
   from public.companies company
