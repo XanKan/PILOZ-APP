@@ -246,6 +246,7 @@
   ]],
   ['Documents et administration',[
    ['settings/templates','Modèles de documents','Thèmes, logos, couleurs, colonnes, pieds de page et CGV.','✎'],
+   ['settings/einvoicing','Facturation électronique','Connexion SUPER PDP, conversion Factur-X et suivi des échanges en bac à sable.','⇄'],
    ['settings/data','Notifications et données','Exports, journal d’activité et gestion des données.','⇩']
   ]]
  ];
