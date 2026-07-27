@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607270094' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607270095' ok
   union all
   select 'company_access_system_roles',count(*)::text,count(*)=0
   from public.companies company
@@ -353,6 +353,16 @@ with controls as(
   from public.accounting_export_adapters
   where adapter_group='proprietary' and availability='available'
   union all
+  select 'fiscal_archive_signatures_rls',coalesce(relrowsecurity::text,'missing'),coalesce(relrowsecurity,false)
+  from (select relrowsecurity from pg_class where oid=to_regclass('public.fiscal_archive_signatures')) signature_table
+  union all
+  select 'fiscal_archive_signature_rpc',
+    coalesce(to_regprocedure('public.register_fiscal_archive_signature(uuid,text,text,text,text,text,uuid,jsonb)')::text,'missing'),
+    to_regprocedure('public.register_fiscal_archive_signature(uuid,text,text,text,text,text,uuid,jsonb)') is not null
+      and not has_function_privilege('anon','public.register_fiscal_archive_signature(uuid,text,text,text,text,text,uuid,jsonb)','EXECUTE')
+      and not has_function_privilege('authenticated','public.register_fiscal_archive_signature(uuid,text,text,text,text,text,uuid,jsonb)','EXECUTE')
+      and has_function_privilege('service_role','public.register_fiscal_archive_signature(uuid,text,text,text,text,text,uuid,jsonb)','EXECUTE')
+  union all
   select 'production_without_kms',count(*)::text,count(*)=0
   from public.company_fiscal_configurations
   where mode='production' and activation_status='production_active'
@@ -368,7 +378,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607270094',
+  'schema_version','202607270095',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;

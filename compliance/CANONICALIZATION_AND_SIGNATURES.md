@@ -16,4 +16,8 @@ L'utilitaire Edge fournit aussi un tri récursif des clés JSON pour les futurs 
 
 ## Signature
 
-Les colonnes `signature` et `signature_key_id` restent nulles. Les clôtures sont marquées `unsigned`; les rapports indiquent `not_available_without_kms`. L'activation de production devra être bloquée jusqu'à configuration d'un KMS/HSM, rotation, révocation, conservation des clés publiques et tests de vérification hors application.
+Les archives fiscales peuvent être signées par une clé asymétrique AWS KMS `SIGN_VERIFY`. Piloz transmet uniquement leur empreinte SHA-256 avec `MessageType=DIGEST`, utilise par défaut `RSASSA_PSS_SHA_256`, vérifie immédiatement le résultat auprès du KMS, puis conserve la signature et ses métadonnées dans `fiscal_archive_signatures`. Cette table est append-only, protégée par RLS et séparée de l'archive déjà figée.
+
+Sans secrets KMS, l'export reste explicitement `unsigned` et aucune signature n'est simulée. Le manifeste de release conserve `kms_configured=false` tant que la clé réelle n'est pas activée et testée en production. Les clôtures fiscales restent encore `unsigned` : leur signature devra être raccordée séparément avant toute revendication de conformité globale.
+
+La configuration opérationnelle, les droits IAM minimaux, la rotation et le test sont décrits dans `docs/AWS_KMS_FISCAL_SIGNATURES.md`. Une signature KMS améliore l'intégrité et la preuve d'altération ; elle ne constitue pas à elle seule une certification NF525/NF203 ou une signature électronique qualifiée.

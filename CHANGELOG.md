@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0-compliance.49 — 27 juillet 2026
+
+- Ajoute un connecteur AWS KMS asymétrique serveur pour signer et vérifier les empreintes SHA-256 des archives fiscales.
+- Enregistre les signatures dans un registre append-only isolé par entreprise, avec RLS et traçabilité fiscale.
+- Signe automatiquement une archive au premier export lorsque le KMS est configuré et bloque l'export si une signature existante est invalide.
+- Maintient honnêtement `kms_configured=false` dans le manifeste tant que la clé AWS et les secrets Supabase ne sont pas activés en production.
+
 ## 0.9.0-compliance.48 — 27 juillet 2026
 
 - ajout de la recherche INPI dans la création rapide d’un client ou prospect depuis le pipeline, avec conservation des informations officielles sélectionnées ;

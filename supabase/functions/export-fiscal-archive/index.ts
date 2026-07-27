@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { fiscalSigner, type FiscalSignature } from "../_shared/fiscal-crypto.ts";
 import { corsHeaders, json } from "../_shared/http.ts";
 
 const MAX_ARCHIVE_BYTES = 50 * 1024 * 1024;
@@ -13,7 +14,9 @@ function base64(bytes: Uint8Array) {
 
 async function sha256(value: Uint8Array | string) {
   const bytes = typeof value === "string" ? new TextEncoder().encode(value) : value;
-  return [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))]
+  const buffer = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(buffer).set(bytes);
+  return [...new Uint8Array(await crypto.subtle.digest("SHA-256", buffer))]
     .map(byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
@@ -45,6 +48,14 @@ Deno.serve(async req => {
     .eq("company_id", archive.company_id).eq("user_id", user.id).maybeSingle();
   if (!member || !["owner", "admin"].includes(member.role)) return json({ error: "Accès administrateur requis." }, 403);
 
+  const { data: integrityControl, error: integrityError } = await userClient.rpc("verify_fiscal_archive_record", {
+    target_archive_id: archive.id,
+  });
+  if (integrityError || !integrityControl?.valid) {
+    console.error("fiscal_archive_integrity_failed", { archiveId: archive.id, code: integrityError?.code || "invalid" });
+    return json({ error: "L'intégrité de l'archive n'a pas pu être confirmée." }, 409);
+  }
+
   const { data: items, error: itemsError } = await userClient.from("fiscal_archive_items")
     .select("*").eq("archive_id", archive.id).order("relative_path");
   if (itemsError) return json({ error: "Le manifeste d'archive est indisponible." }, 500);
@@ -52,6 +63,57 @@ Deno.serve(async req => {
   const files: Array<Record<string, unknown>> = [];
   let totalBytes = 0;
   try {
+    const { data: storedSignature, error: storedSignatureError } = await admin
+      .from("fiscal_archive_signatures")
+      .select("digest_sha256,provider,key_id,algorithm,signature_base64,signed_at")
+      .eq("archive_id", archive.id)
+      .maybeSingle();
+    if (storedSignatureError) throw new Error("SIGNATURE_REGISTER_UNAVAILABLE");
+
+    let signatureRecord = storedSignature;
+    if (!signatureRecord) {
+      const signerStatus = await fiscalSigner.status();
+      if (signerStatus.provider !== "none" && !signerStatus.configured) {
+        throw new Error(signerStatus.reason || "KMS_UNAVAILABLE");
+      }
+      if (signerStatus.configured) {
+        const newSignature = await fiscalSigner.signDigest(archive.archive_hash);
+        const verified = await fiscalSigner.verifyDigest(archive.archive_hash, newSignature);
+        if (!verified) throw new Error("KMS_SIGNATURE_INVALID");
+        const { error: registerSignatureError } = await admin.rpc("register_fiscal_archive_signature", {
+          target_archive_id: archive.id,
+          target_digest_sha256: archive.archive_hash,
+          target_provider: signerStatus.provider,
+          target_key_id: newSignature.keyId,
+          target_algorithm: newSignature.algorithm,
+          target_signature_base64: newSignature.signatureBase64,
+          target_signed_by: user.id,
+          target_metadata: { source: "export-fiscal-archive", verified_before_registration: true },
+        });
+        if (registerSignatureError) throw new Error("KMS_SIGNATURE_REGISTRATION_FAILED");
+        signatureRecord = {
+          digest_sha256: archive.archive_hash,
+          provider: signerStatus.provider,
+          key_id: newSignature.keyId,
+          algorithm: newSignature.algorithm,
+          signature_base64: newSignature.signatureBase64,
+          signed_at: new Date().toISOString(),
+        };
+      }
+    }
+
+    let verificationStatus: "valid" | "unsigned" = "unsigned";
+    if (signatureRecord) {
+      if (signatureRecord.digest_sha256 !== archive.archive_hash) throw new Error("KMS_SIGNATURE_DIGEST_MISMATCH");
+      const signature: FiscalSignature = {
+        algorithm: signatureRecord.algorithm,
+        keyId: signatureRecord.key_id,
+        signatureBase64: signatureRecord.signature_base64,
+      };
+      if (!(await fiscalSigner.verifyDigest(archive.archive_hash, signature))) throw new Error("KMS_SIGNATURE_INVALID");
+      verificationStatus = "valid";
+    }
+
     for (const item of items || []) {
       if (item.content_status === "missing") throw new Error(`Élément manquant : ${item.relative_path}`);
       if (item.content_status === "embedded") {
@@ -68,7 +130,6 @@ Deno.serve(async req => {
       files.push({ relative_path: item.relative_path, encoding: "base64", content: base64(bytes) });
     }
     const packageHash = await sha256(`${archive.manifest_hash}|${(items || []).map(item => item.content_hash).join("|")}`);
-    const verificationStatus = archive.signature ? "not_verified" : "unsigned";
     const { error: registerError } = await userClient.rpc("register_fiscal_archive_export", {
       target_archive_id: archive.id,
       target_export_format: "json_bundle",
@@ -82,10 +143,13 @@ Deno.serve(async req => {
       manifest: archive.manifest,
       manifest_hash: archive.manifest_hash,
       database_archive_hash: archive.archive_hash,
-      signature: archive.signature ? {
-        status: "present_requires_public_key",
-        value: archive.signature,
-        key_id: archive.signature_key_id,
+      signature: signatureRecord ? {
+        status: "valid",
+        provider: signatureRecord.provider,
+        value: signatureRecord.signature_base64,
+        key_id: signatureRecord.key_id,
+        algorithm: signatureRecord.algorithm,
+        signed_at: signatureRecord.signed_at,
       } : { status: "not_configured" },
       package_hash: packageHash,
       files,

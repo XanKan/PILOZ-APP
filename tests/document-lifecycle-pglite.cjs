@@ -501,8 +501,25 @@ async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[],cli
       throw new Error(`archive: manifest items are incomplete ${JSON.stringify(archiveItems.rows)}`);
     const archiveMutation=await db.query("update public.fiscal_archives set integrity_status='signed' where id=$1",[archiveId]).then(()=>null,error=>error);
     if(!archiveMutation||!/(immutable_fiscal_record|permission denied)/.test(archiveMutation.message))throw new Error('archive: frozen record must be immutable');
-    const archiveExport=await db.query("select public.register_fiscal_archive_export($1,'json_bundle',null,'unsigned') result",[archiveId]);
+    const archiveHash=(await db.query('select archive_hash from public.fiscal_archives where id=$1',[archiveId])).rows[0].archive_hash;
+    await db.exec(`reset role; set request.jwt.claim.role='service_role'; set request.jwt.claim.sub='${actor}'; set role service_role;`);
+    const registeredSignature=await db.query("select public.register_fiscal_archive_signature($1,$2,'aws-kms','arn:aws:kms:eu-west-3:123456789012:key/test','RSASSA_PSS_SHA_256',$3,$4,jsonb_build_object('test',true)) result",
+      [archiveId,archiveHash,'A'.repeat(344),actor]);
+    if(registeredSignature.rows[0].result?.status!=='valid'||registeredSignature.rows[0].result?.created!==true)
+      throw new Error(`archive: KMS signature was not registered ${JSON.stringify(registeredSignature.rows[0].result)}`);
+    await db.exec(`reset role; set request.jwt.claim.role='authenticated'; set request.jwt.claim.sub='${actor}'; set role authenticated;`);
+    const signedArchiveControl=await db.query('select public.verify_fiscal_archive_record($1) result',[archiveId]);
+    if(!signedArchiveControl.rows[0].result?.valid||signedArchiveControl.rows[0].result?.signature_status!=='verification_requires_kms')
+      throw new Error(`archive: registered signature is not exposed ${JSON.stringify(signedArchiveControl.rows[0].result)}`);
+    const signatureMutation=await db.query("update public.fiscal_archive_signatures set signature_base64=$2 where archive_id=$1",[archiveId,'B'.repeat(344)]).then(()=>null,error=>error);
+    if(!signatureMutation||!/(immutable_fiscal_record|permission denied)/.test(signatureMutation.message))throw new Error('archive: signature record must be immutable');
+    const archiveExport=await db.query("select public.register_fiscal_archive_export($1,'json_bundle',null,'valid') result",[archiveId]);
     if(!archiveExport.rows[0].result)throw new Error('archive: export event was not recorded');
+    await db.exec("reset role; update public.company_fiscal_configurations set mode='production',activation_status='production_active' where company_id='"+company+"';");
+    await db.exec(`set request.jwt.claim.role='authenticated'; set request.jwt.claim.sub='${actor}'; set role authenticated;`);
+    const productionArchive=await db.query("select public.create_fiscal_archive($1,date_trunc('day',clock_timestamp())-interval '1 day',date_trunc('day',clock_timestamp()),false) result",[company]);
+    const productionManifest=await db.query("select manifest->>'signature_status' signature_status from public.fiscal_archives where id=$1",[productionArchive.rows[0].result]);
+    if(productionManifest.rows[0]?.signature_status!=='pending_kms')throw new Error('archive: KMS-ready production archive was blocked or not marked pending');
     const canonical=await db.query('select public.create_canonical_invoice_record($1) result',[invoice.id]);
     if(canonical.rows[0].result?.status!=='valid'||!canonical.rows[0].result?.canonical_hash)
       throw new Error(`electronic invoice: canonical model is invalid ${JSON.stringify(canonical.rows[0].result)}`);
