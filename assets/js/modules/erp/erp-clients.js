@@ -78,6 +78,7 @@
     ["coordinates", "Coordonnées"],
     ["contacts", "Contacts"],
     ["addresses", "Adresses"],
+    ["opportunities", "Opportunités"],
     ["quotes", "Devis"],
     ["invoices", "Factures"],
     ["payments", "Paiements"],
@@ -88,6 +89,23 @@
     ["notes", "Notes"],
     ["history", "Historique"],
   ];
+  const clientDocumentColumns = [
+    "id",
+    "document_type",
+    "number",
+    "status",
+    "subject",
+    "issue_date",
+    "due_date",
+    "validity_date",
+    "contact_id",
+    "total_excl_tax",
+    "total_incl_tax",
+    "currency",
+    "validated_at",
+    "finalized_at",
+    "updated_at",
+  ].join(",");
   const defaultColumns = [
     "select",
     "client",
@@ -761,9 +779,17 @@
           `client_id=eq.${cid}`,
           `order=is_primary.desc,active.desc,created_at`,
         ]);
+      else if (tab === "opportunities")
+        rows = (state.data.opportunities || [])
+          .filter((opportunity) => opportunity.client_id === id)
+          .sort(
+            (a, b) =>
+              new Date(b.updated_at || b.created_at || 0) -
+              new Date(a.updated_at || a.created_at || 0),
+          );
       else if (tab === "quotes")
         rows = await queryPath("documents", [
-          `select=*`,
+          `select=${clientDocumentColumns}`,
           `client_id=eq.${cid}`,
           `document_type=eq.quote`,
           `order=issue_date.desc`,
@@ -771,7 +797,7 @@
         ]);
       else if (tab === "invoices")
         rows = await queryPath("documents", [
-          `select=*`,
+          `select=${clientDocumentColumns}`,
           `client_id=eq.${cid}`,
           `document_type=in.(invoice,deposit_invoice,balance_invoice,credit_note)`,
           `order=issue_date.desc`,
@@ -946,16 +972,51 @@
       ],
     )}</section><section class="client-card"><header><h2>Prochaine attention</h2>${button("Ajouter une activité", `PilozClients.openActivityModal('${id}')`, "btn-ghost")}</header>${Number(s.metrics?.overdue) ? `<div class="client-alert danger"><b>${s.metrics.overdue} facture(s) en retard</b><span>Consultez les échéances pour organiser la relance.</span></div>` : '<div class="client-alert success"><b>Aucun retard détecté</b><span>La situation client est à jour.</span></div>'}<p class="client-muted">${nextActivity ? `${esc(nextActivity.subject)} · ${datetime(nextActivity.due_at || nextActivity.scheduled_at)}` : `${Number(s.metrics?.open_activities) || 0} activité(s) encore ouverte(s).`}</p></section><section class="client-card wide"><header><h2>Derniers devis</h2>${button("Voir tous", `PilozClients.setTab('${id}','quotes')`, "btn-ghost")}</header>${miniDocuments(quotes)}</section><section class="client-card wide"><header><h2>Dernières factures</h2>${button("Voir toutes", `PilozClients.setTab('${id}','invoices')`, "btn-ghost")}</header>${miniDocuments(invoices)}</section><section class="client-card"><header><h2>Derniers paiements</h2>${button("Voir tous", `PilozClients.setTab('${id}','payments')`, "btn-ghost")}</header>${payments.map((payment) => `<article class="client-note-mini"><b>${money(payment.amount, payment.currency)}</b><p>${esc(payment.payment_method || "Paiement")} · ${esc(payment.reference || "sans référence")}</p><small>${datetime(payment.paid_at)}</small></article>`).join("") || '<p class="client-muted">Aucun paiement.</p>'}</section><section class="client-card"><header><h2>Documents récents</h2>${button("Voir tous", `PilozClients.setTab('${id}','documents')`, "btn-ghost")}</header>${files.map((file) => `<article class="client-note-mini"><b>${esc(file.file_name)}</b><p>${esc(file.document_type || "Document")}</p><small>${date(file.document_date || file.created_at)}</small></article>`).join("") || '<p class="client-muted">Aucun document joint.</p>'}</section><section class="client-card"><header><h2>Notes épinglées</h2>${button("Ajouter", `PilozClients.openNoteModal('${id}')`, "btn-ghost")}</header>${(data.extra.notes || []).map((x) => `<article class="client-note-mini"><b>Note</b><p>${esc(x.body)}</p><small>${date(x.updated_at)}</small></article>`).join("") || '<p class="client-muted">Aucune note épinglée.</p>'}</section><section class="client-card timeline-card"><header><h2>Chronologie récente</h2>${button("Historique complet", `PilozClients.setTab('${id}','history')`, "btn-ghost")}</header>${data.rows.length ? eventTimeline(data.rows) : '<p class="client-muted">Aucun événement récent.</p>'}</section></div>`;
   }
+  function openDocumentAction(id) {
+    return `PilozModern.openDocumentInViewer('${id}')`;
+  }
   function miniDocuments(rows) {
     return rows.length
       ? `<div class="client-mini-docs">${rows
           .slice(0, 5)
           .map(
             (x) =>
-              `<button onclick="PilozApp.editDocument('${x.id}')"><span><b>${esc(x.number || "Brouillon")}</b><small>${esc(x.subject || date(x.issue_date))}</small></span><strong>${money(x.total_incl_tax)}</strong></button>`,
+              `<button onclick="${openDocumentAction(x.id)}"><span><b>${esc(x.number || "Brouillon")}</b><small>${esc(x.subject || date(x.issue_date))}</small></span><strong>${money(x.total_incl_tax)}</strong></button>`,
           )
           .join("")}</div>`
       : '<p class="client-muted">Aucun document.</p>';
+  }
+  function opportunityStage(row, state) {
+    return (
+      (state.data.pipelineStages || []).find(
+        (stage) => stage.id === row.stage_id,
+      )?.name ||
+      row.stage ||
+      row.forecast_category ||
+      "Non classée"
+    );
+  }
+  function renderOpportunities(data, state) {
+    const documents = state.data.documents || [];
+    return `<section class="client-section-heading"><div><h2>Historique des opportunités</h2><p>${data.rows.length} opportunité${data.rows.length > 1 ? "s" : ""} liée${data.rows.length > 1 ? "s" : ""} à ce client.</p></div></section>${
+      data.rows.length
+        ? `<div class="client-doc-table"><table><thead><tr><th>Opportunité</th><th>Étape</th><th>Montant</th><th>Probabilité</th><th>Clôture prévue</th><th>Devis</th><th>Factures</th><th>Dernière évolution</th></tr></thead><tbody>${data.rows
+            .map((row) => {
+              const linked = documents.filter(
+                  (document) => document.opportunity_id === row.id,
+                ),
+                quotes = linked.filter(
+                  (document) => document.document_type === "quote",
+                ).length,
+                invoices = linked.length - quotes;
+              return `<tr onclick="PilozApp.go('crm/opportunities/${row.id}')"><td><b>${esc(row.name || "Opportunité")}</b></td><td><span class="modern-status neutral">${esc(opportunityStage(row, state))}</span></td><td><b>${money(row.actual_amount ?? row.amount ?? row.estimated_amount, row.currency)}</b></td><td>${Number(row.probability) || 0} %</td><td>${date(row.expected_close_date)}</td><td>${quotes}</td><td>${invoices}</td><td>${date(row.updated_at || row.created_at)}</td></tr>`;
+            })
+            .join("")}</tbody></table></div>`
+        : empty(
+            "Aucune opportunité",
+            "Les opportunités commerciales liées à ce client apparaîtront ici.",
+          )
+    }`;
   }
   function coordinatesForm(id, c, state, data = { extra: {} }) {
     const professional = c.kind !== "person";
@@ -1107,11 +1168,11 @@
   function renderDocumentsTab(id, data, kind) {
     const isQuote = kind === "quote",
       rows = data.rows;
-    return `<section class="client-section-heading"><div><h2>${isQuote ? "Devis" : "Factures"}</h2><p>${rows.length} document${rows.length > 1 ? "s" : ""} lié${rows.length > 1 ? "s" : ""} à ce client.</p></div>${button(isQuote ? "Créer un devis" : "Créer une facture", `PilozApp.newClientDocument('${id}','${isQuote ? "quote" : "invoice"}')`, "btn-p")}</section>${rows.length ? `<div class="client-doc-table"><table><thead><tr><th>Numéro</th><th>Objet</th><th>Émission</th><th>${isQuote ? "Validité" : "Échéance"}</th><th>Contact</th><th>Montant HT</th><th>TTC</th><th>Statut</th><th></th></tr></thead><tbody>${rows.map((row) => `<tr onclick="PilozApp.editDocument('${row.id}')"><td><b>${esc(row.number || "Brouillon")}</b></td><td>${esc(row.subject || "—")}</td><td>${date(row.issue_date)}</td><td>${date(isQuote ? row.validity_date : row.due_date)}</td><td>${esc((currentState.data.clientContacts || []).find((x) => x.id === row.contact_id)?.last_name || "—")}</td><td>${money(row.total_excl_tax, row.currency)}</td><td><b>${money(row.total_incl_tax, row.currency)}</b></td><td><span class="modern-status neutral">${esc(documentStatus(row))}</span></td><td><button onclick="event.stopPropagation();PilozApp.editDocument('${row.id}')">Ouvrir</button></td></tr>`).join("")}</tbody></table></div>` : empty(`Aucun ${isQuote ? "devis" : "facture"}`, `Créez ${isQuote ? "un devis" : "une facture"} depuis cette fiche : le client, son contact et ses adresses seront présélectionnés.`, button(isQuote ? "Créer un devis" : "Créer une facture", `PilozApp.newClientDocument('${id}','${isQuote ? "quote" : "invoice"}')`, "btn-p"))}`;
+    return `<section class="client-section-heading"><div><h2>${isQuote ? "Devis" : "Factures"}</h2><p>${rows.length} document${rows.length > 1 ? "s" : ""} lié${rows.length > 1 ? "s" : ""} à ce client.</p></div>${button(isQuote ? "Créer un devis" : "Créer une facture", `PilozApp.newClientDocument('${id}','${isQuote ? "quote" : "invoice"}')`, "btn-p")}</section>${rows.length ? `<div class="client-doc-table"><table><thead><tr><th>Numéro</th><th>Objet</th><th>Émission</th><th>${isQuote ? "Validité" : "Échéance"}</th><th>Contact</th><th>Montant HT</th><th>TTC</th><th>Statut</th><th></th></tr></thead><tbody>${rows.map((row) => `<tr onclick="${openDocumentAction(row.id)}"><td><b>${esc(row.number || "Brouillon")}</b></td><td>${esc(row.subject || "—")}</td><td>${date(row.issue_date)}</td><td>${date(isQuote ? row.validity_date : row.due_date)}</td><td>${esc((currentState.data.clientContacts || []).find((x) => x.id === row.contact_id)?.last_name || "—")}</td><td>${money(row.total_excl_tax, row.currency)}</td><td><b>${money(row.total_incl_tax, row.currency)}</b></td><td><span class="modern-status neutral">${esc(documentStatus(row))}</span></td><td><button onclick="event.stopPropagation();${openDocumentAction(row.id)}">Ouvrir</button></td></tr>`).join("")}</tbody></table></div>` : empty(`Aucun ${isQuote ? "devis" : "facture"}`, `Créez ${isQuote ? "un devis" : "une facture"} depuis cette fiche : le client, son contact et ses adresses seront présélectionnés.`, button(isQuote ? "Créer un devis" : "Créer une facture", `PilozApp.newClientDocument('${id}','${isQuote ? "quote" : "invoice"}')`, "btn-p"))}`;
   }
   function renderPayments(data) {
     const docs = new Map((data.extra.documents || []).map((x) => [x.id, x]));
-    return `<section class="client-section-heading"><div><h2>Paiements</h2><p>Registre append-only des encaissements et corrections.</p></div></section>${data.rows.length ? `<div class="client-doc-table"><table><thead><tr><th>Date</th><th>Facture</th><th>Montant</th><th>Mode</th><th>Référence</th><th>Statut</th><th>Enregistré par</th></tr></thead><tbody>${data.rows.map((row) => `<tr onclick="PilozApp.editDocument('${row.document_id}')"><td>${datetime(row.paid_at)}</td><td><b>${esc(docs.get(row.document_id)?.number || "—")}</b></td><td>${money(row.amount, row.currency)}</td><td>${esc(row.payment_method || "—")}</td><td>${esc(row.reference || "—")}</td><td>${esc(row.entry_type === "payment" ? "Paiement" : row.entry_type || row.status)}</td><td>${esc(memberName(currentState, row.created_by))}</td></tr>`).join("")}</tbody></table></div>` : empty("Aucun paiement", "Les paiements enregistrés depuis les factures apparaîtront ici.")}`;
+    return `<section class="client-section-heading"><div><h2>Paiements</h2><p>Registre append-only des encaissements et corrections.</p></div></section>${data.rows.length ? `<div class="client-doc-table"><table><thead><tr><th>Date</th><th>Facture</th><th>Montant</th><th>Mode</th><th>Référence</th><th>Statut</th><th>Enregistré par</th></tr></thead><tbody>${data.rows.map((row) => `<tr onclick="${openDocumentAction(row.document_id)}"><td>${datetime(row.paid_at)}</td><td><b>${esc(docs.get(row.document_id)?.number || "—")}</b></td><td>${money(row.amount, row.currency)}</td><td>${esc(row.payment_method || "—")}</td><td>${esc(row.reference || "—")}</td><td>${esc(row.entry_type === "payment" ? "Paiement" : row.entry_type || row.status)}</td><td>${esc(memberName(currentState, row.created_by))}</td></tr>`).join("")}</tbody></table></div>` : empty("Aucun paiement", "Les paiements enregistrés depuis les factures apparaîtront ici.")}`;
   }
   function renderSchedules(data) {
     const docs = new Map((data.extra.documents || []).map((x) => [x.id, x])),
@@ -1127,7 +1188,7 @@
                 days = Math.ceil(
                   (new Date(today) - new Date(row.due_date)) / 86400000,
                 );
-              return `<tr onclick="PilozApp.editDocument('${row.document_id}')"><td><b>${esc(docs.get(row.document_id)?.number || "—")}</b></td><td>${date(row.due_date)}</td><td>${money(row.amount)}</td><td>${money(row.paid_amount)}</td><td><b>${money(remaining)}</b></td><td>${days > 0 ? `${days} jour(s)` : "—"}</td><td>${esc(remaining <= 0 ? "Encaissée" : days > 0 ? "En retard" : row.status)}</td></tr>`;
+              return `<tr onclick="${openDocumentAction(row.document_id)}"><td><b>${esc(docs.get(row.document_id)?.number || "—")}</b></td><td>${date(row.due_date)}</td><td>${money(row.amount)}</td><td>${money(row.paid_amount)}</td><td><b>${money(remaining)}</b></td><td>${days > 0 ? `${days} jour(s)` : "—"}</td><td>${esc(remaining <= 0 ? "Encaissée" : days > 0 ? "En retard" : row.status)}</td></tr>`;
             })
             .join("")}</tbody></table></div>`
         : empty(
@@ -1155,6 +1216,7 @@
       return coordinatesForm(id, entry.summary.client, state, data);
     if (tab === "contacts") return renderContacts(id, data);
     if (tab === "addresses") return renderAddresses(id, data);
+    if (tab === "opportunities") return renderOpportunities(data, state);
     if (tab === "quotes") return renderDocumentsTab(id, data, "quote");
     if (tab === "invoices") return renderDocumentsTab(id, data, "invoice");
     if (tab === "payments") return renderPayments(data);
@@ -1851,6 +1913,44 @@
     draft.delivery_address_id = draft.billing_address_id || null;
     global.PilozDocumentEditorV2?.renderEditor?.(state);
   }
+  async function promoteProspectAfterQuote(context) {
+    if (context?.document_type !== "quote" || !context.client_id) return;
+    const state = app().getState(),
+      client = (state.data.clients || []).find(
+        (row) => row.id === context.client_id,
+      );
+    if (client?.relationship_type !== "prospect") return;
+    try {
+      await api().rpc("convert_crm_prospect", {
+        target_prospect_id: context.client_id,
+        target_existing_client_id: null,
+      });
+      Object.assign(client, {
+        relationship_type: "client",
+        crm_status: "converted",
+        converted_at: new Date().toISOString(),
+      });
+      const opportunity = (state.data.opportunities || []).find(
+        (row) => row.id === context.opportunity_id,
+      );
+      if (opportunity)
+        opportunity.origin_prospect_id =
+          opportunity.origin_prospect_id || context.client_id;
+      notify(
+        "Le prospect est devenu client dès la création du devis.",
+        "success",
+      );
+    } catch (error) {
+      console.error("[PILOZ CRM] Conversion automatique du prospect impossible", {
+        code: error?.code || "",
+        message: error?.message || String(error),
+      });
+      notify(
+        "Le devis est enregistré, mais le prospect n’a pas pu devenir client automatiquement.",
+        "error",
+      );
+    }
+  }
   function wrapDocumentSave() {
     if (saveWrapped || !app()?.saveDocument) return;
     saveWrapped = true;
@@ -1860,6 +1960,8 @@
         context = before
           ? {
               client_id: before.client_id,
+              document_type: before.document_type,
+              opportunity_id: before.opportunity_id || null,
               contact_id: before.contact_id || null,
               billing_address_id: before.billing_address_id || null,
               delivery_address_id: before.delivery_address_id || null,
@@ -1867,6 +1969,7 @@
           : null,
         id = await original(...args);
       if (!id || !context?.client_id) return id;
+      await promoteProspectAfterQuote(context);
       try {
         const saved = await api().rpc("save_document_client_context", {
             target_document_id: id,
