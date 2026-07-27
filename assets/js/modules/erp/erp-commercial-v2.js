@@ -34,7 +34,7 @@
   const path=current||route(),area=areaFor(path),data=secondary[area],panel=node.querySelector('.modern-secondary-panel');
   if(!data||!panel)return;
   const body=panel.querySelector('.modern-secondary-items'),title=panel.querySelector('h2');if(title)title.textContent=data.label;
-  if(body)body.innerHTML=data.items.map(([itemPath,label])=>`<button class="modern-secondary-item ${secondaryActive(path,itemPath)?'active':''}" onclick="PilozApp.go('${itemPath}')"><span>${esc(label)}</span></button>`).join('');
+  if(body)body.innerHTML=data.items.map(([itemPath,label])=>{const active=secondaryActive(path,itemPath);return`<div class="modern-secondary-entry ${active?'active':''}"><button class="modern-secondary-item ${active?'active':''}" onclick="PilozApp.go('${itemPath}')" ${active?'aria-current="page"':''}><span>${esc(label)}</span></button><button class="modern-secondary-new-tab" type="button" onclick="event.stopPropagation();PilozModern.openInNewTab('${itemPath}')" title="Ouvrir ${esc(label)} dans un nouvel onglet" aria-label="Ouvrir ${esc(label)} dans un nouvel onglet"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6"/></svg></button></div>`;}).join('');
  }
  function openArea(area){const target={crm:'crm/pipeline',sales:'sales/quotes',purchases:'purchases/orders',library:'sales/clients',stock:'stock/items',accounting:'accounting/payments',settings:'settings/overview',dashboard:'dashboard',reports:'reports'}[area]||'dashboard';base.openArea(area,target);}
 
