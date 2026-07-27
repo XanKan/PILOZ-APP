@@ -95,6 +95,7 @@ window.PilozModern={renderRoute:(route)=>{calls.push(['legacyRoute',route]);retu
   PilozDocumentViewerV2.applyDateRange('issue');check('période personnalisée appliquée',PilozDocumentViewerV2.filteredDocuments(state.data).length===2);
   PilozDocumentViewerV2.resetFilters();PilozDocumentViewerV2.toggleAdvancedFilters();PilozDocumentViewerV2.toggleDateRange('issue');PilozDocumentViewerV2.setDateDraftPreset('issue','month');PilozDocumentViewerV2.applyDateRange('issue');
   check('mois en cours appliqué',PilozDocumentViewerV2.filteredDocuments(state.data).length===2);
+  const recentIssueDate=new Date();recentIssueDate.setDate(recentIssueDate.getDate()-3);state.data.documents.find((document)=>document.id==='q2').issue_date=recentIssueDate.toISOString().slice(0,10);
   PilozDocumentViewerV2.resetFilters();PilozDocumentViewerV2.toggleAdvancedFilters();PilozDocumentViewerV2.toggleDateRange('issue');PilozDocumentViewerV2.setDateDraftPreset('issue','last_7_days');PilozDocumentViewerV2.applyDateRange('issue');
   check('7 derniers jours appliqués',PilozDocumentViewerV2.filteredDocuments(state.data).length===1&&PilozDocumentViewerV2.filteredDocuments(state.data)[0]?.id==='q2');
   PilozDocumentViewerV2.resetFilters();PilozDocumentViewerV2.setFilter('client','alpha@example.fr');
