@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607270097' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607270098' ok
   union all
   select 'company_access_system_roles',count(*)::text,count(*)=0
   from public.companies company
@@ -380,6 +380,15 @@ with controls as(
   from public.platform_connectors
   where connector_code='SUPERPDP' and production_enabled
   union all
+  select 'superpdp_invoice_exchanges_rls',coalesce(relrowsecurity::text,'missing'),coalesce(relrowsecurity,false)
+  from (select relrowsecurity from pg_class where oid=to_regclass('public.superpdp_invoice_exchanges')) exchange_table
+  union all
+  select 'superpdp_invoice_events_rls',coalesce(relrowsecurity::text,'missing'),coalesce(relrowsecurity,false)
+  from (select relrowsecurity from pg_class where oid=to_regclass('public.superpdp_invoice_events')) event_table
+  union all
+  select 'superpdp_exchange_environment_locked',count(*)::text,count(*)=0
+  from public.superpdp_invoice_exchanges where environment<>'sandbox'
+  union all
   select 'over_reversed_payments',count(*)::text,count(*)=0 from(
     select original.id from public.payments original
     left join public.payments reversal on reversal.reverses_payment_id=original.id and reversal.status='confirmed'
@@ -390,7 +399,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607270097',
+  'schema_version','202607270098',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;

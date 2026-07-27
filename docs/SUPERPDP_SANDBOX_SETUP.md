@@ -1,13 +1,15 @@
 # Connexion SUPER PDP en bac à sable
 
-Cette première intégration valide le raccordement technique de Piloz avec une application SUPER PDP **confidentielle** utilisant le flux OAuth `client_credentials`.
+PILOZ et ses données métier restent en production. Seuls les appels à l’API SUPER PDP sont verrouillés sur le **bac à sable**, avec une application confidentielle et le flux OAuth `client_credentials`.
 
 ## Périmètre
 
 - environnement SUPER PDP : bac à sable uniquement ;
 - entreprise de test : entreprise synthétique choisie lors de la création de l'application ;
-- format testé : Factur-X ;
-- aucune facture d'un client Piloz n'est transmise par ce test ;
+- formats produits : Factur-X (PDF hybride) et CII XML ;
+- envoi des factures clients finalisées vers l’entreprise synthétique SUPER PDP ;
+- réception des factures fournisseurs du bac à sable dans PILOZ ;
+- consultation PDF/XML et synchronisation du statut dans PILOZ ;
 - aucune émission de production n'est activée ;
 - le `client_secret` reste exclusivement dans les secrets Supabase Edge Functions.
 
@@ -39,7 +41,7 @@ Remove-Variable superPdpClientId,superPdpSecret,superPdpSecretSecure -ErrorActio
 
 ## 3. Appliquer la migration et déployer la fonction
 
-La migration `202607270097_superpdp_sandbox_connector.sql` est additive. Elle ne contient aucun secret.
+Les migrations `202607270097_superpdp_sandbox_connector.sql` et `202607270098_superpdp_sandbox_invoice_exchange.sql` sont additives. Elles ne contiennent aucun secret. La seconde ajoute le registre des échanges et événements, les politiques RLS par entreprise et le stockage privé des artefacts PDF/XML.
 
 ```powershell
 npx.cmd --yes supabase@2.109.1 functions deploy platform-connector `
@@ -48,7 +50,7 @@ npx.cmd --yes supabase@2.109.1 functions deploy platform-connector `
 
 Appliquer ensuite les migrations avec la procédure de production habituelle, après sauvegarde confirmée.
 
-## 4. Tester dans Piloz
+## 4. Tester la connexion dans PILOZ
 
 1. Ouvrir **Paramètres > Facturation électronique**.
 2. Cliquer sur **Tester la connexion**.
@@ -58,3 +60,26 @@ Appliquer ensuite les migrations avec la procédure de production habituelle, ap
 6. Vérifier dans SUPER PDP que la facture synthétique Factur-X apparaît dans le bac à sable.
 
 Le journal Piloz conserve la référence externe et le résultat du test, sans stocker le document synthétique ni les identifiants OAuth.
+
+## 5. Tester une facture client réelle dans le bac à sable
+
+1. Créer puis finaliser une facture avec un client et un PDF définitif disponible.
+2. Ouvrir sa consultation.
+3. Dans **Facturation électronique**, cliquer sur **Préparer et envoyer au bac à sable**.
+4. Vérifier que l’onglet **XML** affiche le CII produit et que le PDF Factur-X reste consultable.
+5. Cliquer sur **Actualiser le statut** puis contrôler la facture dans SUPER PDP.
+
+L’action est idempotente : une même facture PILOZ n’est pas renvoyée une seconde fois. L’interface indique toujours **PILOZ en production / SUPER PDP bac à sable**.
+
+## 6. Tester les factures fournisseurs
+
+1. Déposer ou générer une facture entrante dans l’entreprise synthétique SUPER PDP.
+2. Ouvrir **Achats > Factures fournisseurs** dans PILOZ.
+3. Cliquer sur **Synchroniser les factures reçues**.
+4. Contrôler le fournisseur, les lignes, les montants, le PDF et l’onglet XML.
+
+Une facture déjà importée n’est pas recréée. Les documents entrants restent des brouillons d’achat afin de permettre leur contrôle avant traitement comptable.
+
+## 7. Limite volontaire
+
+Cette version ne constitue pas un raccordement de production à une plateforme agréée. `SUPERPDP_ENVIRONMENT` doit rester égal à `sandbox` et la base refuse toute valeur d’environnement différente pour ces échanges. Le passage en production nécessitera un mandat/consentement par entreprise, une activation séparée et une recette réglementaire dédiée.

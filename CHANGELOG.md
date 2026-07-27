@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.0-compliance.53 — 27 juillet 2026
+
+- maintient PILOZ et ses données métier en production tout en verrouillant strictement l’API SUPER PDP sur son bac à sable ;
+- convertit les factures clients finalisées au format Factur-X et CII, puis permet de consulter le PDF ou le XML dans PILOZ ;
+- ajoute l’envoi idempotent vers SUPER PDP sandbox, la synchronisation du statut et un journal d’événements immuable par entreprise ;
+- synchronise les factures fournisseurs reçues dans le bac à sable sous forme de brouillons d’achat avec fournisseur, lignes, montants, PDF et XML ;
+- conserve les artefacts électroniques dans le stockage privé de l’entreprise et protège les registres par RLS ;
+- ajoute les contrôles statiques et de post-déploiement empêchant tout basculement implicite vers l’API de production.
+
 ## 0.9.0-compliance.50 — 27 juillet 2026
 
 - ajoute la rubrique « Archives fiscales » à la Comptabilité pour toutes les entreprises, sans alourdir l’onboarding ;
