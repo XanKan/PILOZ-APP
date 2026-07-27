@@ -112,7 +112,7 @@ async function superPdpRequest(path: string, accessToken: string, init: RequestI
   return { response, payload: await responsePayload(response) };
 }
 
-async function superPdpBinary(path: string, accessToken: string, accept: string, init: RequestInit = {}) {
+async function superPdpBinary(path: string, accessToken: string, accept: string, init: RequestInit = {}, failureCode = "superpdp_binary_request_failed") {
   const response = await fetch(`${SUPERPDP_API_URL}${path}`, {
     ...init,
     headers: { Accept: accept, Authorization: `Bearer ${accessToken}`, ...(init.headers || {}) },
@@ -120,7 +120,7 @@ async function superPdpBinary(path: string, accessToken: string, accept: string,
   if (!response.ok) {
     const payload = await responsePayload(response);
     console.error("[PILOZ SUPER PDP] réponse binaire refusée", { path, status: response.status, payload });
-    throw Object.assign(new Error("superpdp_binary_request_failed"), { status: 502 });
+    throw Object.assign(new Error(failureCode), { status: response.status >= 400 && response.status < 500 ? 409 : 502 });
   }
   return responseBytes(response);
 }
@@ -335,7 +335,10 @@ function canonicalToEn16931(payload: JsonObject, connector: JsonObject) {
     totals: {
       sum_invoice_lines_amount: decimal(totals.excl_tax, true),
       total_without_vat: decimal(totals.excl_tax, true),
-      total_vat_amount: { amount: decimal(totals.tax, true), currency_code: text(invoice.currency, "EUR") },
+      // SUPER PDP follows the official EN 16931 `amount` schema here: the
+      // numeric member is named `value` (not `amount`). A wrong key makes the
+      // Factur-X/CII conversion fail even though the Piloz invoice is valid.
+      total_vat_amount: { value: decimal(totals.tax, true), currency_code: text(invoice.currency, "EUR") },
       total_with_vat: decimal(totals.incl_tax, true),
       paid_amount: decimal(totals.paid, true),
       amount_due_for_payment: decimal(totals.payable ?? totals.incl_tax, true),
@@ -365,7 +368,7 @@ async function convertInvoice(token: string, from: "en16931" | "cii", to: "cii" 
     body = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
     headers["Content-Type"] = "application/xml";
   }
-  return superPdpBinary(`/v1.beta/invoices/convert?from=${from}&to=${to}`, token, to === "factur-x" ? "application/pdf" : "application/xml", { method: "POST", headers, body });
+  return superPdpBinary(`/v1.beta/invoices/convert?from=${from}&to=${to}`, token, to === "factur-x" ? "application/pdf" : "application/xml", { method: "POST", headers, body }, "superpdp_invoice_conversion_failed");
 }
 
 async function storageUpload(adminClient: SupabaseClient, path: string, bytes: Uint8Array, contentType: string) {
@@ -554,7 +557,8 @@ async function importIncomingInvoice(adminClient: SupabaseClient, companyId: str
     supplier = created.data;
   }
   const sourceLines = array(invoice.lines).map(object);
-  const totalWithoutTax = Number(totals.total_without_vat || 0), totalTax = Number(object(totals.total_vat_amount).amount || 0), totalWithTax = Number(totals.total_with_vat || 0);
+  const totalVat = object(totals.total_vat_amount);
+  const totalWithoutTax = Number(totals.total_without_vat || 0), totalTax = Number(totalVat.value ?? totalVat.amount ?? 0), totalWithTax = Number(totals.total_with_vat || 0);
   const documentInsert = await adminClient.from("documents").insert({
     company_id: companyId, document_type: "purchase_invoice", supplier_id: supplier.id, status: "draft",
     issue_date: text(invoice.issue_date, new Date().toISOString().slice(0, 10)), due_date: text(invoice.payment_due_date) || null,
@@ -685,8 +689,16 @@ Deno.serve(async req => {
       canonical_invoice_invalid: "La facture ne contient pas toutes les données requises pour la facturation électronique.",
       superpdp_seller_electronic_address_required: "L’identifiant électronique de votre entreprise est manquant.",
       superpdp_buyer_electronic_address_required: "L’identifiant électronique du client est manquant.",
+      superpdp_invoice_lines_required: "La facture doit contenir au moins une ligne facturable.",
+      superpdp_invoice_conversion_failed: "SUPER PDP n’a pas pu convertir cette facture en Factur-X et CII. Vérifiez les montants, la TVA et les coordonnées des deux entreprises.",
       superpdp_xml_unavailable: "Aucun XML électronique n’est encore disponible pour ce document.",
       superpdp_invoice_send_failed: "SUPER PDP a refusé cette facture dans le bac à sable.",
+      superpdp_artifact_storage_failed: "Les fichiers Factur-X et CII ont été créés, mais Piloz n’a pas pu les archiver.",
+      superpdp_transmission_audit_failed: "L’envoi a abouti, mais son journal de transmission n’a pas pu être enregistré.",
+      superpdp_exchange_audit_failed: "L’échange SUPER PDP n’a pas pu être enregistré dans Piloz.",
+      superpdp_transmission_event_audit_failed: "L’évènement de transmission SUPER PDP n’a pas pu être enregistré.",
+      superpdp_exchange_event_audit_failed: "L’évènement d’échange SUPER PDP n’a pas pu être enregistré.",
+      superpdp_artifact_audit_failed: "Les justificatifs électroniques n’ont pas pu être inscrits dans le registre Piloz.",
       superpdp_incoming_list_failed: "SUPER PDP n’a pas pu fournir la liste des factures reçues. Vérifiez que l’entreprise sandbox est bien validée, puis réessayez.",
     };
     return json({ error: messages[code] || "L’opération SUPER PDP n’a pas pu aboutir.", code }, status);

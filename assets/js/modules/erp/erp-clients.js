@@ -165,7 +165,9 @@
   };
   let currentState = null,
     saveWrapped = false,
-    lastDocumentClient = "";
+    lastDocumentClient = "",
+    creatorCompanyTimer = 0,
+    creatorCompanyResults = [];
 
   function loadColumns() {
     try {
@@ -1708,9 +1710,10 @@
   }
 
   function openClientCreator() {
+    creatorCompanyResults = [];
     openDrawer(
       "Créer un client",
-      `<form id="client-create-form" class="client-form drawer-form" onsubmit="event.preventDefault();PilozClients.saveNewClient()"><div class="client-kind-choice"><label><input type="radio" name="kind" value="company" checked onchange="PilozClients.toggleCreatorKind('company')"><span>Professionnel<small>Entreprise, association ou organisation</small></span></label><label><input type="radio" name="kind" value="person" onchange="PilozClients.toggleCreatorKind('person')"><span>Particulier<small>Personne physique</small></span></label></div><div class="client-form-grid"><div data-create-company><label class="full"><span>Raison sociale *</span><input name="legal_name"></label><label><span>SIREN</span><input name="siren"></label><label><span>SIRET</span><input name="siret"></label><label><span>Nom commercial</span><input name="trade_name"></label></div><div data-create-person hidden><label><span>Civilité</span><select name="civility"><option value="">—</option><option>M.</option><option>Mme</option></select></label><label><span>Prénom *</span><input name="first_name"></label><label><span>Nom *</span><input name="last_name"></label></div><label><span>E-mail</span><input name="email" type="email"></label><label><span>Téléphone</span><input name="phone_e164"></label><label class="full"><span>Adresse</span><input name="address_line_1"></label><label><span>Code postal</span><input name="postal_code"></label><label><span>Ville</span><input name="city"></label><label><span>Pays</span><input name="country_code" value="FR"></label><label><span>Statut</span><select name="customer_status"><option value="active">Actif</option><option value="prospect">Prospect</option><option value="watch">À surveiller</option></select></label></div><footer>${button("Annuler", "PilozClients.closeDrawer()")}${button("Créer le client", "", "btn-p", 'type="submit" data-client-save')}</footer></form>`,
+      `<form id="client-create-form" class="client-form drawer-form" onsubmit="event.preventDefault();PilozClients.saveNewClient()"><div class="client-kind-choice"><label><input type="radio" name="kind" value="company" checked onchange="PilozClients.toggleCreatorKind('company')"><span>Professionnel<small>Entreprise, association ou organisation</small></span></label><label><input type="radio" name="kind" value="person" onchange="PilozClients.toggleCreatorKind('person')"><span>Particulier<small>Personne physique</small></span></label></div><div class="client-form-grid"><div data-create-company><label class="full client-company-lookup"><span>Recherche INPI</span><input type="search" autocomplete="off" placeholder="Raison sociale, SIREN ou SIRET" oninput="PilozClients.searchCreatorCompany(this.value)"><small>Les informations officielles et l’adresse seront préremplies.</small><div id="client-company-lookup-results" class="phase1-search-results" role="listbox"></div></label><label class="full"><span>Raison sociale *</span><input name="legal_name"></label><label><span>SIREN</span><input name="siren"></label><label><span>SIRET</span><input name="siret"></label><label><span>Nom commercial</span><input name="trade_name"></label><label><span>Forme juridique</span><input name="legal_form"></label><label><span>Code APE / NAF</span><input name="ape_code"></label></div><div data-create-person hidden><label><span>Civilité</span><select name="civility"><option value="">—</option><option>M.</option><option>Mme</option></select></label><label><span>Prénom *</span><input name="first_name"></label><label><span>Nom *</span><input name="last_name"></label></div><label><span>E-mail</span><input name="email" type="email"></label><label><span>Téléphone</span><input name="phone_e164"></label><label class="full"><span>Adresse</span><input name="address_line_1"></label><label><span>Code postal</span><input name="postal_code"></label><label><span>Ville</span><input name="city"></label><label><span>Pays</span><input name="country_code" value="FR"></label><label><span>Statut</span><select name="customer_status"><option value="active">Actif</option><option value="prospect">Prospect</option><option value="watch">À surveiller</option></select></label></div><footer>${button("Annuler", "PilozClients.closeDrawer()")}${button("Créer le client", "", "btn-p", 'type="submit" data-client-save')}</footer></form>`,
       true,
     );
   }
@@ -1722,6 +1725,67 @@
       .querySelector("[data-create-person]")
       ?.toggleAttribute("hidden", kind !== "person");
   }
+  function renderCreatorCompanyResults(rows = [], message = "") {
+    const node = document.getElementById("client-company-lookup-results");
+    if (!node) return;
+    node.innerHTML = rows
+      .map(
+        (row, index) =>
+          `<button type="button" role="option" onclick="PilozClients.selectCreatorCompany(${index})"><b>${esc(row.legalName || "Entreprise")}</b>${row.tradeName ? `<span>${esc(row.tradeName)}</span>` : ""}<span>${esc([row.addressLine1, row.postalCode, row.city].filter(Boolean).join(", "))}</span><small>SIREN ${esc(row.siren || "—")} · SIRET ${esc(row.siret || "—")}${row.isHeadOffice ? " · Siège social" : ""}</small></button>`,
+      )
+      .join("");
+    if (message) node.insertAdjacentHTML("beforeend", `<p class="phase1-note">${esc(message)}</p>`);
+  }
+  function searchCreatorCompany(value) {
+    clearTimeout(creatorCompanyTimer);
+    const query = String(value || "").trim();
+    if (query.length < 2) {
+      creatorCompanyResults = [];
+      renderCreatorCompanyResults();
+      return;
+    }
+    renderCreatorCompanyResults([], "Recherche dans le registre INPI…");
+    creatorCompanyTimer = setTimeout(async () => {
+      try {
+        const data = await api().invoke("company-search", { query, perPage: 7 });
+        creatorCompanyResults = Array.isArray(data?.results) ? data.results : [];
+        renderCreatorCompanyResults(
+          creatorCompanyResults,
+          creatorCompanyResults.length ? "" : "Aucune entreprise trouvée. La saisie manuelle reste disponible.",
+        );
+      } catch (error) {
+        console.error("[PILOZ Clients] Recherche INPI indisponible", {
+          code: error?.code || "",
+          status: error?.status || 0,
+          message: error?.message || String(error),
+        });
+        renderCreatorCompanyResults([], "La recherche INPI est momentanément indisponible. La saisie manuelle reste disponible.");
+      }
+    }, 280);
+  }
+  function selectCreatorCompany(index) {
+    const row = creatorCompanyResults[Number(index)],
+      form = document.getElementById("client-create-form");
+    if (!row || !form) return;
+    const values = {
+      legal_name: row.legalName,
+      trade_name: row.tradeName,
+      legal_form: row.legalForm,
+      siren: row.siren,
+      siret: row.siret,
+      ape_code: row.apeCode,
+      address_line_1: row.addressLine1,
+      postal_code: row.postalCode,
+      city: row.city,
+      country_code: row.countryCode || "FR",
+    };
+    Object.entries(values).forEach(([name, value]) => {
+      if (form.elements[name]) form.elements[name].value = value || "";
+    });
+    const search = form.querySelector(".client-company-lookup input[type=search]");
+    if (search) search.value = row.legalName || row.siret || "";
+    renderCreatorCompanyResults();
+  }
   async function saveNewClient(force = false) {
     const raw = formData("client-create-form"),
       professional = raw.kind === "company",
@@ -1731,8 +1795,10 @@
         customer_status: raw.customer_status || "active",
         legal_name: professional ? raw.legal_name?.trim() || null : null,
         trade_name: professional ? raw.trade_name || null : null,
+        legal_form: professional ? raw.legal_form || null : null,
         siren: professional ? raw.siren || null : null,
         siret: professional ? raw.siret || null : null,
+        ape_code: professional ? raw.ape_code || null : null,
         civility: professional ? null : raw.civility || null,
         first_name: professional ? null : raw.first_name?.trim() || null,
         last_name: professional ? null : raw.last_name?.trim() || null,
@@ -2103,6 +2169,8 @@
     reloadTab,
     closeDrawer,
     openClientCreator,
+    searchCreatorCompany,
+    selectCreatorCompany,
     toggleCreatorKind,
     saveNewClient,
     saveCoordinates,

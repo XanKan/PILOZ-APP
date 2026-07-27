@@ -17,6 +17,8 @@ const checks={
   production_action_rejected:edge.includes('if (action === "production")')&&edge.includes('volontairement verrouillé sur le bac à sable'),
   facturx_conversion:edge.includes('to === "factur-x"')&&edge.includes('new FormData()')&&edge.includes('application/pdf'),
   cii_conversion:edge.includes('to: "cii"')&&edge.includes('format: "cii"'),
+  en16931_vat_amount_contract:edge.includes('total_vat_amount: { value: decimal(totals.tax, true)')&&!edge.includes('total_vat_amount: { amount: decimal(totals.tax, true)'),
+  conversion_error_is_actionable:edge.includes('superpdp_invoice_conversion_failed')&&edge.includes('convertir cette facture en Factur-X et CII'),
   outgoing_send_action:edge.includes('superpdp_send_document')&&edge.includes('create_canonical_invoice_record'),
   incoming_sync_action:edge.includes('superpdp_sync_incoming')&&edge.includes('direction=in&limit=100')&&edge.includes('document_type: "purchase_invoice"'),
   provider_direction_values:!edge.includes('direction=incoming&')&&!edge.includes('direction=outgoing&'),

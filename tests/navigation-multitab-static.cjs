@@ -9,6 +9,9 @@ const nav=read('assets/js/modules/erp/erp-modern.js');
 const app=read('assets/js/modules/erp/erp-app.js');
 const api=read('assets/js/api/erp-api.js');
 const crm=read('assets/js/modules/erp/erp-crm-rework.js');
+const clients=read('assets/js/modules/erp/erp-clients.js');
+const documentEditor=read('assets/js/modules/erp/erp-document-editor-v2.js');
+const legacyPartner=read('assets/js/modules/erp/erp-app.js');
 const premiumCss=read('assets/css/piloz-premium.css');
 const crmCss=read('assets/css/crm-rework.css');
 
@@ -35,5 +38,9 @@ assert(crm.includes('Création client / prospect'),'titre unifié de création c
 assert(crm.includes("api().invoke('company-search',{query,perPage:6})"),'recherche INPI absente de la création depuis le pipeline');
 assert(crm.includes('selectQuickPartyCompany')&&crm.includes("ape_code:'apeCode'")&&crm.includes("address_line_1:'addressLine1'"),'préremplissage des données officielles incomplet');
 assert(crmCss.includes('.crm-official-company-results')&&crmCss.includes('.crm-official-company-result'),'styles des résultats INPI absents');
+assert(clients.includes('PilozClients.searchCreatorCompany(this.value)')&&clients.includes("api().invoke(\"company-search\", { query, perPage: 7 })"),'recherche INPI absente de Bibliothèque > Clients');
+assert(clients.includes('selectCreatorCompany')&&clients.includes('ape_code: row.apeCode')&&clients.includes('address_line_1: row.addressLine1'),'préremplissage INPI incomplet dans Bibliothèque > Clients');
+assert(documentEditor.includes("api().invoke('company-search',{query,perPage:7})"),'recherche INPI absente de la création depuis un devis ou une facture');
+assert(legacyPartner.includes("api().invoke('company-search',{query,perPage:6})"),'recherche INPI absente de l’ancien formulaire client partagé');
 
-process.stdout.write(JSON.stringify({ok:true,reports_removed:true,settings_after_accounting:true,new_tab:true,multitab_sync:true,quick_party_modal:true,inpi_search:true})+'\n');
+process.stdout.write(JSON.stringify({ok:true,reports_removed:true,settings_after_accounting:true,new_tab:true,multitab_sync:true,quick_party_modal:true,inpi_search:true,library_client_inpi:true,document_client_inpi:true})+'\n');
