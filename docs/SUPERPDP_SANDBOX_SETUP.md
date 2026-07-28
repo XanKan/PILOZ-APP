@@ -13,7 +13,7 @@ PILOZ et ses données métier restent en production. Seuls les appels à l’API
 - aucune émission de production n'est activée ;
 - le `client_secret` reste exclusivement dans les secrets Supabase Edge Functions.
 
-Le raccordement multi-entreprises de production utilisera ultérieurement le flux OAuth `authorization_code`, avec le consentement individuel de chaque entreprise cliente.
+Le raccordement multi-entreprises de production utilise désormais un flux OAuth `authorization_code`, avec le consentement individuel de chaque entreprise cliente. Cette page décrit uniquement l'environnement de recette historique. Pour la production, suivre [SUPERPDP_PRODUCTION_SETUP.md](./SUPERPDP_PRODUCTION_SETUP.md).
 
 ## 1. Renouveler tout secret exposé
 
@@ -82,4 +82,4 @@ Une facture déjà importée n’est pas recréée. Les documents entrants reste
 
 ## 7. Limite volontaire
 
-Cette version ne constitue pas un raccordement de production à une plateforme agréée. `SUPERPDP_ENVIRONMENT` doit rester égal à `sandbox` et la base refuse toute valeur d’environnement différente pour ces échanges. Le passage en production nécessitera un mandat/consentement par entreprise, une activation séparée et une recette réglementaire dédiée.
+Le bac à sable ne constitue pas un envoi réglementaire. `SUPERPDP_ENVIRONMENT=sandbox` reste réservé aux essais ; la connexion de production est indépendante, activée entreprise par entreprise et documentée dans [SUPERPDP_PRODUCTION_SETUP.md](./SUPERPDP_PRODUCTION_SETUP.md).

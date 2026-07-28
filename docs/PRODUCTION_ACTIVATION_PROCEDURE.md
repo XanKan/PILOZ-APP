@@ -26,7 +26,7 @@ $env:SUPABASE_DB_PASSWORD="VOTRE_MOT_DE_PASSE_POSTGRES"
 
 Le script vérifie le dépôt, le CNAME, la release, synchronise `main`, lie le projet et exécute uniquement `db push --dry-run`. Il ne demande pas de saisir `y`, ce qui évite l’erreur `NonInteractiveError`.
 
-Vérifiez que la liste se termine par `202607270099_fix_superpdp_transmission_lint.sql` et qu’aucune migration inattendue n’est annoncée.
+Vérifiez que la liste se termine par `202607280101_superpdp_production_oauth.sql` et qu’aucune migration inattendue n’est annoncée.
 
 ## 3. Appliquer les migrations et déployer les Edge Functions
 
@@ -41,7 +41,7 @@ Le script applique les migrations additives avec la version épinglée `2.109.1`
 Dans Supabase > SQL Editor, ouvrez et exécutez ensuite le contenu de `scripts/post-deploy-production-checks.sql`. Le JSON rendu doit contenir :
 
 ```json
-{"ok": true, "schema_version": "202607270099"}
+{"ok": true, "schema_version": "202607280101"}
 ```
 
 Conservez ce résultat daté dans votre dossier de preuves, sans donnée client ni secret.
@@ -87,12 +87,12 @@ Ces actions ne peuvent pas être réalisées automatiquement depuis le dépôt :
 - faire relire les mentions, règles de TVA, avoirs, remboursements et durées de conservation par un conseil juridique/DPO ;
 - obtenir légalement les référentiels NF 525, NF 203 et XP Z12-012/-013/-014, puis compléter la matrice sans inventer de clause ;
 - choisir et contractualiser un KMS/HSM, faire valider l’algorithme, la rotation, la révocation et les clés publiques ;
-- choisir une plateforme agréée figurant sur la liste officielle, obtenir son contrat API et son bac à sable ;
+- conserver le contrat API SUPER PDP et les preuves de recette production ;
 - installer les artefacts officiels UBL/CII/Factur-X et exécuter leurs validateurs ;
 - effectuer une restauration réelle dans un environnement isolé et conserver le rapport ;
 - organiser un test d’intrusion, une revue RLS de production et l’audit/certification visé.
 
-Tant que ces preuves ne sont pas enregistrées et vérifiées, laissez le moteur fiscal en mode `off` ou `test`. Ne cliquez pas sur l’activation production et ne présentez pas Piloz comme certifié ou conforme.
+Le raccordement SUPER PDP ne transforme pas Piloz en Plateforme Agréée. Ne présentez pas Piloz comme certifié NF 525/NF 203 ou comme PA sans justificatif officiel correspondant.
 
 ## 7. Nettoyer les secrets de la session PowerShell
 

@@ -14,7 +14,11 @@ type RequestBody = {
   statusCode?: string;
   reasonCode?: string;
   note?: string;
+  environment?: string;
+  limit?: number;
 };
+
+type TargetEnvironment = "sandbox" | "production";
 
 const SUPERPDP_API_URL = "https://api.superpdp.tech";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -107,6 +111,100 @@ async function superPdpToken() {
   return String(result.payload.access_token);
 }
 
+function fromBase64Url(value: string) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+  const binary = atob(normalized);
+  return Uint8Array.from(binary, character => character.charCodeAt(0));
+}
+
+function base64Url(bytes: Uint8Array) {
+  let binary = "";
+  bytes.forEach(byte => binary += String.fromCharCode(byte));
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function tokenEncryptionKey() {
+  const secret = Deno.env.get("SUPERPDP_TOKEN_ENCRYPTION_KEY") || "";
+  if (secret.length < 32) throw Object.assign(new Error("superpdp_token_encryption_key_missing"), { status: 503 });
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(secret));
+  return crypto.subtle.importKey("raw", digest, "AES-GCM", false, ["encrypt", "decrypt"]);
+}
+
+async function decryptToken(value: unknown) {
+  const [version, rawIv, rawCipher] = text(value).split(".");
+  if (version !== "v1" || !rawIv || !rawCipher) throw Object.assign(new Error("superpdp_encrypted_token_invalid"), { status: 500 });
+  const clear = await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromBase64Url(rawIv) }, await tokenEncryptionKey(), fromBase64Url(rawCipher));
+  return new TextDecoder().decode(clear);
+}
+
+async function encryptToken(value: string) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await tokenEncryptionKey(), new TextEncoder().encode(value)));
+  return `v1.${base64Url(iv)}.${base64Url(encrypted)}`;
+}
+
+async function productionAuthorization(adminClient: SupabaseClient, companyId: string) {
+  const { data, error } = await adminClient.from("superpdp_company_authorizations").select("*")
+    .eq("company_id", companyId).is("revoked_at", null).maybeSingle();
+  if (error || !data) throw Object.assign(new Error("superpdp_production_authorization_missing"), { status: 409 });
+  return data as JsonObject;
+}
+
+async function refreshProductionToken(adminClient: SupabaseClient, authorization: JsonObject) {
+  const refreshToken = await decryptToken(authorization.refresh_token_ciphertext);
+  const clientId = Deno.env.get("SUPERPDP_PRODUCTION_CLIENT_ID") || "";
+  const clientSecret = Deno.env.get("SUPERPDP_PRODUCTION_CLIENT_SECRET") || "";
+  if (!clientId || !clientSecret || !refreshToken) throw Object.assign(new Error("superpdp_production_reauthorization_required"), { status: 401 });
+  const request = async (basic: boolean) => {
+    const headers: Record<string, string> = { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" };
+    const values: Record<string, string> = { grant_type: "refresh_token", refresh_token: refreshToken };
+    if (basic) headers.Authorization = `Basic ${btoa(`${clientId}:${clientSecret}`)}`;
+    else Object.assign(values, { client_id: clientId, client_secret: clientSecret });
+    const response = await fetch(`${SUPERPDP_API_URL}/oauth2/token`, { method: "POST", headers, body: new URLSearchParams(values) });
+    return { response, payload: object(await responsePayload(response)) };
+  };
+  let result = await request(true);
+  if (!result.response.ok || !result.payload.access_token) result = await request(false);
+  if (!result.response.ok || !result.payload.access_token) throw Object.assign(new Error("superpdp_production_reauthorization_required"), { status: 401 });
+  const accessToken = text(result.payload.access_token), replacementRefreshToken = text(result.payload.refresh_token, refreshToken);
+  const expiresIn = Math.max(60, Number(result.payload.expires_in) || 3600), now = new Date().toISOString();
+  const { error } = await adminClient.from("superpdp_company_authorizations").update({
+    access_token_ciphertext: await encryptToken(accessToken),
+    refresh_token_ciphertext: await encryptToken(replacementRefreshToken),
+    access_token_expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
+    last_token_refresh_at: now,
+    last_error_code: null,
+  }).eq("id", authorization.id);
+  if (error) throw Object.assign(new Error("superpdp_token_refresh_storage_failed"), { status: 502 });
+  await adminClient.from("superpdp_consent_events").insert({
+    company_id: authorization.company_id, authorization_id: authorization.id,
+    event_type: "token_refreshed", evidence: { provider: "SUPER PDP", source: "platform_connector" },
+  });
+  return accessToken;
+}
+
+async function productionToken(adminClient: SupabaseClient, companyId: string) {
+  const authorization = await productionAuthorization(adminClient, companyId);
+  const expiresAt = Date.parse(text(authorization.access_token_expires_at));
+  if (expiresAt && expiresAt <= Date.now() + 120_000) return refreshProductionToken(adminClient, authorization);
+  return decryptToken(authorization.access_token_ciphertext);
+}
+
+async function preferredEnvironment(adminClient: SupabaseClient, companyId: string, requested?: string): Promise<TargetEnvironment> {
+  if (requested === "production" || requested === "sandbox") return requested;
+  const { data } = await adminClient.from("platform_connectors").select("id")
+    .eq("company_id", companyId).eq("connector_code", "SUPERPDP").eq("environment", "production")
+    .eq("status", "active").eq("production_enabled", true).limit(1).maybeSingle();
+  return data ? "production" : "sandbox";
+}
+
+async function accessTokenFor(adminClient: SupabaseClient, companyId: string, targetEnvironment: TargetEnvironment) {
+  if (targetEnvironment === "production") return productionToken(adminClient, companyId);
+  const token = await superPdpToken();
+  await verifiedSandbox(token);
+  return token;
+}
+
 async function superPdpRequest(path: string, accessToken: string, init: RequestInit = {}) {
   const response = await fetch(`${SUPERPDP_API_URL}${path}`, {
     ...init,
@@ -175,13 +273,16 @@ async function verifiedSandbox(token: string) {
   return { company, raw: object(check.payload) };
 }
 
-async function connectorFor(adminClient: SupabaseClient, companyId: string) {
+async function connectorFor(adminClient: SupabaseClient, companyId: string, targetEnvironment: TargetEnvironment = "sandbox") {
   const { data, error } = await adminClient.from("platform_connectors").select("*")
-    .eq("company_id", companyId).eq("connector_code", "SUPERPDP").eq("environment", "sandbox")
+    .eq("company_id", companyId).eq("connector_code", "SUPERPDP").eq("environment", targetEnvironment)
     .order("updated_at", { ascending: false }).limit(1).maybeSingle();
   if (error || !data) throw Object.assign(new Error("superpdp_connector_not_configured"), { status: 409 });
-  if (data.production_enabled || data.environment !== "sandbox") {
+  if (targetEnvironment === "sandbox" && (data.production_enabled || data.environment !== "sandbox")) {
     throw Object.assign(new Error("superpdp_sandbox_required"), { status: 409 });
+  }
+  if (targetEnvironment === "production" && (data.environment !== "production" || !data.production_enabled || data.status !== "active")) {
+    throw Object.assign(new Error("superpdp_production_authorization_required"), { status: 409 });
   }
   return data as JsonObject;
 }
@@ -519,11 +620,17 @@ async function downloadStored(adminClient: SupabaseClient, path: string) {
   return new Uint8Array(await data.arrayBuffer());
 }
 
-async function sendDocument(userClient: SupabaseClient, adminClient: SupabaseClient, companyId: string, documentId: string) {
-  await requireElectronicInvoiceManager(userClient, companyId);
-  const token = await superPdpToken();
-  await verifiedSandbox(token);
-  const connector = await connectorFor(adminClient, companyId);
+async function sendDocument(
+  userClient: SupabaseClient,
+  adminClient: SupabaseClient,
+  companyId: string,
+  documentId: string,
+  targetEnvironment: TargetEnvironment = "sandbox",
+  worker = false,
+) {
+  if (!worker) await requireElectronicInvoiceManager(userClient, companyId);
+  const token = await accessTokenFor(adminClient, companyId, targetEnvironment);
+  const connector = await connectorFor(adminClient, companyId, targetEnvironment);
   const { data: document, error: documentError } = await adminClient.from("documents").select("*")
     .eq("id", documentId).eq("company_id", companyId).maybeSingle();
   if (documentError || !document) throw Object.assign(new Error("document_not_found"), { status: 404 });
@@ -532,9 +639,10 @@ async function sendDocument(userClient: SupabaseClient, adminClient: SupabaseCli
   }
   if (!document.final_pdf_path || document.pdf_status !== "ready") throw Object.assign(new Error("final_pdf_unavailable"), { status: 409 });
   const existing = await adminClient.from("superpdp_invoice_exchanges").select("*")
-    .eq("company_id", companyId).eq("document_id", documentId).eq("direction", "outgoing").maybeSingle();
+    .eq("company_id", companyId).eq("document_id", documentId).eq("direction", "outgoing")
+    .eq("environment", targetEnvironment).maybeSingle();
   if (existing.error) throw Object.assign(new Error("superpdp_exchange_audit_failed"), { status: 502 });
-  if (existing.data) return { ok: true, idempotent: true, environment: "sandbox", exchange: existing.data };
+  if (existing.data) return { ok: true, idempotent: true, environment: targetEnvironment, exchange: existing.data };
 
   let recordId = safeUuid(document.electronic_invoice_record_id);
   let record: JsonObject | null = null;
@@ -545,7 +653,9 @@ async function sendDocument(userClient: SupabaseClient, adminClient: SupabaseCli
     else recordId = "";
   }
   if (!recordId) {
-    const canonicalResult = await userClient.rpc("create_canonical_invoice_record", { target_document_id: documentId });
+    const canonicalResult = worker
+      ? await adminClient.rpc("service_create_canonical_invoice_record", { target_document_id: documentId })
+      : await userClient.rpc("create_canonical_invoice_record", { target_document_id: documentId });
     if (canonicalResult.error) throw Object.assign(new Error("canonical_invoice_failed"), { status: 409 });
     recordId = safeUuid(object(canonicalResult.data).record_id);
     if (!recordId || object(canonicalResult.data).status !== "valid") {
@@ -569,11 +679,12 @@ async function sendDocument(userClient: SupabaseClient, adminClient: SupabaseCli
   // The legal Piloz PDF remains immutable and keeps its real parties. The
   // sandbox artifact is rendered separately with SUPER PDP test parties so it
   // cannot be mistaken for, or overwrite, the production document.
-  const sandbox = await sandboxRoutedInvoice(token, enInvoice);
-  const transmittedInvoice = sandbox.invoice;
+  const sandbox = targetEnvironment === "sandbox" ? await sandboxRoutedInvoice(token, enInvoice) : null;
+  const transmittedInvoice = sandbox ? sandbox.invoice : enInvoice;
   const cii = await convertInvoice(token, "en16931", "cii", transmittedInvoice);
   const facturx = await convertInvoice(token, "en16931", "factur-x", transmittedInvoice);
-  const externalId = `PILOZ-${documentId}`.slice(0, 36);
+  // SUPER PDP limits the caller-provided external identifier to 36 characters.
+  const externalId = `${targetEnvironment === "production" ? "PILOZ-PROD" : "PILOZ-TEST"}-${documentId}`.slice(0, 36);
   const sent = await superPdpRequest(`/v1.beta/invoices?external_id=${encodeURIComponent(externalId)}`, token, {
     method: "POST", headers: { "Content-Type": "application/pdf" }, body: facturx.bytes,
   });
@@ -586,7 +697,7 @@ async function sendDocument(userClient: SupabaseClient, adminClient: SupabaseCli
     });
   }
   const provider = object(sent.payload), providerId = text(provider.id, provider.invoice_id, provider.uuid);
-  const base = `${companyId}/electronic-invoices/sandbox/outgoing/${documentId}/${recordId}`;
+  const base = `${companyId}/electronic-invoices/${targetEnvironment}/outgoing/${documentId}/${recordId}`;
   const pdfPath = await storageUpload(adminClient, `${base}.factur-x.pdf`, facturx.bytes, "application/pdf");
   const xmlPath = await storageUpload(adminClient, `${base}.cii.xml`, cii.bytes, "application/xml");
   const [pdfHash, xmlHash, requestHash, responseHash] = await Promise.all([
@@ -595,11 +706,11 @@ async function sendDocument(userClient: SupabaseClient, adminClient: SupabaseCli
   const { data: transmission, error: transmissionError } = await adminClient.from("platform_transmissions").insert({
     company_id: companyId, connector_id: connector.id, electronic_invoice_record_id: recordId,
     operation: "send_invoice", idempotency_key: externalId, status: "succeeded", is_simulation: false,
-    attempt_count: 1, external_transmission_id: providerId || null, external_status: text(provider.status, "sandbox_queued"),
+    attempt_count: 1, external_transmission_id: providerId || null, external_status: text(provider.status, "queued"),
     request_hash: requestHash, response_hash: responseHash, completed_at: new Date().toISOString(), created_by: document.created_by,
     metadata: {
-      provider: "SUPER PDP", environment: "sandbox", app_environment: "production", sent_to_production: false,
-      external_id: externalId, sandbox_party_substitution: true, sandbox_routing: sandbox.routing,
+      provider: "SUPER PDP", environment: targetEnvironment, app_environment: "production", sent_to_production: targetEnvironment === "production",
+      external_id: externalId, sandbox_party_substitution: targetEnvironment === "sandbox", sandbox_routing: sandbox?.routing || null,
       local_parties: { seller: partyName(object(canonicalPayload.supplier)), buyer: partyName(object(canonicalPayload.customer)) },
     },
   }).select("id").single();
@@ -607,16 +718,16 @@ async function sendDocument(userClient: SupabaseClient, adminClient: SupabaseCli
   const { data: exchange, error: exchangeError } = await adminClient.from("superpdp_invoice_exchanges").insert({
     company_id: companyId, document_id: documentId, electronic_invoice_record_id: recordId, connector_id: connector.id,
     transmission_id: transmission.id, provider_invoice_id: providerId || null, external_id: externalId,
-    direction: "outgoing", environment: "sandbox", status: text(provider.status, "queued"), xml_format: "cii",
+    direction: "outgoing", environment: targetEnvironment, status: text(provider.status, "queued"), xml_format: "cii",
     original_storage_path: pdfPath, pdf_storage_path: pdfPath, xml_storage_path: xmlPath,
     original_sha256: pdfHash, pdf_sha256: pdfHash, xml_sha256: xmlHash,
     canonical_payload: transmittedInvoice, provider_payload: provider, last_synced_at: new Date().toISOString(), created_by: document.created_by,
   }).select("*").single();
   if (exchangeError) throw Object.assign(new Error("superpdp_exchange_audit_failed"), { status: 502 });
   const platformEvent = await adminClient.from("platform_transmission_events").insert({
-    company_id: companyId, transmission_id: transmission.id, event_sequence: 1, event_type: "sandbox_invoice_queued",
+    company_id: companyId, transmission_id: transmission.id, event_sequence: 1, event_type: targetEnvironment === "production" ? "production_invoice_queued" : "sandbox_invoice_queued",
     status: "succeeded", source: "SUPERPDP", payload_hash: responseHash,
-    payload: { environment: "sandbox", provider_invoice_id: providerId || null, external_id: externalId }, created_by: document.created_by,
+    payload: { environment: targetEnvironment, provider_invoice_id: providerId || null, external_id: externalId }, created_by: document.created_by,
   });
   if (platformEvent.error) throw Object.assign(new Error("superpdp_transmission_event_audit_failed"), { status: 502 });
   const exchangeEvent = await adminClient.from("superpdp_invoice_events").insert({
@@ -625,12 +736,12 @@ async function sendDocument(userClient: SupabaseClient, adminClient: SupabaseCli
   });
   if (exchangeEvent.error) throw Object.assign(new Error("superpdp_exchange_event_audit_failed"), { status: 502 });
   const artifacts = await adminClient.from("electronic_invoice_artifacts").insert([
-    { company_id: companyId, electronic_invoice_record_id: recordId, direction: "outbound", format: "facturx", pdf_storage_path: pdfPath, original_storage_path: pdfPath, artifact_sha256: pdfHash, pdf_sha256: pdfHash, media_type: "application/pdf", status: "validated", created_by: document.created_by, metadata: { provider: "SUPER PDP", environment: "sandbox", external_validation: true } },
-    { company_id: companyId, electronic_invoice_record_id: recordId, direction: "outbound", format: "cii", original_storage_path: xmlPath, artifact_sha256: xmlHash, media_type: "application/xml", status: "validated", created_by: document.created_by, metadata: { provider: "SUPER PDP", environment: "sandbox", external_validation: true } },
+    { company_id: companyId, electronic_invoice_record_id: recordId, direction: "outbound", format: "facturx", pdf_storage_path: pdfPath, original_storage_path: pdfPath, artifact_sha256: pdfHash, pdf_sha256: pdfHash, media_type: "application/pdf", status: "validated", created_by: document.created_by, metadata: { provider: "SUPER PDP", environment: targetEnvironment, external_validation: true } },
+    { company_id: companyId, electronic_invoice_record_id: recordId, direction: "outbound", format: "cii", original_storage_path: xmlPath, artifact_sha256: xmlHash, media_type: "application/xml", status: "validated", created_by: document.created_by, metadata: { provider: "SUPER PDP", environment: targetEnvironment, external_validation: true } },
   ]);
   if (artifacts.error) throw Object.assign(new Error("superpdp_artifact_audit_failed"), { status: 502 });
   await adminClient.from("documents").update({ electronic_invoice_status: "transmitted", electronic_format: "facturx", electronic_profile_code: "EN16931-CII" }).eq("id", documentId);
-  return { ok: true, environment: "sandbox", appEnvironment: "production", exchange };
+  return { ok: true, environment: targetEnvironment, appEnvironment: "production", exchange };
 }
 
 async function exchangeXml(userClient: SupabaseClient, adminClient: SupabaseClient, companyId: string, documentId: string) {
@@ -639,16 +750,16 @@ async function exchangeXml(userClient: SupabaseClient, adminClient: SupabaseClie
     .eq("company_id", companyId).eq("document_id", documentId).order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (error || !exchange?.xml_storage_path) throw Object.assign(new Error("superpdp_xml_unavailable"), { status: 404 });
   const bytes = await downloadStored(adminClient, exchange.xml_storage_path);
-  return { ok: true, environment: "sandbox", format: exchange.xml_format || "cii", status: exchange.status, xml: new TextDecoder().decode(bytes), exchangeId: exchange.id };
+  return { ok: true, environment: exchange.environment || "sandbox", format: exchange.xml_format || "cii", status: exchange.status, xml: new TextDecoder().decode(bytes), exchangeId: exchange.id };
 }
 
 async function syncStatus(userClient: SupabaseClient, adminClient: SupabaseClient, companyId: string, documentId: string) {
   await requireElectronicInvoiceManager(userClient, companyId);
-  const token = await superPdpToken();
-  await verifiedSandbox(token);
   const { data: exchange, error } = await adminClient.from("superpdp_invoice_exchanges").select("*")
     .eq("company_id", companyId).eq("document_id", documentId).order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (error || !exchange?.provider_invoice_id) throw Object.assign(new Error("superpdp_exchange_not_found"), { status: 404 });
+  const targetEnvironment: TargetEnvironment = exchange.environment === "production" ? "production" : "sandbox";
+  const token = await accessTokenFor(adminClient, companyId, targetEnvironment);
   const result = await superPdpRequest(`/v1.beta/invoices/${encodeURIComponent(exchange.provider_invoice_id)}`, token);
   if (!result.response.ok) throw Object.assign(new Error("superpdp_status_failed"), { status: 502 });
   const provider = object(result.payload), status = text(provider.status, provider.state, exchange.status);
@@ -657,7 +768,7 @@ async function syncStatus(userClient: SupabaseClient, adminClient: SupabaseClien
   const digest = await sha256(JSON.stringify(provider));
   const event = await adminClient.from("superpdp_invoice_events").insert({ company_id: companyId, exchange_id: exchange.id, provider_event_id: `sync-${Date.now()}`, event_type: "status_synchronized", status, payload_hash: digest, payload: provider });
   if (event.error) throw Object.assign(new Error("superpdp_exchange_event_audit_failed"), { status: 502 });
-  return { ok: true, environment: "sandbox", status, exchangeId: exchange.id };
+  return { ok: true, environment: targetEnvironment, status, exchangeId: exchange.id };
 }
 
 function providerItems(payload: unknown) {
@@ -795,8 +906,8 @@ async function createIncomingLifecycleEvent(
   if (providerInvoiceId < 0) {
     throw Object.assign(new Error("superpdp_incoming_exchange_required"), { status: 404 });
   }
-  const token = await superPdpToken();
-  await verifiedSandbox(token);
+  const targetEnvironment: TargetEnvironment = exchange.environment === "production" ? "production" : "sandbox";
+  const token = await accessTokenFor(adminClient, companyId, targetEnvironment);
   const requestPayload: JsonObject = {
     invoice_id: providerInvoiceId,
     status_code: statusCode,
@@ -837,7 +948,7 @@ async function createIncomingLifecycleEvent(
   if (updated.error) throw Object.assign(new Error("superpdp_status_audit_failed"), { status: 502 });
   return {
     ok: true,
-    environment: "sandbox",
+    environment: targetEnvironment,
     appEnvironment: "production",
     exchangeId: exchange.id,
     status: text(providerEvent.status_code, statusCode),
@@ -867,11 +978,12 @@ async function providerInvoice(token: string, id: string, format: "en16931" | "c
   return { payload: {}, ...result };
 }
 
-async function importIncomingInvoice(adminClient: SupabaseClient, companyId: string, connector: JsonObject, token: string, summary: JsonObject) {
+async function importIncomingInvoice(adminClient: SupabaseClient, companyId: string, connector: JsonObject, token: string, summary: JsonObject, targetEnvironment: TargetEnvironment) {
   const providerId = text(summary.id, summary.invoice_id, summary.uuid);
   if (!providerId) return { skipped: true, reason: "missing_provider_id" };
   const existing = await adminClient.from("superpdp_invoice_exchanges").select("*")
-    .eq("company_id", companyId).eq("direction", "incoming").eq("provider_invoice_id", providerId).maybeSingle();
+    .eq("company_id", companyId).eq("direction", "incoming").eq("provider_invoice_id", providerId)
+    .eq("environment", targetEnvironment).maybeSingle();
   if (existing.data) {
     const lifecycle = await syncIncomingEvents(adminClient, companyId, existing.data, token);
     return { skipped: true, idempotent: true, documentId: existing.data.document_id, lifecycle };
@@ -903,7 +1015,7 @@ async function importIncomingInvoice(adminClient: SupabaseClient, companyId: str
     issue_date: text(invoice.issue_date, new Date().toISOString().slice(0, 10)), due_date: text(invoice.payment_due_date) || null,
     client_reference: text(invoice.number), currency: text(invoice.currency_code, "EUR"), subject: `Facture fournisseur ${text(invoice.number)}`,
     total_cost: totalWithoutTax, total_excl_tax: totalWithoutTax, total_tax: totalTax, total_incl_tax: totalWithTax,
-    metadata: { superpdp: { environment: "sandbox", provider_invoice_id: providerId, imported_at: new Date().toISOString() }, electronic_source: "superpdp_sandbox" },
+    metadata: { superpdp: { environment: targetEnvironment, provider_invoice_id: providerId, imported_at: new Date().toISOString() }, electronic_source: `superpdp_${targetEnvironment}` },
   }).select("*").single();
   if (documentInsert.error) throw Object.assign(new Error("superpdp_purchase_invoice_import_failed"), { status: 502 });
   const document = documentInsert.data;
@@ -916,19 +1028,19 @@ async function importIncomingInvoice(adminClient: SupabaseClient, companyId: str
         unit: text(line.invoiced_quantity_code, "unité"), unit_cost_snapshot: Number(price.item_net_price || (net / quantity) || 0),
         unit_price: Number(price.item_net_price || (net / quantity) || 0), discount_rate: 0, tax_rate: rate,
         total_excl_tax: net, total_tax: net * rate / 100, total_incl_tax: net * (1 + rate / 100),
-        line_metadata: { electronic_source: "superpdp_sandbox", provider_line_id: text(line.identifier) } };
+        line_metadata: { electronic_source: `superpdp_${targetEnvironment}`, provider_line_id: text(line.identifier) } };
     });
     const inserted = await adminClient.from("document_lines").insert(lineRows);
     if (inserted.error) throw Object.assign(new Error("superpdp_purchase_invoice_lines_import_failed"), { status: 502 });
   }
-  const base = `${companyId}/electronic-invoices/sandbox/incoming/${providerId}/${document.id}`;
+  const base = `${companyId}/electronic-invoices/${targetEnvironment}/incoming/${providerId}/${document.id}`;
   const pdfPath = await storageUpload(adminClient, `${base}.factur-x.pdf`, facturx.bytes, "application/pdf");
   const xmlPath = await storageUpload(adminClient, `${base}.cii.xml`, cii.bytes, "application/xml");
   const [pdfHash, xmlHash, canonicalHash] = await Promise.all([sha256(facturx.bytes), sha256(cii.bytes), sha256(JSON.stringify(invoice))]);
   const externalId = text(summary.external_id, `SUPERPDP-${providerId}`).slice(0, 120);
   const exchangeInsert = await adminClient.from("superpdp_invoice_exchanges").insert({
     company_id: companyId, document_id: document.id, connector_id: connector.id, provider_invoice_id: providerId,
-    external_id: externalId, direction: "incoming", environment: "sandbox", status: text(summary.status, "received"), xml_format: "cii",
+    external_id: externalId, direction: "incoming", environment: targetEnvironment, status: text(summary.status, "received"), xml_format: "cii",
     original_storage_path: pdfPath, pdf_storage_path: pdfPath, xml_storage_path: xmlPath, original_sha256: pdfHash, pdf_sha256: pdfHash,
     xml_sha256: xmlHash, canonical_payload: invoice, provider_payload: summary, last_synced_at: new Date().toISOString(),
   }).select("*").single();
@@ -940,11 +1052,10 @@ async function importIncomingInvoice(adminClient: SupabaseClient, companyId: str
   return { imported: true, documentId: document.id, exchangeId: exchangeInsert.data.id, providerInvoiceId: providerId };
 }
 
-async function syncIncoming(userClient: SupabaseClient, adminClient: SupabaseClient, companyId: string) {
-  await requireElectronicInvoiceManager(userClient, companyId);
-  const token = await superPdpToken();
-  await verifiedSandbox(token);
-  const connector = await connectorFor(adminClient, companyId);
+async function syncIncoming(userClient: SupabaseClient, adminClient: SupabaseClient, companyId: string, targetEnvironment: TargetEnvironment = "sandbox", worker = false) {
+  if (!worker) await requireElectronicInvoiceManager(userClient, companyId);
+  const token = await accessTokenFor(adminClient, companyId, targetEnvironment);
+  const connector = await connectorFor(adminClient, companyId, targetEnvironment);
   // SUPER PDP exposes the wire values `in` and `out` for this filter.
   // `incoming` remains the internal value stored in PILOZ's audit tables.
   const list = await superPdpRequest("/v1.beta/invoices?direction=in&limit=100", token);
@@ -957,7 +1068,7 @@ async function syncIncoming(userClient: SupabaseClient, adminClient: SupabaseCli
   }
   const results = [];
   for (const item of providerItems(list.payload)) {
-    try { results.push(await importIncomingInvoice(adminClient, companyId, connector, token, item)); }
+    try { results.push(await importIncomingInvoice(adminClient, companyId, connector, token, item, targetEnvironment)); }
     catch (error) {
       console.error("[PILOZ SUPER PDP] import entrant impossible", { providerInvoiceId: text(item.id), code: (error as Error).message });
       results.push({ imported: false, providerInvoiceId: text(item.id), error: (error as Error).message });
@@ -965,7 +1076,7 @@ async function syncIncoming(userClient: SupabaseClient, adminClient: SupabaseCli
   }
   return {
     ok: true,
-    environment: "sandbox",
+    environment: targetEnvironment,
     appEnvironment: "production",
     found: providerItems(list.payload).length,
     imported: results.filter(item => object(item).imported).length,
@@ -974,32 +1085,102 @@ async function syncIncoming(userClient: SupabaseClient, adminClient: SupabaseCli
   };
 }
 
+function workerAuthorized(req: Request) {
+  const expected = Deno.env.get("SUPERPDP_WORKER_SECRET") || "";
+  const received = req.headers.get("x-piloz-worker-secret") || "";
+  if (!expected || expected.length < 32 || expected.length !== received.length) return false;
+  let difference = 0;
+  for (let index = 0; index < expected.length; index += 1) difference |= expected.charCodeAt(index) ^ received.charCodeAt(index);
+  return difference === 0;
+}
+
+async function processJobs(adminClient: SupabaseClient, companyId = "", limit = 20) {
+  // Enqueue the recurrent inbox polling here as well as through pg_cron. This
+  // makes the GitHub scheduled worker self-sufficient on projects where the
+  // pg_cron extension is unavailable or deliberately disabled.
+  if (!companyId) {
+    const recurring = await adminClient.rpc("enqueue_superpdp_recurring_jobs", { target_now: new Date().toISOString() });
+    if (recurring.error) console.warn("[PILOZ SUPER PDP worker] recurring enqueue unavailable", { code: recurring.error.code });
+  }
+  let query = adminClient.from("superpdp_jobs").select("*")
+    .in("status", ["pending", "retry_scheduled"]).lte("available_at", new Date().toISOString())
+    .order("created_at", { ascending: true }).limit(Math.max(1, Math.min(50, limit)));
+  if (companyId) query = query.eq("company_id", companyId);
+  const { data: jobs, error } = await query;
+  if (error) throw Object.assign(new Error("superpdp_job_queue_unavailable"), { status: 502 });
+  const results: JsonObject[] = [];
+  for (const job of jobs || []) {
+    const claimed = await adminClient.from("superpdp_jobs").update({
+      status: "processing", locked_at: new Date().toISOString(), attempt_count: Number(job.attempt_count || 0) + 1,
+    }).eq("id", job.id).in("status", ["pending", "retry_scheduled"]).select("id").maybeSingle();
+    if (claimed.error || !claimed.data) continue;
+    try {
+      let result: unknown;
+      if (job.job_type === "send_document" && safeUuid(job.document_id)) {
+        result = await sendDocument(adminClient, adminClient, job.company_id, job.document_id, "production", true);
+      } else if (job.job_type === "sync_incoming") {
+        result = await syncIncoming(adminClient, adminClient, job.company_id, "production", true);
+        await adminClient.from("superpdp_company_authorizations").update({ last_incoming_sync_at: new Date().toISOString() }).eq("company_id", job.company_id).is("revoked_at", null);
+      } else {
+        throw Object.assign(new Error("superpdp_job_type_unsupported"), { status: 400 });
+      }
+      await adminClient.from("superpdp_jobs").update({ status: "succeeded", completed_at: new Date().toISOString(), locked_at: null, last_error_code: null }).eq("id", job.id);
+      results.push({ id: job.id, ok: true, type: job.job_type, result });
+    } catch (jobError) {
+      const code = text((jobError as Error).message, "superpdp_job_failed"), attempts = Number(job.attempt_count || 0) + 1;
+      const terminal = attempts >= 8 || ["canonical_invoice_invalid", "document_not_found", "finalized_fiscal_document_required"].includes(code);
+      const retryMinutes = Math.min(360, Math.pow(2, Math.max(1, attempts)));
+      await adminClient.from("superpdp_jobs").update({
+        status: terminal ? "dead_letter" : "retry_scheduled", locked_at: null,
+        completed_at: terminal ? new Date().toISOString() : null, last_error_code: code,
+        available_at: new Date(Date.now() + retryMinutes * 60_000).toISOString(),
+      }).eq("id", job.id);
+      await adminClient.from("superpdp_company_authorizations").update({ last_error_code: code, last_error_at: new Date().toISOString() }).eq("company_id", job.company_id).is("revoked_at", null);
+      results.push({ id: job.id, ok: false, type: job.job_type, code });
+    }
+  }
+  return { ok: true, processed: results.length, succeeded: results.filter(item => item.ok).length, failed: results.filter(item => !item.ok).length, results };
+}
+
 Deno.serve(async req => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Méthode non autorisée." }, 405);
   const url = Deno.env.get("SUPABASE_URL"), anon = Deno.env.get("SUPABASE_ANON_KEY"), serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !anon || !serviceRole) return json({ error: "Connecteur non configuré." }, 503);
-  const userClient = createClient(url, anon, { global: { headers: { Authorization: req.headers.get("Authorization") || "" } }, auth: { persistSession: false, autoRefreshToken: false } });
   const adminClient = createClient(url, serviceRole, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { data: { user } } = await userClient.auth.getUser();
-  if (!user) return json({ error: "Session invalide." }, 401);
   let body: RequestBody;
   try { const raw = await req.text(); body = raw ? JSON.parse(raw) : {}; }
   catch { return json({ error: "Demande invalide." }, 400); }
+  if (text(body.action) === "superpdp_process_jobs" && workerAuthorized(req)) {
+    try { return json(await processJobs(adminClient, safeUuid(body.companyId), Number(body.limit) || 20)); }
+    catch (error) {
+      const code = text((error as Error).message, "superpdp_worker_failed");
+      console.error("[PILOZ SUPER PDP worker] execution failed", { code });
+      return json({ error: "Le traitement automatique SUPER PDP a échoué.", code }, 502);
+    }
+  }
+  const userClient = createClient(url, anon, { global: { headers: { Authorization: req.headers.get("Authorization") || "" } }, auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: { user } } = await userClient.auth.getUser();
+  if (!user) return json({ error: "Session invalide." }, 401);
 
   try {
     const action = text(body.action), companyId = safeUuid(body.companyId), documentId = safeUuid(body.documentId);
-    const companyActions = new Set(["superpdp_test", "superpdp_send_test_invoice", "superpdp_send_document", "superpdp_document_xml", "superpdp_sync_status", "superpdp_sync_incoming", "superpdp_create_invoice_event"]);
+    const companyActions = new Set(["superpdp_test", "superpdp_send_test_invoice", "superpdp_send_document", "superpdp_document_xml", "superpdp_sync_status", "superpdp_sync_incoming", "superpdp_create_invoice_event", "superpdp_process_company_jobs"]);
     if (companyActions.has(action) && !companyId) return json({ error: "Entreprise invalide.", code: "invalid_company_id" }, 400);
     if (["superpdp_send_document", "superpdp_document_xml", "superpdp_sync_status", "superpdp_create_invoice_event"].includes(action) && !documentId) {
       return json({ error: "Document invalide.", code: "invalid_document_id" }, 400);
     }
     if (action === "superpdp_test") return json(await testSuperPdp(userClient, companyId));
     if (action === "superpdp_send_test_invoice") return json(await sendSuperPdpTestInvoice(userClient, companyId, text(body.confirmation)));
-    if (action === "superpdp_send_document") return json(await sendDocument(userClient, adminClient, companyId, documentId));
+    const targetEnvironment = await preferredEnvironment(adminClient, companyId, text(body.environment));
+    if (action === "superpdp_send_document") return json(await sendDocument(userClient, adminClient, companyId, documentId, targetEnvironment));
     if (action === "superpdp_document_xml") return json(await exchangeXml(userClient, adminClient, companyId, documentId));
     if (action === "superpdp_sync_status") return json(await syncStatus(userClient, adminClient, companyId, documentId));
-    if (action === "superpdp_sync_incoming") return json(await syncIncoming(userClient, adminClient, companyId));
+    if (action === "superpdp_sync_incoming") return json(await syncIncoming(userClient, adminClient, companyId, targetEnvironment));
+    if (action === "superpdp_process_company_jobs") {
+      await requireElectronicInvoiceManager(userClient, companyId);
+      return json(await processJobs(adminClient, companyId, 10));
+    }
     if (action === "superpdp_create_invoice_event") {
       return json(await createIncomingLifecycleEvent(
         userClient,
@@ -1021,7 +1202,7 @@ Deno.serve(async req => {
       if (error) return json({ error: "La simulation n'a pas abouti.", code: error.code || "simulation_failed" }, 409);
       return json(data);
     }
-    if (action === "production") return json({ error: "Le connecteur SUPER PDP est volontairement verrouillé sur le bac à sable.", code: "superpdp_sandbox_required" }, 503);
+    if (action === "production") return json({ error: "La production SUPER PDP se configure depuis Paramètres > Extensions > Facturation électronique.", code: "superpdp_production_managed_by_oauth" }, 409);
     return json({ error: "Action de connecteur inconnue." }, 400);
   } catch (error) {
     const code = String((error as Error)?.message || "platform_connector_failed");
@@ -1042,6 +1223,10 @@ Deno.serve(async req => {
       superpdp_authentication_failed: "SUPER PDP a refusé les identifiants de l’application sandbox.",
       superpdp_account_is_not_sandbox: "L’application SUPER PDP configurée n’appartient pas au bac à sable.",
       superpdp_sandbox_required: "Le connecteur SUPER PDP est verrouillé sur le bac à sable.",
+      superpdp_production_authorization_missing: "Cette entreprise n’a pas encore autorisé SUPER PDP en production.",
+      superpdp_production_authorization_required: "Terminez l’activation SUPER PDP de cette entreprise avant de transmettre des factures.",
+      superpdp_production_reauthorization_required: "L’autorisation SUPER PDP a expiré. Reconnectez l’entreprise depuis les paramètres.",
+      superpdp_job_queue_unavailable: "La file d’envoi SUPER PDP est temporairement indisponible.",
       superpdp_test_confirmation_required: "Confirmez explicitement l’envoi de la facture de test.",
       superpdp_connector_not_configured: "Testez d’abord la connexion SUPER PDP dans les paramètres.",
       finalized_fiscal_document_required: "Finalisez la facture avant de la transmettre.",
@@ -1053,14 +1238,14 @@ Deno.serve(async req => {
       superpdp_invoice_conversion_failed: "SUPER PDP n’a pas pu convertir cette facture en Factur-X et CII. Vérifiez les montants, la TVA et les coordonnées des deux entreprises.",
       superpdp_sandbox_routing_failed: "SUPER PDP n’a pas fourni les entreprises de test nécessaires au routage dans le bac à sable.",
       superpdp_xml_unavailable: "Aucun XML électronique n’est encore disponible pour ce document.",
-      superpdp_invoice_send_failed: "SUPER PDP a refusé cette facture dans le bac à sable.",
+      superpdp_invoice_send_failed: "SUPER PDP a refusé cette facture. Consultez le détail fourni par la plateforme.",
       superpdp_artifact_storage_failed: "Les fichiers Factur-X et CII ont été créés, mais Piloz n’a pas pu les archiver.",
       superpdp_transmission_audit_failed: "L’envoi a abouti, mais son journal de transmission n’a pas pu être enregistré.",
       superpdp_exchange_audit_failed: "L’échange SUPER PDP n’a pas pu être enregistré dans Piloz.",
       superpdp_transmission_event_audit_failed: "L’évènement de transmission SUPER PDP n’a pas pu être enregistré.",
       superpdp_exchange_event_audit_failed: "L’évènement d’échange SUPER PDP n’a pas pu être enregistré.",
       superpdp_artifact_audit_failed: "Les justificatifs électroniques n’ont pas pu être inscrits dans le registre Piloz.",
-      superpdp_incoming_list_failed: "SUPER PDP n’a pas pu fournir la liste des factures reçues. Vérifiez que l’entreprise sandbox est bien validée, puis réessayez.",
+      superpdp_incoming_list_failed: "SUPER PDP n’a pas pu fournir la liste des factures reçues. Vérifiez l’autorisation et l’état de l’entreprise, puis réessayez.",
     };
     const provider = object((error as { provider?: unknown })?.provider);
     const providerMessage = text(provider.message).replace(/[\r\n\t]+/g, " ").slice(0, 240);

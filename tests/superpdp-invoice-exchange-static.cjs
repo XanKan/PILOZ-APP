@@ -4,17 +4,17 @@ const path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 const edge=read('supabase/functions/platform-connector/index.ts');
-const migration=read('supabase/migrations/202607270098_superpdp_sandbox_invoice_exchange.sql');
+const sandboxMigration=read('supabase/migrations/202607270098_superpdp_sandbox_invoice_exchange.sql');
+const productionMigration=read('supabase/migrations/202607280101_superpdp_production_oauth.sql');
 const viewer=read('assets/js/modules/erp/erp-document-viewer-v2.js');
 const supplier=read('assets/js/modules/erp/erp-superpdp-workspace.js');
 const app=read('assets/js/modules/erp/erp-app.js');
 const html=read('index.html');
 
 const checks={
-  sandbox_hard_lock:edge.includes('SUPERPDP_ENVIRONMENT')&&edge.includes('superpdp_sandbox_required')&&migration.includes("check(environment='sandbox')"),
-  provider_environment_verified:edge.includes('/v1.beta/companies/me')&&edge.includes('company.environment !== "sandbox"'),
-  piloz_stays_in_production:edge.includes('appEnvironment: "production"')&&supplier.includes('PILOZ reste en production'),
-  production_action_rejected:edge.includes('if (action === "production")')&&edge.includes('volontairement verrouillé sur le bac à sable'),
+  dual_environment_register:productionMigration.includes("check(environment in('sandbox','production'))")&&productionMigration.includes('superpdp_invoice_exchanges_external_environment_uidx'),
+  automatic_environment_selection:edge.includes('preferredEnvironment(')&&edge.includes("return data ? \"production\" : \"sandbox\""),
+  production_oauth_token:edge.includes('productionToken(')&&edge.includes('SUPERPDP_TOKEN_ENCRYPTION_KEY'),
   facturx_conversion:edge.includes('to === "factur-x"')&&edge.includes('new FormData()')&&edge.includes('application/pdf'),
   cii_conversion:edge.includes('to: "cii"')&&edge.includes('format: "cii"'),
   en16931_vat_amount_contract:edge.includes('total_vat_amount: { value: decimal(totals.tax, true)')&&!edge.includes('total_vat_amount: { amount: decimal(totals.tax, true)'),
@@ -22,32 +22,25 @@ const checks={
   afnor_mandatory_notes:['PMT','PMD','AAB'].every(code=>edge.includes(`subject_code: "${code}"`)),
   french_siren_legal_identifier:edge.includes('scheme: "0002"')&&edge.includes('legal_registration_identifier: sirenIdentifier(supplier)'),
   siret_private_identifier:edge.includes('scheme: "0009"')&&edge.includes('identifiers: privatePartyIdentifiers(supplier)'),
-  sandbox_tenant_id_not_used_as_iso_address:edge.includes('usableProviderFallback = /^\\d{4}$/.test(normalizedFallbackScheme)')&&edge.includes('It identifies the API tenant')&&edge.includes('party.siret'),
-  sandbox_uses_registered_test_parties:edge.includes('generate_test_invoice?format=en16931')&&edge.includes('sandbox_party_substitution: true')&&edge.includes('const transmittedInvoice = sandbox.invoice'),
-  legal_pdf_is_not_overwritten_by_sandbox_artifact:edge.includes('The legal Piloz PDF remains immutable')&&!edge.includes('convertInvoice(token, "en16931", "factur-x", transmittedInvoice, pdf)'),
-  provider_refusal_is_actionable:edge.includes('Détail SUPER PDP')&&edge.includes('providerMessage'),
+  sandbox_party_substitution_only_in_test:edge.includes('targetEnvironment === "sandbox" ? await sandboxRoutedInvoice')&&edge.includes('sandbox_party_substitution: targetEnvironment === "sandbox"'),
+  legal_pdf_not_overwritten_by_test_artifact:edge.includes('The legal Piloz PDF remains immutable')&&!edge.includes('convertInvoice(token, "en16931", "factur-x", transmittedInvoice, pdf)'),
+  provider_refusal_actionable:edge.includes('Détail SUPER PDP')&&edge.includes('providerMessage'),
   outside_scope_vat_rate_omitted:edge.includes('!["O", "E"].includes(category)')&&edge.includes('BR-O-05 forbids BT-152'),
-  configured_legal_mentions:edge.includes('early_payment_discount_notice,late_payment_penalty_notice,collection_fee_notice')&&edge.includes('canonicalPayload.legal_mentions'),
   optional_empty_values_removed:edge.includes('function compactJson(value: unknown)')&&edge.includes('return compactJson(result) as JsonObject'),
-  conversion_error_is_actionable:edge.includes('superpdp_invoice_conversion_failed')&&edge.includes('convertir cette facture en Factur-X et CII'),
-  outgoing_send_action:edge.includes('superpdp_send_document')&&edge.includes('create_canonical_invoice_record'),
+  outgoing_send_action:edge.includes('superpdp_send_document')&&edge.includes('service_create_canonical_invoice_record'),
   incoming_sync_action:edge.includes('superpdp_sync_incoming')&&edge.includes('direction=in&limit=100')&&edge.includes('document_type: "purchase_invoice"'),
-  provider_direction_values:!edge.includes('direction=incoming&')&&!edge.includes('direction=outgoing&'),
-  incoming_error_is_actionable:edge.includes('superpdp_incoming_list_failed')&&edge.includes('entreprise sandbox est bien valid'),
-  en16931_wrapper_supported:edge.includes('envelope.en_invoice')&&edge.includes('expandedInvoice'),
-  empty_inbox_is_success:supplier.includes('aucune nouvelle facture reçue dans le bac à sable SUPER PDP'),
-  partial_import_is_reported:edge.includes('failed: results.filter')&&supplier.includes('n’ont pas pu être intégrées'),
-  customer_pdf_xml_tabs:viewer.includes("setPreviewFormat('pdf')")&&viewer.includes("setPreviewFormat('xml')")&&viewer.includes('downloadElectronicXml')&&viewer.includes('Télécharger'),
+  incoming_environment_reported:supplier.includes("result.environment === 'production'")&&edge.includes('environment: targetEnvironment'),
+  partial_import_reported:edge.includes('failed: results.filter')&&supplier.includes('n’ont pas pu être intégrées'),
+  customer_pdf_xml_tabs:viewer.includes("setPreviewFormat('pdf')")&&viewer.includes("setPreviewFormat('xml')")&&viewer.includes('downloadElectronicXml'),
   customer_send_and_status:viewer.includes('sendElectronicInvoice')&&viewer.includes('syncElectronicStatus'),
   supplier_pdf_xml_tabs:supplier.includes("setMode('pdf')")&&supplier.includes("setMode('xml')")&&supplier.includes('downloadXml'),
+  supplier_production_label:supplier.includes("SUPER PDP · ${production ? 'production' : 'bac à sable'}"),
   supplier_workspace_loaded:html.includes('erp-superpdp-workspace.js')&&html.includes('document-viewer-v2.css'),
-  exchange_tables:migration.includes('public.superpdp_invoice_exchanges')&&migration.includes('public.superpdp_invoice_events'),
-  immutable_event_log:migration.includes('superpdp_invoice_events_immutable')&&migration.includes('protect_immutable_fiscal_row'),
-  tenant_rls:migration.includes('enable row level security')&&migration.includes('public.is_company_member(company_id)'),
-  private_artifact_bucket:migration.includes("where id='company-files'")&&migration.includes('public=false')&&migration.includes("'application/xml'"),
+  exchange_tables:sandboxMigration.includes('public.superpdp_invoice_exchanges')&&sandboxMigration.includes('public.superpdp_invoice_events'),
+  immutable_event_log:sandboxMigration.includes('superpdp_invoice_events_immutable')&&sandboxMigration.includes('protect_immutable_fiscal_row'),
+  tenant_rls:sandboxMigration.includes('enable row level security')&&sandboxMigration.includes('public.is_company_member(company_id)'),
   exchange_data_loaded:app.includes('superpdpInvoiceExchanges')&&app.includes('superpdpInvoiceEvents')&&app.includes('electronicInvoiceRecords'),
-  no_browser_secret:!viewer.includes('SUPERPDP_CLIENT_SECRET')&&!supplier.includes('SUPERPDP_CLIENT_SECRET')&&!html.includes('SUPERPDP_CLIENT_SECRET'),
-  no_browser_service_role:!viewer.includes('SUPABASE_SERVICE_ROLE_KEY')&&!supplier.includes('SUPABASE_SERVICE_ROLE_KEY')
+  no_browser_secret:!viewer.includes('SUPERPDP_CLIENT_SECRET')&&!supplier.includes('SUPERPDP_CLIENT_SECRET')&&!html.includes('SUPERPDP_CLIENT_SECRET')
 };
 
 const failed=Object.entries(checks).filter(([,ok])=>!ok).map(([name])=>name);

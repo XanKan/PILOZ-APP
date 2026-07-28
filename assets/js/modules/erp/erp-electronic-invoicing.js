@@ -11,66 +11,98 @@
  const button=(label,handler,kind='btn-o',extra='')=>`<button class="btn ${kind}" onclick="${handler}" ${extra}>${esc(label)}</button>`;
  const badge=(label,tone='info')=>`<span class="phase1-badge phase1-badge-${tone}">${esc(label)}</span>`;
  const date=value=>value?new Intl.DateTimeFormat('fr-FR',{dateStyle:'short',timeStyle:'short'}).format(new Date(value)):'Jamais';
- let view={busy:false,connector:null,transmissions:[],confirmOpen:false,error:'',success:''};
+ const statusLabel=value=>({verified:'Vérifiée',needs_review:'Vérification en cours',not_verified:'Identité à vérifier',pending:'En cours',created:'Active',not_started:'À faire',failed:'À corriger',active:'Active',not_requested:'Non demandée',error:'Erreur',rejected:'Refusée',validation_required:'Vérification requise',configured:'Configurée',suspended:'Déconnectée',unconfigured:'Non configurée'}[String(value||'')]||String(value||'À faire'));
+ const statusTone=value=>['verified','active','created'].includes(String(value))?'success':['needs_review','not_verified','pending','validation_required','configured'].includes(String(value))?'warning':['failed','error','rejected'].includes(String(value))?'danger':'muted';
+ let view={busy:false,connector:null,transmissions:[],production:null,events:[],confirmOpen:false,disconnectConfirm:false,error:'',success:''};
 
  function notify(message,tone='info'){
   if(global.PilozOps?.notify)global.PilozOps.notify(message,tone);
   else if(global.toast)global.toast(message);
  }
  function header(){
-  return `<header class="modern-page-header"><div><h1>Facturation électronique</h1><p>Connectez Piloz à SUPER PDP et validez les échanges dans son bac à sable.</p></div><div class="actions">${button('Retour aux paramètres',"PilozApp.go('settings/overview')")}</div></header>`;
- }
- function connectorCard(){
-  const connector=view.connector,config=connector?.non_secret_configuration||{},connected=Boolean(connector);
-  return `<section class="phase1-card"><div class="erp-card-heading"><div><h2>SUPER PDP</h2><p>Plateforme agréée · format préféré Factur-X</p></div>${badge(connected?'Bac à sable connecté':'À connecter',connected?'success':'warning')}</div>
-   <div class="phase1-grid">
-    <div class="phase1-field"><span>Environnement</span><strong>Bac à sable uniquement</strong></div>
-    <div class="phase1-field"><span>Entreprise SUPER PDP</span><strong>${esc(config.external_company_name||'—')}</strong></div>
-    <div class="phase1-field"><span>Identifiant externe</span><strong>${esc(config.external_company_number||'—')}</strong></div>
-    <div class="phase1-field"><span>Dernière vérification</span><strong>${date(config.verified_at)}</strong></div>
-   </div>
-   <div class="actions">${button(view.busy?'Connexion en cours…':'Tester la connexion','PilozElectronicInvoicing.testConnection()','btn-p',view.busy?'disabled':'')}</div>
-  </section>`;
- }
- function testCard(){
-  const latest=view.transmissions[0];
-  return `<section class="phase1-card"><div class="erp-card-heading"><div><h2>Test Factur-X</h2><p>SUPER PDP génère une facture synthétique puis Piloz la renvoie au bac à sable. Aucune facture client n’est utilisée.</p></div>${latest?badge('Dernier test réussi','success'):badge('Non testé','muted')}</div>
-   ${latest?`<p class="phase1-note">Dernier envoi : ${date(latest.completed_at||latest.created_at)} · référence ${esc(latest.external_transmission_id||latest.idempotency_key||'—')}</p>`:''}
-   ${view.confirmOpen?`<aside class="ops-info-callout"><strong>Confirmer l’envoi de test</strong><span>Cette action transmet uniquement une facture de démonstration au bac à sable SUPER PDP. Elle ne part jamais en production.</span><div class="actions">${button('Annuler','PilozElectronicInvoicing.closeConfirmation()')}${button(view.busy?'Envoi en cours…':'Envoyer la facture de test','PilozElectronicInvoicing.sendTestInvoice()','btn-p',view.busy?'disabled':'')}</div></aside>`:`<div class="actions">${button('Envoyer une facture de test','PilozElectronicInvoicing.openConfirmation()','btn-p',!view.connector||view.busy?'disabled':'')}</div>`}
-  </section>`;
+  return `<header class="modern-page-header"><div><h1>Facturation électronique</h1><p>Testez SUPER PDP dans le bac à sable, puis autorisez séparément chaque entreprise en production.</p></div><div class="actions">${button('Retour aux paramètres',"PilozApp.go('settings/overview')")}</div></header>`;
  }
  function productionCard(){
-  return `<aside class="ops-info-callout"><strong>Production non activée</strong><span>Cette première connexion est volontairement limitée au bac à sable. Le raccordement des entreprises clientes en production utilisera ensuite une autorisation OAuth individuelle ; aucun secret SUPER PDP ne sera stocké dans leur navigateur.</span></aside>`;
+  const p=view.production||{},configured=Boolean(p.configured),active=Boolean(p.production_enabled),directory=p.directory_status||'not_requested';
+  return `<section class="phase1-card"><div class="erp-card-heading"><div><h2>SUPER PDP · Production</h2><p>Autorisation OAuth propre à cette entreprise. Aucun mot de passe ni jeton n’est enregistré dans le navigateur.</p></div>${badge(active?'Production active':configured?'Activation en cours':'À activer',active?'success':configured?'warning':'muted')}</div>
+   <div class="phase1-grid">
+    <div class="phase1-field"><span>Entreprise SUPER PDP</span><strong>${esc(p.provider_company_name||'—')}</strong><small>${esc(p.provider_company_number||'')}</small></div>
+    <div class="phase1-field"><span>Entreprise vérifiée</span><strong>${badge(statusLabel(p.company_verification_status),statusTone(p.company_verification_status))}</strong></div>
+    <div class="phase1-field"><span>Identité du représentant</span><strong>${badge(statusLabel(p.user_identity_verification_status),statusTone(p.user_identity_verification_status))}</strong></div>
+    <div class="phase1-field"><span>Annuaire de réception</span><strong>${badge(statusLabel(directory),statusTone(directory))}</strong></div>
+    <div class="phase1-field"><span>Dernière vérification</span><strong>${date(p.last_verified_at)}</strong></div>
+    <div class="phase1-field"><span>Dernière réception</span><strong>${date(p.last_incoming_sync_at)}</strong></div>
+   </div>
+   ${configured&&!active?`<aside class="phase1-alert phase1-alert-warning"><strong>Vérification à terminer</strong><span>SUPER PDP doit confirmer l’entreprise et, selon le dossier, l’identité de son représentant. Cliquez sur « Continuer la vérification » pour reprendre le parcours sécurisé.</span></aside>`:''}
+   ${active&&directory!=='active'?`<aside class="ops-info-callout"><strong>Activer la réception</strong><span>L’inscription dans l’annuaire PPF est nécessaire pour que cette entreprise reçoive automatiquement ses factures fournisseurs.</span></aside>`:''}
+   <div class="actions">
+    ${!configured?button(view.busy?'Ouverture…':'Activer SUPER PDP','PilozElectronicInvoicing.startProduction()','btn-p',view.busy?'disabled':''):''}
+    ${configured&&!active?button(view.busy?'Vérification…':'Continuer la vérification','PilozElectronicInvoicing.startProduction()','btn-p',view.busy?'disabled':''):''}
+    ${configured?button('Actualiser le statut','PilozElectronicInvoicing.refreshProduction()','btn-o',view.busy?'disabled':''):''}
+    ${active&&directory!=='active'?button(view.busy?'Activation…':'Activer la réception','PilozElectronicInvoicing.activateDirectory()','btn-p',view.busy?'disabled':''):''}
+    ${configured&&!view.disconnectConfirm?button('Déconnecter','PilozElectronicInvoicing.askDisconnect()','btn-o',view.busy?'disabled':''):''}
+   </div>
+   ${view.disconnectConfirm?`<aside class="phase1-alert phase1-alert-danger"><strong>Déconnecter cette entreprise ?</strong><span>Les jetons seront effacés et les envois automatiques suspendus. Les factures et le journal d’audit restent conservés.</span><div class="actions">${button('Annuler','PilozElectronicInvoicing.cancelDisconnect()')}${button('Confirmer la déconnexion','PilozElectronicInvoicing.disconnect()','btn-p',view.busy?'disabled':'')}</div></aside>`:''}
+   ${active?`<aside class="ops-info-callout"><strong>Automatisation active</strong><span>Les factures finalisées sont mises en file d’envoi sans intervention. Les factures reçues, statuts et événements sont synchronisés par le connecteur serveur.</span></aside>`:''}
+  </section>`;
+ }
+ function sandboxCard(){
+  const connector=view.connector,config=connector?.non_secret_configuration||{},connected=Boolean(connector),latest=view.transmissions[0];
+  return `<section class="phase1-card"><div class="erp-card-heading"><div><h2>Bac à sable</h2><p>Environnement de test isolé. Les données de test ne sont jamais envoyées en production.</p></div>${badge(connected?'Connecté':'À connecter',connected?'success':'warning')}</div>
+   <div class="phase1-grid"><div class="phase1-field"><span>Entreprise de test</span><strong>${esc(config.external_company_name||'—')}</strong></div><div class="phase1-field"><span>Dernière vérification</span><strong>${date(config.verified_at)}</strong></div><div class="phase1-field"><span>Dernier test</span><strong>${latest?date(latest.completed_at||latest.created_at):'Jamais'}</strong></div></div>
+   ${view.confirmOpen?`<aside class="ops-info-callout"><strong>Confirmer l’envoi de test</strong><span>Une facture synthétique sera transmise uniquement au bac à sable SUPER PDP.</span><div class="actions">${button('Annuler','PilozElectronicInvoicing.closeConfirmation()')}${button(view.busy?'Envoi…':'Envoyer le test','PilozElectronicInvoicing.sendTestInvoice()','btn-p',view.busy?'disabled':'')}</div></aside>`:`<div class="actions">${button(view.busy?'Connexion…':'Tester la connexion','PilozElectronicInvoicing.testConnection()','btn-o',view.busy?'disabled':'')}${button('Envoyer une facture de test','PilozElectronicInvoicing.openConfirmation()','btn-o',!connected||view.busy?'disabled':'')}</div>`}
+  </section>`;
+ }
+ function auditCard(){
+  if(!view.events.length)return '';
+  return `<section class="phase1-card"><div class="erp-card-heading"><div><h2>Journal d’activation</h2><p>Consentements, vérifications et inscription à l’annuaire, sans aucune donnée secrète.</p></div></div><div class="modern-list">${view.events.map(event=>`<div class="modern-list-row"><div><strong>${esc({authorization_started:'Autorisation démarrée',authorization_granted:'Autorisation accordée',authorization_failed:'Autorisation refusée',verification_refreshed:'Vérification actualisée',directory_requested:'Inscription à l’annuaire demandée',directory_activated:'Annuaire activé',directory_failed:'Inscription à l’annuaire refusée',authorization_revoked:'Autorisation révoquée',token_refreshed:'Autorisation renouvelée'}[event.event_type]||event.event_type)}</strong><small>${date(event.occurred_at)}</small></div>${badge(event.event_type.includes('failed')?'À corriger':'Journalisé',event.event_type.includes('failed')?'danger':'muted')}</div>`).join('')}</div></section>`;
  }
  function draw(){
   if(path()!=='settings/einvoicing')return;
   const main=document.getElementById('main');if(!main)return;
-  main.innerHTML=header()+`${view.error?`<div class="phase1-alert phase1-alert-danger">${esc(view.error)}</div>`:''}${view.success?`<div class="phase1-alert phase1-alert-success">${esc(view.success)}</div>`:''}${connectorCard()}${testCard()}${productionCard()}`;
+  main.innerHTML=header()+`${view.error?`<div class="phase1-alert phase1-alert-danger">${esc(view.error)}</div>`:''}${view.success?`<div class="phase1-alert phase1-alert-success">${esc(view.success)}</div>`:''}${productionCard()}${sandboxCard()}${auditCard()}`;
+ }
+ function callbackNotice(){
+  const query=new URLSearchParams(location.hash.split('?')[1]||''),result=query.get('superpdp'),code=query.get('code');
+  if(!result)return;
+  if(result==='connected')view.success='L’entreprise a autorisé Piloz dans SUPER PDP. Son état de vérification a été chargé.';
+  else view.error=`L’autorisation SUPER PDP n’a pas abouti${code?` (${code})`:''}.`;
+  history.replaceState(null,'',location.pathname+location.search+'#settings/einvoicing');
  }
  async function load(){
-  const s=state();view.error='';view.success='';
+  const s=state();view.error='';
   try{
-   const connectors=await api().query('platform_connectors',`select=id,status,environment,provider_name,non_secret_configuration,updated_at&company_id=eq.${encodeURIComponent(s.companyId)}&connector_code=eq.SUPERPDP&environment=eq.sandbox&order=updated_at.desc&limit=1`);
-   view.connector=connectors[0]||null;
+   const [connectors,production,events]=await Promise.all([
+    api().query('platform_connectors',`select=id,status,environment,provider_name,non_secret_configuration,updated_at&company_id=eq.${encodeURIComponent(s.companyId)}&connector_code=eq.SUPERPDP&environment=eq.sandbox&order=updated_at.desc&limit=1`),
+    api().invoke('superpdp-oauth',{action:'status',companyId:s.companyId}).catch(error=>{if(['PGRST202','status_unavailable'].includes(error?.code))return null;throw error;}),
+    api().query('superpdp_consent_events',`select=id,event_type,occurred_at,evidence&company_id=eq.${encodeURIComponent(s.companyId)}&order=occurred_at.desc&limit=12`).catch(()=>[]),
+   ]);
+   view.connector=connectors[0]||null;view.production=production||null;view.events=events||[];global.PilozSuperPdpStatus=view.production;
    view.transmissions=view.connector?await api().query('platform_transmissions',`select=id,idempotency_key,external_transmission_id,status,created_at,completed_at,metadata&company_id=eq.${encodeURIComponent(s.companyId)}&connector_id=eq.${encodeURIComponent(view.connector.id)}&order=created_at.desc&limit=5`):[];
   }catch(error){view.error=error?.message||'Impossible de charger le connecteur.';}
-  draw();
+  callbackNotice();draw();
  }
- async function testConnection(){
+ async function run(action,success){
   if(view.busy)return;view.busy=true;view.error='';view.success='';draw();
-  try{await api().invoke('platform-connector',{action:'superpdp_test',companyId:state().companyId});view.success='Connexion SUPER PDP validée dans le bac à sable.';await load();view.success='Connexion SUPER PDP validée dans le bac à sable.';notify(view.success,'success');}
-  catch(error){view.error=error?.message||'La connexion à SUPER PDP a échoué.';}
+  try{await api().invoke('superpdp-oauth',{action,companyId:state().companyId});await load();view.success=success;notify(success,'success');}
+  catch(error){view.error=error?.message||'L’opération SUPER PDP a échoué.';}
   finally{view.busy=false;draw();}
  }
+ async function startProduction(){
+  if(view.busy)return;view.busy=true;view.error='';draw();
+  try{const result=await api().invoke('superpdp-oauth',{action:'start',companyId:state().companyId});if(!result?.url)throw new Error('SUPER PDP n’a pas fourni de page d’autorisation.');location.assign(result.url);}
+  catch(error){view.error=error?.message||'Impossible d’ouvrir SUPER PDP.';view.busy=false;draw();}
+ }
+ const refreshProduction=()=>run('refresh','État SUPER PDP actualisé.');
+ const activateDirectory=()=>run('activate_directory','Demande d’inscription dans l’annuaire enregistrée.');
+ function askDisconnect(){view.disconnectConfirm=true;draw();}
+ function cancelDisconnect(){view.disconnectConfirm=false;draw();}
+ async function disconnect(){await run('disconnect','L’entreprise a été déconnectée de SUPER PDP.');view.disconnectConfirm=false;draw();}
+ async function testConnection(){if(view.busy)return;view.busy=true;view.error='';draw();try{await api().invoke('platform-connector',{action:'superpdp_test',companyId:state().companyId});await load();view.success='Connexion du bac à sable validée.';notify(view.success,'success');}catch(error){view.error=error?.message||'La connexion au bac à sable a échoué.';}finally{view.busy=false;draw();}}
  function openConfirmation(){if(!view.connector||view.busy)return;view.confirmOpen=true;view.error='';draw();}
  function closeConfirmation(){view.confirmOpen=false;draw();}
- async function sendTestInvoice(){
-  if(view.busy||!view.connector)return;view.busy=true;view.error='';view.success='';draw();
-  try{await api().invoke('platform-connector',{action:'superpdp_send_test_invoice',companyId:state().companyId,confirmation:'SEND_SUPERPDP_SANDBOX_TEST'});view.confirmOpen=false;await load();view.success='La facture Factur-X de test a été transmise au bac à sable SUPER PDP.';notify(view.success,'success');}
-  catch(error){view.error=error?.message||'L’envoi de la facture de test a échoué.';}
-  finally{view.busy=false;draw();}
- }
+ async function sendTestInvoice(){if(view.busy||!view.connector)return;view.busy=true;view.error='';draw();try{await api().invoke('platform-connector',{action:'superpdp_send_test_invoice',companyId:state().companyId,confirmation:'SEND_SUPERPDP_SANDBOX_TEST'});view.confirmOpen=false;await load();view.success='Facture Factur-X de test transmise au bac à sable.';notify(view.success,'success');}catch(error){view.error=error?.message||'L’envoi de test a échoué.';}finally{view.busy=false;draw();}}
  function renderRoute(route,s){if(route==='settings'&&path()==='settings/einvoicing'){const main=document.getElementById('main');if(main)main.innerHTML=header()+'<section class="phase1-card"><p>Chargement du connecteur…</p></section>';load();return true;}return baseRender.call(modern,route,s);}
  modern.renderRoute=renderRoute;
- global.PilozElectronicInvoicing={testConnection,openConfirmation,closeConfirmation,sendTestInvoice,reload:load};
+ global.PilozElectronicInvoicing={startProduction,refreshProduction,activateDirectory,askDisconnect,cancelDisconnect,disconnect,testConnection,openConfirmation,closeConfirmation,sendTestInvoice,reload:load};
 })(window);

@@ -1,0 +1,33 @@
+name: Synchronisation SUPER PDP
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: superpdp-production-worker
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Traiter les envois et réceptions SUPER PDP
+        env:
+          WORKER_SECRET: ${{ secrets.SUPERPDP_WORKER_SECRET }}
+        run: |
+          if [ -z "$WORKER_SECRET" ]; then
+            echo "Le secret GitHub SUPERPDP_WORKER_SECRET est absent."
+            exit 1
+          fi
+          curl --fail-with-body --silent --show-error \
+            --retry 3 --retry-all-errors --max-time 240 \
+            -X POST "https://hpxcbemezvynofxiffzs.supabase.co/functions/v1/platform-connector" \
+            -H "content-type: application/json" \
+            -H "x-piloz-worker-secret: $WORKER_SECRET" \
+            --data '{"action":"superpdp_process_jobs","limit":40}'

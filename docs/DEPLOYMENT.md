@@ -36,12 +36,13 @@ Fonctions Edge utilisées :
 - `generate-document-pdf`
 - `export-fiscal-archive`
 - `platform-connector`
+- `superpdp-oauth`
 
-Les migrations 039 à 045 installent la fondation fiscale, le journal/paiements/clôtures, les archives, le modèle canonique, le sandbox de plateforme, les rôles, les registres de conformité et l’activation contrôlée. Elles doivent d'abord être appliquées et testées sur un projet isolé. Le moteur reste désactivé par défaut ; ne pas activer le mode production sans KMS, sauvegarde vérifiée, profils électroniques officiels et validations externes.
+Les migrations 039 à 045 installent la fondation fiscale, le journal/paiements/clôtures, les archives, le modèle canonique, le sandbox de plateforme, les rôles, les registres de conformité et l’activation contrôlée. La migration `202607280101_superpdp_production_oauth.sql` ajoute le raccordement OAuth multi-entreprises SUPER PDP, les consentements et la file automatique. Suivre `docs/SUPERPDP_PRODUCTION_SETUP.md` avant toute activation réelle.
 
 Après la migration 045, vérifier avec un compte de chaque rôle les politiques RLS et le tableau `Paramètres → Conformité et fiscalité`. Les preuves saisies par un administrateur restent `claimed`; une validation serveur ou opérationnelle indépendante est nécessaire pour leur donner le statut `verified`. Ne jamais remplir la table des certifications sans certificat authentique et preuve contrôlée.
 
-Les secrets `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `EMAIL_FROM` et les identifiants Twilio ne doivent jamais être présents dans le dépôt ni dans le navigateur.
+Les secrets `SUPABASE_SERVICE_ROLE_KEY`, `SUPERPDP_PRODUCTION_CLIENT_SECRET`, `SUPERPDP_TOKEN_ENCRYPTION_KEY`, `SUPERPDP_WORKER_SECRET`, `RESEND_API_KEY`, `EMAIL_FROM` et les identifiants Twilio ne doivent jamais être présents dans le dépôt ni dans le navigateur.
 
 ## Publication GitHub Pages
 

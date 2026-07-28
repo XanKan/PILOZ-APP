@@ -41,3 +41,14 @@ verify_jwt = false
 # Génération authentifiée des paquets comptables figés et de leur manifeste.
 [functions.accounting-export-package]
 verify_jwt = true
+
+# Le callback OAuth SUPER PDP est un GET public protégé par un state aléatoire,
+# court, à usage unique et lié à l'entreprise. Les actions POST vérifient le JWT
+# utilisateur et les permissions directement dans la fonction.
+[functions.superpdp-oauth]
+verify_jwt = false
+
+# Cette fonction accepte soit un JWT utilisateur qu'elle valide elle-même,
+# soit le secret serveur du worker SUPER PDP. Aucun appel anonyme n'est traité.
+[functions.platform-connector]
+verify_jwt = false

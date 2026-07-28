@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607270099' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607280101' ok
   union all
   select 'company_access_system_roles',count(*)::text,count(*)=0
   from public.companies company
@@ -376,9 +376,37 @@ with controls as(
     coalesce(to_regprocedure('public.record_superpdp_sandbox_test_transmission(uuid,text,text)')::text,'missing'),
     to_regprocedure('public.record_superpdp_sandbox_test_transmission(uuid,text,text)') is not null
   union all
-  select 'superpdp_production_not_enabled',count(*)::text,count(*)=0
-  from public.platform_connectors
-  where connector_code='SUPERPDP' and production_enabled
+  select 'superpdp_production_authorizations_rls',coalesce(relrowsecurity::text,'missing'),coalesce(relrowsecurity,false)
+  from (select relrowsecurity from pg_class where oid=to_regclass('public.superpdp_company_authorizations')) authorization_table
+  union all
+  select 'superpdp_production_tokens_blocked_from_browser',
+    has_table_privilege('authenticated','public.superpdp_company_authorizations','SELECT')::text,
+    not has_table_privilege('authenticated','public.superpdp_company_authorizations','SELECT')
+      and not has_table_privilege('anon','public.superpdp_company_authorizations','SELECT')
+  union all
+  select 'superpdp_oauth_states_blocked_from_browser',
+    has_table_privilege('authenticated','public.superpdp_oauth_states','SELECT')::text,
+    not has_table_privilege('authenticated','public.superpdp_oauth_states','SELECT')
+      and not has_table_privilege('anon','public.superpdp_oauth_states','SELECT')
+  union all
+  select 'superpdp_production_jobs_rls',coalesce(relrowsecurity::text,'missing'),coalesce(relrowsecurity,false)
+  from (select relrowsecurity from pg_class where oid=to_regclass('public.superpdp_jobs')) jobs_table
+  union all
+  select 'superpdp_production_jobs_blocked_from_browser',
+    has_table_privilege('authenticated','public.superpdp_jobs','SELECT')::text,
+    not has_table_privilege('authenticated','public.superpdp_jobs','SELECT')
+      and not has_table_privilege('anon','public.superpdp_jobs','SELECT')
+  union all
+  select 'superpdp_connection_status_rpc',coalesce(to_regprocedure('public.get_superpdp_connection_status(uuid)')::text,'missing'),
+    to_regprocedure('public.get_superpdp_connection_status(uuid)') is not null
+  union all
+  select 'superpdp_worker_enqueue_rpc',coalesce(to_regprocedure('public.enqueue_superpdp_recurring_jobs(timestamp with time zone)')::text,'missing'),
+    to_regprocedure('public.enqueue_superpdp_recurring_jobs(timestamp with time zone)') is not null
+      and not has_function_privilege('anon','public.enqueue_superpdp_recurring_jobs(timestamp with time zone)','EXECUTE')
+      and not has_function_privilege('authenticated','public.enqueue_superpdp_recurring_jobs(timestamp with time zone)','EXECUTE')
+  union all
+  select 'superpdp_finalization_queue_trigger',count(*)::text,count(*)=1
+  from pg_trigger where tgrelid='public.documents'::regclass and tgname='documents_queue_superpdp_after_finalization' and not tgisinternal
   union all
   select 'superpdp_invoice_exchanges_rls',coalesce(relrowsecurity::text,'missing'),coalesce(relrowsecurity,false)
   from (select relrowsecurity from pg_class where oid=to_regclass('public.superpdp_invoice_exchanges')) exchange_table
@@ -386,8 +414,8 @@ with controls as(
   select 'superpdp_invoice_events_rls',coalesce(relrowsecurity::text,'missing'),coalesce(relrowsecurity,false)
   from (select relrowsecurity from pg_class where oid=to_regclass('public.superpdp_invoice_events')) event_table
   union all
-  select 'superpdp_exchange_environment_locked',count(*)::text,count(*)=0
-  from public.superpdp_invoice_exchanges where environment<>'sandbox'
+  select 'superpdp_exchange_environment_valid',count(*)::text,count(*)=0
+  from public.superpdp_invoice_exchanges where environment not in('sandbox','production')
   union all
   select 'over_reversed_payments',count(*)::text,count(*)=0 from(
     select original.id from public.payments original
@@ -399,7 +427,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607270099',
+  'schema_version','202607280101',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;

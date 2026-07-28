@@ -41,6 +41,7 @@ jobs:
           node tests/stripe-billing-static.cjs
           node tests/superpdp-connector-static.cjs
           node tests/superpdp-invoice-exchange-static.cjs
+          node tests/superpdp-production-oauth-static.cjs
           node tests/superpdp-supplier-workflow-static.cjs
           test "$(tr -d '\r\n' < CNAME)" = "app.piloz.fr"
           ! git ls-files | grep -E '(^|/)\.env($|\.)'
