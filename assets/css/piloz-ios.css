@@ -1,0 +1,498 @@
+/*
+ * PILOZ iOS surface system
+ * Presentation only: routes, document layout and business behaviour stay unchanged.
+ */
+
+:root,
+html,
+body,
+body[data-theme="dark"]{
+  --ios-navy-950:#06172b;
+  --ios-navy-900:#0a213c;
+  --ios-navy-800:#123658;
+  --ios-ink:#102b4e;
+  --ios-teal:#14b8aa;
+  --ios-teal-deep:#087f78;
+  --ios-teal-soft:#e4f8f5;
+  --ios-canvas:#f2f7f8;
+  --ios-surface:rgba(255,255,255,.88);
+  --ios-surface-solid:#fff;
+  --ios-line:rgba(16,43,78,.10);
+  --ios-line-strong:rgba(16,43,78,.17);
+  --ios-shadow-card:0 1px 2px rgba(7,28,51,.035),0 10px 30px rgba(7,28,51,.055);
+  --ios-shadow-raised:0 20px 55px rgba(7,28,51,.12),0 4px 14px rgba(7,28,51,.045);
+  --ios-shadow-control:0 2px 7px rgba(7,28,51,.055),inset 0 1px rgba(255,255,255,.7);
+  --ios-radius-xs:10px;
+  --ios-radius-sm:13px;
+  --ios-radius-md:18px;
+  --ios-radius-lg:24px;
+  --ios-ease:cubic-bezier(.22,1,.36,1);
+  --page-background:var(--ios-canvas);
+  --surface:var(--ios-surface-solid);
+  --surface-secondary:#f6f9fa;
+  --surface-hover:#edf8f6;
+  --text-primary:var(--ios-ink);
+  --text-secondary:#496278;
+  --text-muted:#718599;
+  --border:var(--ios-line);
+  --border-strong:var(--ios-line-strong);
+  --primary:var(--ios-teal);
+  --primary-hover:var(--ios-teal-deep);
+  --primary-soft:var(--ios-teal-soft);
+  --shadow-sm:var(--ios-shadow-card);
+  --shadow-md:var(--ios-shadow-raised);
+}
+
+html{background:var(--ios-canvas)}
+body,
+body[data-theme="dark"]{
+  background:
+    radial-gradient(900px 540px at 88% -8%,rgba(24,190,176,.09),transparent 65%),
+    radial-gradient(720px 520px at 10% 105%,rgba(21,87,136,.055),transparent 68%),
+    linear-gradient(135deg,#f5f9fa 0%,#eef5f6 100%)!important;
+}
+
+/* Stable dark navigation, inspired by the generated reference. */
+.rail{
+  background:
+    radial-gradient(260px 220px at 0 0,rgba(28,216,199,.16),transparent 62%),
+    linear-gradient(180deg,#0c2947 0%,#071b31 52%,#061426 100%)!important;
+  box-shadow:18px 0 55px rgba(5,26,48,.15)!important;
+}
+.brand{height:82px!important}
+.brand::after{background:rgba(255,255,255,.105)!important}
+.plogo{width:43px!important;height:43px!important}
+.modern-primary-item,
+.rail>.plier{
+  border-radius:14px!important;
+}
+.modern-primary-item{
+  min-height:46px!important;
+  color:rgba(229,240,246,.76)!important;
+}
+.modern-primary-item:hover{
+  background:rgba(255,255,255,.085)!important;
+  border-color:rgba(255,255,255,.08)!important;
+}
+.modern-primary-item.active,
+.modern-primary-item.is-active{
+  color:#fff!important;
+  background:linear-gradient(100deg,rgba(20,184,170,.25),rgba(20,184,170,.08))!important;
+  border-color:rgba(83,229,217,.23)!important;
+  box-shadow:inset 3px 0 #35d3c5,0 10px 26px rgba(0,0,0,.13)!important;
+}
+.modern-secondary-panel{
+  border:1px solid rgba(255,255,255,.72)!important;
+  border-left:0!important;
+  border-radius:0 22px 22px 0!important;
+  background:rgba(249,252,253,.88)!important;
+  box-shadow:24px 0 70px rgba(7,29,52,.13)!important;
+  backdrop-filter:blur(28px) saturate(145%)!important;
+  -webkit-backdrop-filter:blur(28px) saturate(145%)!important;
+}
+.modern-secondary-item{border-radius:12px!important}
+.modern-secondary-item.active{
+  background:linear-gradient(90deg,rgba(20,184,170,.16),rgba(20,184,170,.055))!important;
+  box-shadow:inset 3px 0 var(--ios-teal)!important;
+}
+
+/* Airy page rhythm. */
+.main{padding:34px clamp(22px,3.1vw,48px)!important}
+.topbar,
+.erp-top,
+.modern-page-header,
+.crm-page-head,
+.access-heading,
+.ops-page-header{margin-bottom:26px!important}
+.topbar h1,
+.modern-page-header h1,
+.crm-page-head h1,
+.access-heading h1{
+  color:var(--ios-ink)!important;
+  letter-spacing:-.045em!important;
+}
+
+/* iOS-like controls: generous hit areas, soft depth, restrained colour. */
+.btn,
+.crm-button,
+.access-btn,
+.modern-button,
+.erp-button,
+.erp-primary-btn,
+.modern-primary-button,
+.catalog-button,
+.client-button{
+  min-height:42px!important;
+  padding:9px 16px!important;
+  border:1px solid var(--ios-line-strong)!important;
+  border-radius:13px!important;
+  background:rgba(255,255,255,.92)!important;
+  color:var(--ios-ink)!important;
+  box-shadow:var(--ios-shadow-control)!important;
+  font-weight:740!important;
+  transition:transform .2s var(--ios-ease),box-shadow .2s ease,border-color .2s ease,background .2s ease!important;
+}
+.btn:hover:not(:disabled),
+.crm-button:hover:not(:disabled),
+.access-btn:hover:not(:disabled),
+.modern-button:hover:not(:disabled),
+.erp-button:hover:not(:disabled),
+.catalog-button:hover:not(:disabled),
+.client-button:hover:not(:disabled){
+  transform:translateY(-1px);
+  border-color:rgba(8,127,120,.37)!important;
+  box-shadow:0 8px 20px rgba(7,29,52,.085),inset 0 1px rgba(255,255,255,.8)!important;
+}
+.btn:active:not(:disabled),
+.crm-button:active:not(:disabled),
+.access-btn:active:not(:disabled),
+.modern-button:active:not(:disabled),
+.erp-button:active:not(:disabled){transform:translateY(0) scale(.975)!important}
+.btn-p,
+.btn.primary,
+.crm-button.primary,
+.access-btn.primary,
+.erp-primary-btn,
+.modern-primary-button{
+  border-color:#07877f!important;
+  background:linear-gradient(180deg,#1ac0b2 0%,#0a9087 100%)!important;
+  color:#fff!important;
+  box-shadow:0 8px 20px rgba(8,127,120,.2),inset 0 1px rgba(255,255,255,.24)!important;
+}
+.btn-p:hover:not(:disabled),
+.btn.primary:hover:not(:disabled),
+.crm-button.primary:hover:not(:disabled),
+.access-btn.primary:hover:not(:disabled),
+.erp-primary-btn:hover:not(:disabled),
+.modern-primary-button:hover:not(:disabled){
+  background:linear-gradient(180deg,#13b4a7 0%,#087d76 100%)!important;
+  color:#fff!important;
+  box-shadow:0 11px 25px rgba(8,127,120,.25),inset 0 1px rgba(255,255,255,.25)!important;
+}
+.btn-danger,
+.access-btn.danger{
+  border-color:#f0d1d5!important;
+  background:#fff7f8!important;
+  color:#aa3042!important;
+}
+.ic,
+.modern-row-actions button,
+.crm-icon-button,
+.ops-icon-button,
+.access-pagination button{
+  border:1px solid var(--ios-line)!important;
+  border-radius:11px!important;
+  background:rgba(255,255,255,.94)!important;
+  box-shadow:var(--ios-shadow-control)!important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+select,
+textarea,
+.access-search{
+  min-height:42px;
+  border:1px solid var(--ios-line-strong)!important;
+  border-radius:13px!important;
+  background:rgba(255,255,255,.94)!important;
+  box-shadow:inset 0 1px 2px rgba(7,29,52,.025),0 1px 2px rgba(7,29,52,.02)!important;
+}
+textarea{min-height:96px}
+input:hover,
+select:hover,
+textarea:hover,
+.access-search:hover{border-color:rgba(8,127,120,.34)!important}
+input:focus,
+select:focus,
+textarea:focus,
+.access-search:focus-within{
+  border-color:var(--ios-teal)!important;
+  box-shadow:0 0 0 4px rgba(20,184,170,.11)!important;
+  outline:0!important;
+}
+input[type="checkbox"],
+input[type="radio"]{accent-color:var(--ios-teal-deep)}
+
+/* Universal frosted surfaces. */
+:is(
+  .card,.phase1-card,.modern-card,.modern-kpi,.modern-widget,
+  .settings-overview-card,.company-summary-card,.company-subnav,
+  .commercial-dashboard-block,.commercial-dashboard-config,
+  .crm-panel,.crm-metric,.crm-stage,.crm-opportunity-card,
+  .client-card,.client-summary-card,.catalog-card,.catalog-settings-action,
+  .access-panel,.access-role-card,
+  .ops-extension-card,.ops-settings-dashboard>button,.ops-terms-card,
+  .ops-period-form,.ops-kpis article,.ops-archive-create,.ops-archive-status,
+  .ops-archive-guidance article,.ops-login-method
+){
+  border:1px solid var(--ios-line)!important;
+  border-radius:var(--ios-radius-md)!important;
+  background:var(--ios-surface)!important;
+  box-shadow:var(--ios-shadow-card)!important;
+  backdrop-filter:blur(18px) saturate(125%);
+  -webkit-backdrop-filter:blur(18px) saturate(125%);
+}
+:is(
+  .settings-overview-card,.company-summary-card,.commercial-dashboard-block,
+  .modern-kpi,.crm-metric,.crm-opportunity-card,.access-role-card,
+  .ops-extension-card,.ops-settings-dashboard>button,.catalog-settings-action
+){
+  transition:transform .24s var(--ios-ease),box-shadow .24s ease,border-color .24s ease!important;
+}
+:is(
+  .settings-overview-card,.company-summary-card,.commercial-dashboard-block,
+  .modern-kpi,.crm-metric,.crm-opportunity-card,.access-role-card,
+  .ops-extension-card,.ops-settings-dashboard>button,.catalog-settings-action
+):hover{
+  transform:translateY(-3px)!important;
+  border-color:rgba(20,184,170,.28)!important;
+  box-shadow:0 18px 46px rgba(7,29,52,.095)!important;
+}
+
+/* Dashboard: hero and cards closely match the approved visual direction. */
+.cockpit-shell{gap:18px!important}
+.cockpit-hero{
+  border:1px solid rgba(255,255,255,.78)!important;
+  border-radius:26px!important;
+  background:
+    radial-gradient(520px 210px at 100% 0,rgba(20,184,170,.17),transparent 64%),
+    linear-gradient(145deg,rgba(255,255,255,.97),rgba(245,250,251,.88))!important;
+  box-shadow:0 18px 55px rgba(7,29,52,.085)!important;
+}
+.cockpit-filterbar,
+.commercial-dashboard-toolbar,
+.modern-toolbar,
+.modern-filters,
+.commercial-filters,
+.crm-toolbar{
+  border:1px solid rgba(255,255,255,.78)!important;
+  border-radius:18px!important;
+  background:rgba(255,255,255,.8)!important;
+  box-shadow:var(--ios-shadow-card)!important;
+  backdrop-filter:blur(22px) saturate(135%);
+  -webkit-backdrop-filter:blur(22px) saturate(135%);
+}
+.cockpit-kpi,
+.modern-kpi{
+  min-height:126px!important;
+  border-radius:20px!important;
+  background:
+    radial-gradient(130px 100px at 105% -5%,rgba(20,184,170,.11),transparent 70%),
+    rgba(255,255,255,.92)!important;
+}
+.cockpit-kpi strong,
+.modern-kpi strong,
+.commercial-dashboard-metric strong{
+  color:var(--ios-ink)!important;
+  letter-spacing:-.055em!important;
+  font-variant-numeric:tabular-nums;
+}
+.cockpit-chart-panel,
+.cockpit-forecast,
+.cockpit-priority,
+.cockpit-block,
+.cockpit-customizer,
+.cockpit-onboarding,
+.cockpit-no-blocks{
+  border:1px solid var(--ios-line)!important;
+  border-radius:22px!important;
+  background:rgba(255,255,255,.9)!important;
+  box-shadow:var(--ios-shadow-card)!important;
+}
+.commercial-dashboard-grid{gap:18px!important}
+.commercial-dashboard-grid>.commercial-dashboard-block{padding:22px!important;border-radius:22px!important}
+.commercial-dashboard-handle,
+.commercial-dashboard-remove{border-radius:11px!important}
+
+/* Tables feel like cards while keeping the existing columns and actions. */
+.modern-table-shell,
+.phase1-table-wrap,
+.crm-table-wrap,
+.access-table-wrap,
+.client-table-shell,
+.catalog-results,
+.ops-export-scroll,
+.ops-export-accounts-block,
+.ops-export-entries-block{
+  border:1px solid var(--ios-line)!important;
+  border-radius:18px!important;
+  background:rgba(255,255,255,.92)!important;
+  box-shadow:var(--ios-shadow-card)!important;
+}
+:is(.modern-table,.phase1-table,.crm-table,.access-table,.ops-table,.ops-export-table) th{
+  border-color:var(--ios-line)!important;
+  background:#f3f7f8!important;
+  color:#60768a!important;
+  font-size:.66rem!important;
+  letter-spacing:.075em!important;
+}
+:is(.modern-table,.phase1-table,.crm-table,.access-table,.ops-table,.ops-export-table) td{
+  border-color:rgba(16,43,78,.07)!important;
+}
+:is(.modern-table,.phase1-table,.crm-table,.access-table,.ops-table,.ops-export-table) tbody tr:hover td{
+  background:rgba(227,248,245,.42)!important;
+}
+.ops-export-piece th{
+  background:#e5f3f5!important;
+  color:var(--ios-ink)!important;
+  border-color:#c7e0e3!important;
+}
+.ops-export-table thead th{
+  background:var(--ios-navy-800)!important;
+  color:#fff!important;
+}
+
+/* Segmented filters and pills. */
+.modern-view-tabs,
+.crm-view-switch,
+.ops-filterbar,
+.access-quick-tabs{
+  gap:5px!important;
+}
+.modern-view-tab,
+.crm-view-switch button,
+.ops-filterbar button,
+.ops-tabs button,
+.access-quick-tabs button,
+.modern-filter-chip,
+.modern-date-range>button{
+  min-height:38px!important;
+  border:1px solid transparent!important;
+  border-radius:11px!important;
+  background:rgba(239,244,246,.9)!important;
+  color:#536b80!important;
+  box-shadow:none!important;
+}
+:is(.modern-view-tab,.crm-view-switch button,.ops-filterbar button,.ops-tabs button,.access-quick-tabs button).active{
+  border-color:rgba(20,184,170,.2)!important;
+  background:#fff!important;
+  color:var(--ios-teal-deep)!important;
+  box-shadow:0 4px 14px rgba(7,29,52,.075)!important;
+}
+.modern-status,
+.crm-badge,
+.access-badge,
+.ops-status{
+  min-height:26px!important;
+  border:1px solid rgba(16,43,78,.07)!important;
+  border-radius:999px!important;
+  padding:5px 10px!important;
+  font-weight:760!important;
+}
+
+/* Settings, accounting and access control share the same visual grammar. */
+.settings-overview-grid,
+.modern-settings-grid,
+.ops-settings-dashboard,
+.access-role-grid{gap:18px!important}
+.settings-overview-card,
+.ops-settings-dashboard>button{min-height:116px!important;padding:20px!important}
+.settings-overview-icon,
+.ops-settings-dashboard .icon,
+.catalog-settings-icon,
+.access-role-icon,
+.ops-extension-logo{
+  border:1px solid rgba(20,184,170,.11)!important;
+  border-radius:14px!important;
+  background:linear-gradient(145deg,#ebfaf8,#dff5f2)!important;
+  color:var(--ios-teal-deep)!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.75)!important;
+}
+.phase1-settings-nav,
+.company-subnav{
+  border:1px solid var(--ios-line)!important;
+  border-radius:18px!important;
+  background:rgba(255,255,255,.82)!important;
+  box-shadow:var(--ios-shadow-card)!important;
+  backdrop-filter:blur(18px);
+}
+.phase1-settings-nav button,
+.phase1-settings-nav a,
+.company-subnav-item{border-radius:12px!important}
+.ops-info-callout,
+.ops-warning,
+.access-locked-message{
+  border-radius:15px!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.7)!important;
+}
+
+/* Popovers and modal sheets. */
+.modern-date-range-popover,
+.modern-client-suggestions,
+.modern-column-panel,
+.document-viewer-date-range-popover,
+.document-viewer-client-suggestions{
+  border:1px solid rgba(255,255,255,.75)!important;
+  border-radius:18px!important;
+  background:rgba(255,255,255,.96)!important;
+  box-shadow:var(--ios-shadow-raised)!important;
+  backdrop-filter:blur(24px) saturate(135%);
+}
+.veil,
+.ops-modal-backdrop,
+.access-modal-backdrop,
+.modern-drawer-backdrop,
+.due-action-modal-backdrop{
+  background:rgba(5,22,40,.43)!important;
+  backdrop-filter:blur(12px) saturate(115%)!important;
+  -webkit-backdrop-filter:blur(12px) saturate(115%)!important;
+}
+.modal,
+.modern-modal,
+.ops-modal,
+.access-modal,
+.due-action-modal,
+.document-v2-client-modal,
+.modern-drawer-shell>.modern-drawer{
+  border:1px solid rgba(255,255,255,.72)!important;
+  border-radius:24px!important;
+  background:rgba(255,255,255,.96)!important;
+  box-shadow:0 34px 100px rgba(4,25,47,.28)!important;
+  backdrop-filter:blur(28px) saturate(125%);
+}
+.ops-modal>header,
+.access-modal>header{background:rgba(249,252,253,.78)!important}
+
+/* Document workspaces: modern chrome, untouched printable paper. */
+.erp-editor{
+  background:linear-gradient(145deg,#eaf4f3,#f4f8f9)!important;
+}
+.erp-editor-bar{
+  background:rgba(255,255,255,.88)!important;
+  border-bottom-color:var(--ios-line)!important;
+  box-shadow:0 10px 32px rgba(7,29,52,.075)!important;
+  backdrop-filter:blur(24px) saturate(135%)!important;
+}
+.erp-side-panel,
+.document-viewer-v2 aside{
+  background:rgba(255,255,255,.92)!important;
+  border-color:var(--ios-line)!important;
+  box-shadow:-14px 0 38px rgba(7,29,52,.055)!important;
+  backdrop-filter:blur(22px) saturate(130%);
+}
+.erp-paper,
+.document-v2-paper{
+  border-radius:20px!important;
+  box-shadow:0 25px 75px rgba(7,29,52,.12)!important;
+}
+
+@media(max-width:900px){
+  .main{padding:26px 18px!important}
+  .modern-secondary-panel{border-radius:0 18px 18px 0!important}
+  .settings-overview-grid,.modern-settings-grid{gap:13px!important}
+}
+
+@media(max-width:640px){
+  .main{padding:18px 12px!important}
+  :is(.card,.phase1-card,.modern-card,.modern-kpi,.commercial-dashboard-block,.crm-panel,.access-panel,.ops-extension-card){border-radius:16px!important}
+  .btn,.crm-button,.access-btn,.modern-button,.erp-button{min-height:44px!important}
+  .modal,.modern-modal,.ops-modal,.access-modal,.due-action-modal,.document-v2-client-modal{border-radius:20px!important}
+}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;transition-duration:.001ms!important;animation-duration:.001ms!important;animation-iteration-count:1!important}
+}
+
+@media print{
+  body{background:#fff!important}
+  .erp-paper,.document-v2-paper{border-radius:0!important;box-shadow:none!important}
+}

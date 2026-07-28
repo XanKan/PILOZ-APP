@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0-compliance.56 — 28 juillet 2026
+
+- Étend le langage visuel Piloz inspiré d’iOS à l’ensemble de l’application, sans déplacer les fonctionnalités ni modifier les parcours métier.
+- Harmonise la navigation bleu nuit, les sous-menus vitrés, les boutons tactiles, les champs, les filtres, les cartes, les tableaux, les fenêtres et les panneaux latéraux.
+- Rapproche le tableau de bord de la direction validée : surfaces claires, angles généreux, ombres douces, accents turquoise et hiérarchie plus lisible.
+- Couvre explicitement les modules chargés tardivement — comptabilité, rôles et accès, CRM, catalogue et documents — tout en préservant le rendu imprimable des PDF.
+- Ajoute un contrôle statique garantissant le chargement prioritaire du thème, la cohérence des principaux composants et la réduction des animations si demandée par le système.
+
 ## 0.9.0-compliance.55 — 28 juillet 2026
 
 - Restaure l’apparence légère du sous-menu latéral tout en conservant son ouverture par-dessus les pages, sans décaler leur contenu.
