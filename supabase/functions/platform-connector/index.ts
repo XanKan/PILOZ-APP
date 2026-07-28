@@ -877,7 +877,7 @@ async function importIncomingInvoice(adminClient: SupabaseClient, companyId: str
   const totalVat = object(totals.total_vat_amount);
   const totalWithoutTax = Number(totals.total_without_vat || 0), totalTax = Number(totalVat.value ?? totalVat.amount ?? 0), totalWithTax = Number(totals.total_with_vat || 0);
   const documentInsert = await adminClient.from("documents").insert({
-    company_id: companyId, document_type: "purchase_invoice", supplier_id: supplier.id, status: "draft",
+    company_id: companyId, document_type: "purchase_invoice", supplier_id: supplier.id, status: "pending",
     issue_date: text(invoice.issue_date, new Date().toISOString().slice(0, 10)), due_date: text(invoice.payment_due_date) || null,
     client_reference: text(invoice.number), currency: text(invoice.currency_code, "EUR"), subject: `Facture fournisseur ${text(invoice.number)}`,
     total_cost: totalWithoutTax, total_excl_tax: totalWithoutTax, total_tax: totalTax, total_incl_tax: totalWithTax,

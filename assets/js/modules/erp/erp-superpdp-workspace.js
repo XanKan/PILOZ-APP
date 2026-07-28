@@ -60,7 +60,6 @@
 
   const FILTERS = [
     { id: 'all', label: 'Toutes' },
-    { id: 'draft', label: 'Brouillons' },
     { id: 'todo', label: 'À traiter' },
     { id: 'claimed', label: 'Prises en charge' },
     { id: 'approved', label: 'Approuvées' },
@@ -110,11 +109,11 @@
     .filter(row => row.exchange_id === exchange.id)
     .sort((a, b) => String(b.occurred_at || b.recorded_at || '').localeCompare(String(a.occurred_at || a.recorded_at || '')));
   const supplierFor = (data, id) => (data.suppliers || []).find(row => row.id === id) || null;
+  const pilozStatusLabel = status => ({ draft: 'À traiter', pending: 'À traiter' }[String(status || '').toLowerCase()] || String(status || 'À traiter'));
   const matchesFilter = (data, document, filter = ui.filter) => {
     if (filter === 'all') return true;
     const exchange = exchangeFor(data, document.id);
     const code = workflowStatus(data, document);
-    if (filter === 'draft') return !exchange && String(document.status || '').toLowerCase() === 'draft';
     if (filter === 'todo') return !!exchange && !/^fr:\d{3}$/.test(code);
     if (filter === 'claimed') return code === 'fr:204';
     if (filter === 'approved') return ['fr:205', 'fr:206'].includes(code);
@@ -127,7 +126,11 @@
   const filteredInvoices = data => invoices(data).filter(row => matchesFilter(data, row));
   const selectedInvoice = data => {
     const rows = filteredInvoices(data);
-    if (!rows.some(row => row.id === ui.selected)) ui.selected = rows[0]?.id || '';
+    if (!ui.selected) return null;
+    if (!rows.some(row => row.id === ui.selected)) {
+      ui.selected = '';
+      return null;
+    }
     return rows.find(row => row.id === ui.selected) || null;
   };
   const workflowStatus = (data, document) => {
@@ -200,7 +203,7 @@
     const xmlView = xml
       ? `<section class="superpdp-supplier-xml"><header><b>${esc(String(xml.format || 'CII').toUpperCase())}</b><button onclick="PilozSuperPdpWorkspace.downloadXml()">Télécharger</button></header><pre>${esc(xml.xml || '')}</pre></section>`
       : `<div class="superpdp-supplier-empty"><b>${exchange ? 'Chargement du XML électronique…' : 'Aucun XML SUPER PDP lié'}</b><span>${exchange ? 'Le document apparaîtra automatiquement.' : 'Cette facture a été créée manuellement dans PILOZ.'}</span></div>`;
-    return `<main class="superpdp-supplier-preview"><nav aria-label="Format de la facture fournisseur"><button class="${ui.mode === 'pdf' ? 'active' : ''}" onclick="PilozSuperPdpWorkspace.setMode('pdf')">PDF</button><button class="${ui.mode === 'xml' ? 'active' : ''}" onclick="PilozSuperPdpWorkspace.setMode('xml')">XML</button></nav>${ui.mode === 'pdf' ? pdf : xmlView}</main>`;
+    return `<main class="superpdp-supplier-preview"><nav aria-label="Format de la facture fournisseur"><span><button class="${ui.mode === 'pdf' ? 'active' : ''}" onclick="PilozSuperPdpWorkspace.setMode('pdf')">PDF</button><button class="${ui.mode === 'xml' ? 'active' : ''}" onclick="PilozSuperPdpWorkspace.setMode('xml')">XML</button></span><button class="superpdp-close-preview" onclick="PilozSuperPdpWorkspace.closePreview()" aria-label="Fermer l’aperçu">×</button></nav>${ui.mode === 'pdf' ? pdf : xmlView}</main>`;
   }
 
   function list(data, selected) {
@@ -210,12 +213,12 @@
       const count = allRows.filter(row => matchesFilter(data, row, filter.id)).length;
       return `<button class="${ui.filter === filter.id ? 'active' : ''}" onclick="PilozSuperPdpWorkspace.setFilter('${filter.id}')">${esc(filter.label)} <small>${count}</small></button>`;
     }).join('');
-    return `<aside class="superpdp-supplier-list"><header><div><h1>Factures fournisseurs</h1><span>${allRows.length} document${allRows.length > 1 ? 's' : ''}</span></div><button onclick="PilozModern.openSupplierInvoice()">Créer</button></header><div class="superpdp-sandbox-banner"><b>SUPER PDP · bac à sable</b><span>Réception automatique activée. PILOZ reste en production.</span><button ${ui.busy ? 'disabled' : ''} onclick="PilozSuperPdpWorkspace.syncIncoming()">${ui.busy ? 'Synchronisation…' : 'Actualiser maintenant'}</button></div><nav class="superpdp-supplier-tabs" aria-label="Filtrer les factures fournisseurs">${tabs}</nav><div class="superpdp-supplier-list-scroll">${rows.map(row => {
+    return `<aside class="superpdp-supplier-list"><header><div><h1>Factures fournisseurs</h1><span>${allRows.length} document${allRows.length > 1 ? 's' : ''}</span></div></header><div class="superpdp-sandbox-banner"><b>SUPER PDP · bac à sable</b><span>Réception automatique activée. PILOZ reste en production.</span><button ${ui.busy ? 'disabled' : ''} onclick="PilozSuperPdpWorkspace.syncIncoming()">${ui.busy ? 'Synchronisation…' : 'Actualiser maintenant'}</button></div><nav class="superpdp-supplier-tabs" aria-label="Filtrer les factures fournisseurs">${tabs}</nav><div class="superpdp-supplier-list-scroll">${rows.map(row => {
       const supplier = supplierFor(data, row.supplier_id);
       const active = row.id === selected?.id;
       const exchange = exchangeFor(data, row.id);
       const code = workflowStatus(data, row);
-      return `<button class="${active ? 'active' : ''}" onclick="PilozSuperPdpWorkspace.select('${row.id}')"><span><small>${esc(row.number || row.client_reference || 'Brouillon')}</small><b>${esc(supplier?.legal_name || 'Fournisseur non renseigné')}</b><em>${date(row.issue_date)} · échéance ${date(row.due_date)}</em></span><span><strong>${money(row.total_incl_tax, row.currency)}</strong>${exchange ? statusBadge(code) : `<small>${esc(row.status || 'Brouillon')}</small>`}</span></button>`;
+      return `<button class="${active ? 'active' : ''}" onclick="PilozSuperPdpWorkspace.select('${row.id}')"><span><small>${esc(row.number || row.client_reference || 'Référence non renseignée')}</small><b>${esc(supplier?.legal_name || 'Fournisseur non renseigné')}</b><em>${date(row.issue_date)} · échéance ${date(row.due_date)}</em></span><span><strong>${money(row.total_incl_tax, row.currency)}</strong>${exchange ? statusBadge(code) : `<small>${esc(pilozStatusLabel(row.status))}</small>`}</span></button>`;
     }).join('') || `<p>Aucune facture fournisseur dans « ${esc(FILTERS.find(filter => filter.id === ui.filter)?.label || 'Toutes')} ».</p>`}</div></aside>`;
   }
 
@@ -241,7 +244,7 @@
     const exchange = exchangeFor(data, document.id);
     const lines = (data.lines || []).filter(row => row.document_id === document.id);
     const code = workflowStatus(data, document);
-    return `<aside class="superpdp-supplier-side"><header><small>Facture fournisseur</small><b>${esc(document.number || document.client_reference || 'Brouillon')}</b></header><section><strong>${money(document.total_incl_tax, document.currency)}</strong><span>dont ${money(document.total_tax, document.currency)} de TVA</span><dl><dt>Fournisseur</dt><dd>${esc(supplier?.legal_name || '—')}</dd><dt>Émission</dt><dd>${date(document.issue_date)}</dd><dt>Échéance</dt><dd>${date(document.due_date)}</dd><dt>Statut PILOZ</dt><dd>${esc(document.status || 'Brouillon')}</dd><dt>Lignes</dt><dd>${lines.length}</dd></dl></section>${exchange ? `<section class="superpdp-supplier-workflow"><div class="superpdp-workflow-heading"><div><h3>Traitement de la facture</h3><span>Statut transmis à la PA</span></div>${statusBadge(code)}</div>${workflowActions(code)}<p class="superpdp-workflow-note">Cette décision ne comptabilise pas la facture et n’enregistre aucun paiement.</p>${workflowHistory(data, exchange)}</section><section class="superpdp-supplier-exchange"><h3>Facture électronique</h3><b>Reçue via SUPER PDP · sandbox</b><dl><dt>Format</dt><dd>${esc(exchange.xml_format || 'CII / Factur-X')}</dd><dt>Dernière synchro.</dt><dd>${datetime(exchange.last_synced_at)}</dd></dl><p>Aucune donnée n’a été transmise en production.</p></section>` : ''}</aside>`;
+    return `<aside class="superpdp-supplier-side"><header><small>Facture fournisseur</small><b>${esc(document.number || document.client_reference || 'Référence non renseignée')}</b></header><section><strong>${money(document.total_incl_tax, document.currency)}</strong><span>dont ${money(document.total_tax, document.currency)} de TVA</span><dl><dt>Fournisseur</dt><dd>${esc(supplier?.legal_name || '—')}</dd><dt>Émission</dt><dd>${date(document.issue_date)}</dd><dt>Échéance</dt><dd>${date(document.due_date)}</dd><dt>Statut PILOZ</dt><dd>${esc(pilozStatusLabel(document.status))}</dd><dt>Lignes</dt><dd>${lines.length}</dd></dl></section>${exchange ? `<section class="superpdp-supplier-workflow"><div class="superpdp-workflow-heading"><div><h3>Traitement de la facture</h3><span>Statut transmis à la PA</span></div>${statusBadge(code)}</div>${workflowActions(code)}<p class="superpdp-workflow-note">Cette décision ne comptabilise pas la facture et n’enregistre aucun paiement.</p>${workflowHistory(data, exchange)}</section><section class="superpdp-supplier-exchange"><h3>Facture électronique</h3><b>Reçue via SUPER PDP · sandbox</b><dl><dt>Format</dt><dd>${esc(exchange.xml_format || 'CII / Factur-X')}</dd><dt>Dernière synchro.</dt><dd>${datetime(exchange.last_synced_at)}</dd></dl><p>Aucune donnée n’a été transmise en production.</p></section>` : ''}</aside>`;
   }
 
   function modal() {
@@ -262,7 +265,7 @@
     const document = selectedInvoice(data);
     const main = documentElement();
     if (!main) return true;
-    main.innerHTML = `<section class="superpdp-supplier-workspace">${list(data, document)}${preview(data, document)}${detail(data, document)}</section>${modal()}`;
+    main.innerHTML = `<section class="superpdp-supplier-workspace ${document ? 'preview-open' : 'list-only'}">${list(data, document)}${document ? preview(data, document) + detail(data, document) : ''}</section>${modal()}`;
     scheduleAutoSync();
     return true;
   }
@@ -273,6 +276,13 @@
 
   function select(id) {
     ui.selected = id;
+    ui.mode = 'pdf';
+    ui.decision = '';
+    render(runtime());
+  }
+
+  function closePreview() {
+    ui.selected = '';
     ui.mode = 'pdf';
     ui.decision = '';
     render(runtime());
@@ -389,6 +399,9 @@
 
   function renderRoute(route, runtimeState) {
     if (route === 'purchase-invoices') return render(runtimeState);
+    ui.selected = '';
+    ui.mode = 'pdf';
+    ui.decision = '';
     return previousRender?.(route, runtimeState) || false;
   }
 
@@ -396,6 +409,7 @@
   global.PilozSuperPdpWorkspace = {
     render,
     select,
+    closePreview,
     setMode,
     setFilter,
     syncIncoming,
