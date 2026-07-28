@@ -167,8 +167,8 @@ textarea:focus-visible,
   -webkit-backdrop-filter:blur(22px) saturate(135%);
   box-shadow:16px 0 50px rgba(12,41,70,.07);
 }
-.app.modern-subnav-open .main{margin-left:244px;width:calc(100% - var(--modern-rail-width) - 244px)}
-.modern-subnav-open .erp-editor{left:calc(var(--modern-rail-width) + 244px)!important}
+.app.modern-subnav-open .main{margin-left:0;width:calc(100% - var(--modern-rail-width))}
+.modern-subnav-open .erp-editor{left:var(--modern-rail-width)!important}
 .modern-secondary-head{padding:0 7px 20px}
 .modern-secondary-head h2{font-size:1.05rem;letter-spacing:-.025em}
 .modern-secondary-head button{width:32px;height:32px;background:#fff;border:1px solid var(--piloz-line);box-shadow:0 5px 12px rgba(16,44,80,.04)}

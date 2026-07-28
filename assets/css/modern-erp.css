@@ -42,7 +42,7 @@ button:disabled,.btn:disabled,input:disabled,select:disabled,textarea:disabled{o
 
 .app{--modern-rail-width:216px}
 .app.mini{--modern-rail-width:72px}
-.rail{width:var(--modern-rail-width)!important;background:#fff!important;color:var(--text-primary)!important;overflow:visible;z-index:80;border-right:1px solid var(--border);box-shadow:none!important;transition:width .18s ease!important}
+.rail{width:var(--modern-rail-width)!important;background:#fff!important;color:var(--text-primary)!important;overflow:visible;z-index:260;border-right:1px solid var(--border);box-shadow:none!important;transition:width .18s ease!important}
 .brand{height:70px;padding:13px 16px!important;justify-content:flex-start!important;border-bottom:1px solid var(--border)}
 .brand>div:not(.plogo){display:block!important;min-width:0}.brand .disp{color:var(--text-primary)!important}.brand small{color:var(--text-muted)!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .plogo{display:grid!important;place-items:center!important;width:38px!important;height:38px!important;border:0!important;border-radius:0!important;background:transparent!important;color:transparent!important;box-shadow:none!important;font:800 1rem 'Albert Sans'!important;flex:0 0 auto;overflow:visible!important}.plogo img{display:block;width:100%;height:100%;object-fit:contain}
@@ -58,8 +58,8 @@ button:disabled,.btn:disabled,input:disabled,select:disabled,textarea:disabled{o
 .rail-foot{display:block!important;margin:7px 10px 12px;padding:10px 8px!important;border-top:1px solid var(--border);color:var(--text-muted)!important;line-height:1.55;overflow:hidden;text-overflow:ellipsis}.rail-foot a{color:var(--primary)!important;font-weight:700;text-decoration:none}
 .app.mini .brand{justify-content:center!important;padding-inline:10px!important}.app.mini .brand>div:not(.plogo),.app.mini .modern-primary-item span,.app.mini .rail>.plier .lbl,.app.mini .rail-foot{display:none!important}.app.mini .tabs{padding-inline:7px!important}.app.mini .rail>.plier{width:56px;margin-inline:8px!important;justify-content:center!important;padding-inline:8px!important}
 .main{min-width:0;max-width:none!important;padding:28px 32px!important;transition:margin-left .18s ease,width .18s ease;width:calc(100% - var(--modern-rail-width))}
-.app.modern-subnav-open .main{margin-left:232px;width:calc(100% - var(--modern-rail-width) - 232px)}
-.erp-editor{left:var(--modern-rail-width)!important}.modern-subnav-open .erp-editor{left:calc(var(--modern-rail-width) + 232px)!important}
+.app.modern-subnav-open .main{margin-left:0;width:calc(100% - var(--modern-rail-width))}
+.erp-editor{left:var(--modern-rail-width)!important}.modern-subnav-open .erp-editor{left:var(--modern-rail-width)!important}
 
 .modern-nav-shell{display:grid;gap:3px}
 .modern-primary-item{width:100%;min-height:42px;padding:9px 11px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--text-secondary);display:flex;align-items:center;gap:11px;cursor:pointer;font-size:.8rem;font-weight:680;line-height:1.2;text-align:left;white-space:nowrap}
@@ -67,7 +67,7 @@ button:disabled,.btn:disabled,input:disabled,select:disabled,textarea:disabled{o
 .modern-primary-item:hover{background:var(--surface-hover);color:var(--text-primary)}
 .modern-primary-item.active{background:var(--primary-soft);border-color:#aee7e1;color:#0b9d91}
 .app.mini .modern-primary-item{width:58px;min-height:44px;padding:10px;justify-content:center}
-.modern-secondary-panel{position:fixed;z-index:75;left:var(--modern-rail-width);top:0;width:232px;height:100vh;background:#fff;border-right:1px solid var(--border);padding:25px 14px 18px;box-shadow:5px 0 20px rgba(16,24,40,.04);display:flex;flex-direction:column;overflow:auto;transition:left .18s ease}
+.modern-secondary-panel{position:fixed;z-index:1;left:var(--modern-rail-width);top:0;width:232px;height:100vh;background:#fff;border-right:1px solid var(--border);padding:25px 14px 18px;box-shadow:18px 0 45px rgba(15,23,42,.14);display:flex;flex-direction:column;overflow:auto;overscroll-behavior:contain;transition:left .18s ease}
 .modern-secondary-panel[hidden]{display:none}
 .modern-secondary-head{display:flex;align-items:center;justify-content:space-between;padding:0 6px 20px}
 .modern-secondary-head h2{font:750 1.02rem 'Albert Sans';letter-spacing:0;color:var(--text-primary)}

@@ -32,6 +32,7 @@ jobs:
           node tests/fiscal-archive-workspace-static.cjs
           node tests/fiscal-kms-static.cjs
           node tests/navigation-multitab-static.cjs
+          node tests/navigation-overlay-static.cjs
           node tests/oauth-license-static.cjs
           node tests/platform-admin-mfa-static.cjs
           node tests/security-hardening-static.cjs
