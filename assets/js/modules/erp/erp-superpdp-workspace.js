@@ -7,6 +7,7 @@
   const previousRender = modern.renderRoute;
   const ui = {
     selected: '',
+    filter: 'all',
     mode: 'pdf',
     busy: false,
     autoBusy: false,
@@ -57,6 +58,18 @@
     },
   };
 
+  const FILTERS = [
+    { id: 'all', label: 'Toutes' },
+    { id: 'draft', label: 'Brouillons' },
+    { id: 'todo', label: 'À traiter' },
+    { id: 'claimed', label: 'Prises en charge' },
+    { id: 'approved', label: 'Approuvées' },
+    { id: 'dispute', label: 'En litige' },
+    { id: 'suspended', label: 'Suspendues' },
+    { id: 'refused', label: 'Refusées' },
+    { id: 'completed', label: 'Terminées' },
+  ];
+
   const app = () => global.PilozApp;
   const api = () => global.PilozERP;
   const runtime = () => app()?.getState?.();
@@ -97,8 +110,23 @@
     .filter(row => row.exchange_id === exchange.id)
     .sort((a, b) => String(b.occurred_at || b.recorded_at || '').localeCompare(String(a.occurred_at || a.recorded_at || '')));
   const supplierFor = (data, id) => (data.suppliers || []).find(row => row.id === id) || null;
+  const matchesFilter = (data, document, filter = ui.filter) => {
+    if (filter === 'all') return true;
+    const exchange = exchangeFor(data, document.id);
+    const code = workflowStatus(data, document);
+    if (filter === 'draft') return !exchange && String(document.status || '').toLowerCase() === 'draft';
+    if (filter === 'todo') return !!exchange && !/^fr:\d{3}$/.test(code);
+    if (filter === 'claimed') return code === 'fr:204';
+    if (filter === 'approved') return ['fr:205', 'fr:206'].includes(code);
+    if (filter === 'dispute') return code === 'fr:207';
+    if (filter === 'suspended') return code === 'fr:208';
+    if (filter === 'refused') return ['fr:210', 'fr:213'].includes(code);
+    if (filter === 'completed') return ['fr:209', 'fr:211', 'fr:212'].includes(code);
+    return true;
+  };
+  const filteredInvoices = data => invoices(data).filter(row => matchesFilter(data, row));
   const selectedInvoice = data => {
-    const rows = invoices(data);
+    const rows = filteredInvoices(data);
     if (!rows.some(row => row.id === ui.selected)) ui.selected = rows[0]?.id || '';
     return rows.find(row => row.id === ui.selected) || null;
   };
@@ -176,14 +204,19 @@
   }
 
   function list(data, selected) {
-    const rows = invoices(data);
-    return `<aside class="superpdp-supplier-list"><header><div><h1>Factures fournisseurs</h1><span>${rows.length} document${rows.length > 1 ? 's' : ''}</span></div><button onclick="PilozModern.openSupplierInvoice()">Créer</button></header><div class="superpdp-sandbox-banner"><b>SUPER PDP · bac à sable</b><span>Réception automatique activée. PILOZ reste en production.</span><button ${ui.busy ? 'disabled' : ''} onclick="PilozSuperPdpWorkspace.syncIncoming()">${ui.busy ? 'Synchronisation…' : 'Actualiser maintenant'}</button></div><div class="superpdp-supplier-list-scroll">${rows.map(row => {
+    const allRows = invoices(data);
+    const rows = filteredInvoices(data);
+    const tabs = FILTERS.map(filter => {
+      const count = allRows.filter(row => matchesFilter(data, row, filter.id)).length;
+      return `<button class="${ui.filter === filter.id ? 'active' : ''}" onclick="PilozSuperPdpWorkspace.setFilter('${filter.id}')">${esc(filter.label)} <small>${count}</small></button>`;
+    }).join('');
+    return `<aside class="superpdp-supplier-list"><header><div><h1>Factures fournisseurs</h1><span>${allRows.length} document${allRows.length > 1 ? 's' : ''}</span></div><button onclick="PilozModern.openSupplierInvoice()">Créer</button></header><div class="superpdp-sandbox-banner"><b>SUPER PDP · bac à sable</b><span>Réception automatique activée. PILOZ reste en production.</span><button ${ui.busy ? 'disabled' : ''} onclick="PilozSuperPdpWorkspace.syncIncoming()">${ui.busy ? 'Synchronisation…' : 'Actualiser maintenant'}</button></div><nav class="superpdp-supplier-tabs" aria-label="Filtrer les factures fournisseurs">${tabs}</nav><div class="superpdp-supplier-list-scroll">${rows.map(row => {
       const supplier = supplierFor(data, row.supplier_id);
       const active = row.id === selected?.id;
       const exchange = exchangeFor(data, row.id);
       const code = workflowStatus(data, row);
       return `<button class="${active ? 'active' : ''}" onclick="PilozSuperPdpWorkspace.select('${row.id}')"><span><small>${esc(row.number || row.client_reference || 'Brouillon')}</small><b>${esc(supplier?.legal_name || 'Fournisseur non renseigné')}</b><em>${date(row.issue_date)} · échéance ${date(row.due_date)}</em></span><span><strong>${money(row.total_incl_tax, row.currency)}</strong>${exchange ? statusBadge(code) : `<small>${esc(row.status || 'Brouillon')}</small>`}</span></button>`;
-    }).join('') || '<p>Aucune facture fournisseur.</p>'}</div></aside>`;
+    }).join('') || `<p>Aucune facture fournisseur dans « ${esc(FILTERS.find(filter => filter.id === ui.filter)?.label || 'Toutes')} ».</p>`}</div></aside>`;
   }
 
   function workflowActions(code) {
@@ -247,6 +280,15 @@
 
   function setMode(mode) {
     ui.mode = mode === 'xml' ? 'xml' : 'pdf';
+    render(runtime());
+  }
+
+  function setFilter(filter) {
+    if (!FILTERS.some(item => item.id === filter)) return;
+    ui.filter = filter;
+    ui.selected = '';
+    ui.mode = 'pdf';
+    ui.decision = '';
     render(runtime());
   }
 
@@ -355,6 +397,7 @@
     render,
     select,
     setMode,
+    setFilter,
     syncIncoming,
     sendStatus,
     openDecision,

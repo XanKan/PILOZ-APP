@@ -22,6 +22,8 @@ const checks={
   standard_review_actions:['Prendre en charge','Approuver','Refuser','Approuver partiellement','Mettre en litige','Suspendre','Terminer le traitement'].every(label=>supplier.includes(label)),
   reason_modal:supplier.includes('Motif transmis au fournisseur *')&&supplier.includes('required maxlength="1200"'),
   workflow_history:supplier.includes('Historique du traitement')&&supplier.includes('eventNote(event)'),
+  clickable_status_filters:['Toutes','Brouillons','À traiter','Prises en charge','Approuvées','En litige','Suspendues','Refusées','Terminées'].every(label=>supplier.includes(label))&&supplier.includes('setFilter(filter)'),
+  filter_counts:supplier.includes('allRows.filter(row => matchesFilter(data, row, filter.id)).length')&&supplier.includes('superpdp-supplier-tabs'),
   automated_inbox_sync:supplier.includes('scheduleAutoSync()')&&supplier.includes('Date.now() - ui.lastAutoSyncAt < 120000'),
   accounting_separation:supplier.includes('ne comptabilise pas la facture')&&supplier.includes('aucun paiement'),
   workflow_styles:css.includes('.superpdp-workflow-badge')&&css.includes('.superpdp-workflow-modal-backdrop')&&css.includes('.superpdp-workflow-history'),
