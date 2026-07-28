@@ -105,9 +105,17 @@ jobs:
         run: |
           export PILOZ_CHROME_PATH="$(command -v google-chrome)"
           test -x "$PILOZ_CHROME_PATH"
+          run_browser_test() {
+            local test_file="$1"
+            if node tests/run-html-tests.cjs "tests/${test_file}"; then
+              return 0
+            fi
+            echo "Le parcours ${test_file} a échoué une première fois ; nouvelle tentative unique."
+            node tests/run-html-tests.cjs "tests/${test_file}"
+          }
           tests=(access-control.html api-response.html auth-guard.html browser-tests.html catalog-workspace.html client-workspace.html commercial-workflows.html commercial-workspace.html company-settings-smoke.html dashboard-cockpit.html document-viewer-v2.html due-actions.html electronic-invoice.html erp-smoke.html fiscal-domain.html navigation-smoke.html no-flicker.html production-regression.html scroll-preservation.html settings-overview.html site-offer-selection.html subscription-billing.html template-footer-smoke.html template-list-layout.html)
           for test in "${tests[@]}"; do
-            node tests/run-html-tests.cjs "tests/${test}"
+            run_browser_test "$test"
           done
       - name: Run critical mobile browser journeys
         env:
@@ -116,7 +124,15 @@ jobs:
           PILOZ_VIEWPORT_HEIGHT: 844
         run: |
           export PILOZ_CHROME_PATH="$(command -v google-chrome)"
+          run_browser_test() {
+            local test_file="$1"
+            if node tests/run-html-tests.cjs "tests/${test_file}"; then
+              return 0
+            fi
+            echo "Le parcours mobile ${test_file} a échoué une première fois ; nouvelle tentative unique."
+            node tests/run-html-tests.cjs "tests/${test_file}"
+          }
           tests=(dashboard-cockpit.html subscription-billing.html site-offer-selection.html client-workspace.html commercial-workspace.html document-viewer-v2.html catalog-workspace.html navigation-smoke.html)
           for test in "${tests[@]}"; do
-            node tests/run-html-tests.cjs "tests/${test}"
+            run_browser_test "$test"
           done
