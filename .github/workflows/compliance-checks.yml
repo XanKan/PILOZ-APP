@@ -40,6 +40,7 @@ jobs:
           node tests/stripe-billing-static.cjs
           node tests/superpdp-connector-static.cjs
           node tests/superpdp-invoice-exchange-static.cjs
+          node tests/superpdp-supplier-workflow-static.cjs
           test "$(tr -d '\r\n' < CNAME)" = "app.piloz.fr"
           ! git ls-files | grep -E '(^|/)\.env($|\.)'
           ! rg -n -S 'service_role.*eyJ|SUPABASE_SERVICE_ROLE_KEY.*eyJ|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' . --glob '!compliance/**' --glob '!docs/**' --glob '!.github/**'
