@@ -40,22 +40,55 @@
       title: 'Approuver partiellement',
       help: 'Précisez les éléments acceptés et ceux qui restent à corriger.',
       submit: 'Transmettre l’approbation partielle',
+      reasons: ['AUTRE', 'CMD_ERR', 'SIRET_ERR', 'CODE_ROUTAGE_ERR', 'REF_CT_ABSENT', 'REF_ERR', 'PU_ERR', 'REM_ERR', 'QTE_ERR', 'ART_ERR', 'MODPAI_ERR', 'QUALITE_ERR', 'LIVR_INCOMP'],
     },
     'fr:207': {
       title: 'Mettre la facture en litige',
       help: 'Expliquez le point contesté afin que le fournisseur puisse le traiter.',
       submit: 'Ouvrir le litige',
+      reasons: ['AUTRE', 'COORD_BANC_ERR', 'TX_TVA_ERR', 'MONTANTTOTAL_ERR', 'CALCUL_ERR', 'NON_CONFORME', 'DOUBLON', 'DEST_ERR', 'TRANSAC_INC', 'EMMET_INC', 'CONTRAT_TERM', 'DOUBLE_FACT', 'CMD_ERR', 'ADR_ERR', 'SIRET_ERR', 'CODE_ROUTAGE_ERR', 'REF_CT_ABSENT', 'REF_ERR', 'PU_ERR', 'REM_ERR', 'QTE_ERR', 'ART_ERR', 'MODPAI_ERR', 'QUALITE_ERR', 'LIVR_INCOMP'],
     },
     'fr:208': {
       title: 'Suspendre le traitement',
       help: 'Indiquez ce qui empêche temporairement le traitement de cette facture.',
       submit: 'Suspendre la facture',
+      reasons: ['JUSTIF_ABS', 'COORD_BANC_ERR', 'CMD_ERR', 'SIRET_ERR', 'CODE_ROUTAGE_ERR', 'REF_CT_ABSENT', 'REF_ERR'],
     },
     'fr:210': {
       title: 'Refuser la facture',
       help: 'Le refus est une décision du destinataire. Il ne s’agit pas d’un rejet technique de la PA.',
       submit: 'Confirmer le refus',
+      reasons: ['TX_TVA_ERR', 'MONTANTTOTAL_ERR', 'CALCUL_ERR', 'NON_CONFORME', 'DOUBLON', 'DEST_ERR', 'TRANSAC_INC', 'EMMET_INC', 'CONTRAT_TERM', 'DOUBLE_FACT', 'CMD_ERR', 'ADR_ERR', 'REF_CT_ABSENT'],
     },
+  };
+
+  const REASON_LABELS = {
+    AUTRE: 'Autre motif',
+    JUSTIF_ABS: 'Justificatif absent ou insuffisant',
+    COORD_BANC_ERR: 'Coordonnées bancaires incorrectes',
+    TX_TVA_ERR: 'Taux de TVA erroné',
+    MONTANTTOTAL_ERR: 'Montant total erroné',
+    CALCUL_ERR: 'Erreur de calcul de la facture',
+    NON_CONFORME: 'Mention légale manquante',
+    DOUBLON: 'Facture en doublon',
+    DEST_ERR: 'Destinataire incorrect',
+    TRANSAC_INC: 'Transaction inconnue',
+    EMMET_INC: 'Émetteur inconnu',
+    CONTRAT_TERM: 'Contrat terminé',
+    DOUBLE_FACT: 'Prestation ou livraison déjà facturée',
+    CMD_ERR: 'Numéro de commande incorrect ou manquant',
+    ADR_ERR: 'Adresse de facturation électronique incorrecte',
+    SIRET_ERR: 'SIRET erroné ou absent',
+    CODE_ROUTAGE_ERR: 'Code de routage absent ou erroné',
+    REF_CT_ABSENT: 'Référence contractuelle manquante',
+    REF_ERR: 'Référence incorrecte',
+    PU_ERR: 'Prix unitaire incorrect',
+    REM_ERR: 'Remise incorrecte',
+    QTE_ERR: 'Quantité facturée incorrecte',
+    ART_ERR: 'Article facturé incorrect',
+    MODPAI_ERR: 'Modalités de paiement incorrectes',
+    QUALITE_ERR: 'Qualité de l’article livré incorrecte',
+    LIVR_INCOMP: 'Livraison incomplète ou non conforme',
   };
 
   const FILTERS = [
@@ -250,7 +283,8 @@
   function modal() {
     const decision = DECISIONS[ui.decision];
     if (!decision) return '';
-    return `<div class="superpdp-workflow-modal-backdrop" onclick="if(event.target===this)PilozSuperPdpWorkspace.closeDecision()"><section class="superpdp-workflow-modal" role="dialog" aria-modal="true" aria-labelledby="superpdp-decision-title"><header><div><h2 id="superpdp-decision-title">${esc(decision.title)}</h2><p>${esc(decision.help)}</p></div><button onclick="PilozSuperPdpWorkspace.closeDecision()" aria-label="Fermer">×</button></header><form id="superpdp-decision-form" onsubmit="event.preventDefault();PilozSuperPdpWorkspace.submitDecision()"><label><span>Motif transmis au fournisseur *</span><textarea name="note" required maxlength="1200" placeholder="Expliquez clairement votre décision…"></textarea></label><p>La décision sera horodatée dans PILOZ et envoyée à SUPER PDP en bac à sable.</p><footer><button type="button" onclick="PilozSuperPdpWorkspace.closeDecision()">Annuler</button><button type="submit" class="${ui.decision === 'fr:210' ? 'danger' : 'primary'}" ${ui.busy ? 'disabled' : ''}>${ui.busy ? 'Transmission…' : esc(decision.submit)}</button></footer></form></section></div>`;
+    const reasons = decision.reasons.map(code => `<option value="${esc(code)}">${esc(REASON_LABELS[code] || code)}</option>`).join('');
+    return `<div class="superpdp-workflow-modal-backdrop" onclick="if(event.target===this)PilozSuperPdpWorkspace.closeDecision()"><section class="superpdp-workflow-modal" role="dialog" aria-modal="true" aria-labelledby="superpdp-decision-title"><header><div><h2 id="superpdp-decision-title">${esc(decision.title)}</h2><p>${esc(decision.help)}</p></div><button onclick="PilozSuperPdpWorkspace.closeDecision()" aria-label="Fermer">×</button></header><form id="superpdp-decision-form" onsubmit="event.preventDefault();PilozSuperPdpWorkspace.submitDecision()"><label><span>Type de motif *</span><select name="reasonCode" required><option value="">Choisir un motif AFNOR…</option>${reasons}</select></label><label><span>Explication transmise au fournisseur *</span><textarea name="note" required maxlength="1200" placeholder="Expliquez clairement votre décision…"></textarea></label><p>Le motif normalisé et votre explication seront horodatés dans PILOZ puis envoyés à SUPER PDP en bac à sable.</p><footer><button type="button" onclick="PilozSuperPdpWorkspace.closeDecision()">Annuler</button><button type="submit" class="${ui.decision === 'fr:210' ? 'danger' : 'primary'}" ${ui.busy ? 'disabled' : ''}>${ui.busy ? 'Transmission…' : esc(decision.submit)}</button></footer></form></section></div>`;
   }
 
   function scheduleAutoSync() {
@@ -315,7 +349,7 @@
     render(runtime());
   }
 
-  async function sendStatus(statusCode, note = '') {
+  async function sendStatus(statusCode, note = '', reasonCode = '') {
     const current = runtime();
     const document = selectedInvoice(current?.data || {});
     if (!document || ui.busy || !canReview()) return;
@@ -327,6 +361,7 @@
         companyId: current.companyId,
         documentId: document.id,
         statusCode,
+        reasonCode,
         note,
       });
       ui.decision = '';
@@ -346,9 +381,11 @@
   function submitDecision() {
     const form = global.document.getElementById('superpdp-decision-form');
     if (!form?.reportValidity()) return;
-    const note = String(new FormData(form).get('note') || '').trim();
-    if (!note) return;
-    sendStatus(ui.decision, note);
+    const data = new FormData(form);
+    const reasonCode = String(data.get('reasonCode') || '').trim();
+    const note = String(data.get('note') || '').trim();
+    if (!reasonCode || !note) return;
+    sendStatus(ui.decision, note, reasonCode);
   }
 
   async function syncIncoming(silent = false) {

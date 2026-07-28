@@ -12,6 +12,7 @@ type RequestBody = {
   idempotencyKey?: string;
   confirmation?: string;
   statusCode?: string;
+  reasonCode?: string;
   note?: string;
 };
 
@@ -675,6 +676,13 @@ const BUYER_LIFECYCLE_STATUSES = new Set([
   "fr:210", // Refusée par le destinataire
 ]);
 
+const BUYER_LIFECYCLE_REASONS: Record<string, Set<string>> = {
+  "fr:206": new Set(["AUTRE", "CMD_ERR", "SIRET_ERR", "CODE_ROUTAGE_ERR", "REF_CT_ABSENT", "REF_ERR", "PU_ERR", "REM_ERR", "QTE_ERR", "ART_ERR", "MODPAI_ERR", "QUALITE_ERR", "LIVR_INCOMP"]),
+  "fr:207": new Set(["AUTRE", "COORD_BANC_ERR", "TX_TVA_ERR", "MONTANTTOTAL_ERR", "CALCUL_ERR", "NON_CONFORME", "DOUBLON", "DEST_ERR", "TRANSAC_INC", "EMMET_INC", "CONTRAT_TERM", "DOUBLE_FACT", "CMD_ERR", "ADR_ERR", "SIRET_ERR", "CODE_ROUTAGE_ERR", "REF_CT_ABSENT", "REF_ERR", "PU_ERR", "REM_ERR", "QTE_ERR", "ART_ERR", "MODPAI_ERR", "QUALITE_ERR", "LIVR_INCOMP"]),
+  "fr:208": new Set(["JUSTIF_ABS", "COORD_BANC_ERR", "CMD_ERR", "SIRET_ERR", "CODE_ROUTAGE_ERR", "REF_CT_ABSENT", "REF_ERR"]),
+  "fr:210": new Set(["TX_TVA_ERR", "MONTANTTOTAL_ERR", "CALCUL_ERR", "NON_CONFORME", "DOUBLON", "DEST_ERR", "TRANSAC_INC", "EMMET_INC", "CONTRAT_TERM", "DOUBLE_FACT", "CMD_ERR", "ADR_ERR", "REF_CT_ABSENT"]),
+};
+
 function providerEventNote(note: string) {
   return {
     subject: "Décision du destinataire dans PILOZ",
@@ -746,6 +754,7 @@ async function createIncomingLifecycleEvent(
   companyId: string,
   documentId: string,
   statusCode: string,
+  rawReasonCode: string,
   rawNote: string,
 ) {
   await requirePurchaseInvoiceReviewer(userClient, companyId);
@@ -753,7 +762,15 @@ async function createIncomingLifecycleEvent(
     throw Object.assign(new Error("superpdp_lifecycle_status_invalid"), { status: 400 });
   }
   const note = rawNote.trim().replace(/[\u0000-\u001f\u007f]+/g, " ").slice(0, 1200);
-  if (["fr:206", "fr:207", "fr:208", "fr:210"].includes(statusCode) && !note) {
+  const reasonCode = rawReasonCode.trim().toUpperCase().replace(/[^A-Z0-9_]/g, "").slice(0, 40);
+  const allowedReasons = BUYER_LIFECYCLE_REASONS[statusCode];
+  if (allowedReasons && !reasonCode) {
+    throw Object.assign(new Error("superpdp_lifecycle_reason_required"), { status: 400 });
+  }
+  if (allowedReasons && !allowedReasons.has(reasonCode)) {
+    throw Object.assign(new Error("superpdp_lifecycle_reason_invalid"), { status: 400 });
+  }
+  if (allowedReasons && !note) {
     throw Object.assign(new Error("superpdp_lifecycle_note_required"), { status: 400 });
   }
   const { data: document, error: documentError } = await adminClient.from("documents")
@@ -784,7 +801,12 @@ async function createIncomingLifecycleEvent(
     invoice_id: providerInvoiceId,
     status_code: statusCode,
   };
-  if (note) requestPayload.details = [{ notes: [providerEventNote(note)] }];
+  if (reasonCode || note) {
+    const detail: JsonObject = {};
+    if (reasonCode) detail.reason = reasonCode;
+    if (note) detail.notes = [providerEventNote(note)];
+    requestPayload.details = [detail];
+  }
   const result = await superPdpRequest("/v1.beta/invoice_events", token, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -985,6 +1007,7 @@ Deno.serve(async req => {
         companyId,
         documentId,
         text(body.statusCode),
+        text(body.reasonCode),
         text(body.note),
       ));
     }
@@ -1007,6 +1030,8 @@ Deno.serve(async req => {
     const messages: Record<string, string> = {
       forbidden_purchase_invoice_review: "Votre rôle ne permet pas de traiter les factures fournisseurs.",
       superpdp_lifecycle_status_invalid: "Cette décision n’est pas reconnue par le circuit de facturation électronique.",
+      superpdp_lifecycle_reason_required: "Choisissez le type de motif avant de transmettre cette décision.",
+      superpdp_lifecycle_reason_invalid: "Ce motif n’est pas autorisé pour la décision sélectionnée.",
       superpdp_lifecycle_note_required: "Expliquez la décision avant de la transmettre au fournisseur.",
       superpdp_purchase_invoice_required: "Cette action est réservée aux factures fournisseurs.",
       superpdp_incoming_exchange_required: "Cette facture ne provient pas de la boîte de réception SUPER PDP.",
