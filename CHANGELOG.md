@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0-compliance.57 — 28 juillet 2026
+
+- Ferme immédiatement le sous-menu latéral après la sélection d’une destination, dans Ventes, Achats, Bibliothèque, Suivi commercial, Comptabilité et Paramètres.
+- Conserve l’ouverture explicite via les rubriques principales et la fermeture au clic extérieur.
+- Préserve le filtrage des entrées par rôles et permissions grâce à une route déclarative commune aux menus standard et commerciaux.
+- Ajoute des contrôles de non-régression sur la fermeture, les menus enrichis et les droits d’accès.
+
 ## 0.9.0-compliance.56 — 28 juillet 2026
 
 - Étend le langage visuel Piloz inspiré d’iOS à l’ensemble de l’application, sans déplacer les fonctionnalités ni modifier les parcours métier.
