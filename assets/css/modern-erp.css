@@ -67,7 +67,7 @@ button:disabled,.btn:disabled,input:disabled,select:disabled,textarea:disabled{o
 .modern-primary-item:hover{background:var(--surface-hover);color:var(--text-primary)}
 .modern-primary-item.active{background:var(--primary-soft);border-color:#aee7e1;color:#0b9d91}
 .app.mini .modern-primary-item{width:58px;min-height:44px;padding:10px;justify-content:center}
-.modern-secondary-panel{position:fixed;z-index:1;left:var(--modern-rail-width);top:0;width:232px;height:100vh;background:#fff;border-right:1px solid var(--border);padding:25px 14px 18px;box-shadow:18px 0 45px rgba(15,23,42,.14);display:flex;flex-direction:column;overflow:auto;overscroll-behavior:contain;transition:left .18s ease}
+.modern-secondary-panel{position:fixed;z-index:75;left:var(--modern-rail-width);top:0;width:232px;height:100vh;background:#fff;border-right:1px solid var(--border);padding:25px 14px 18px;box-shadow:5px 0 20px rgba(16,24,40,.04);display:flex;flex-direction:column;overflow:auto;overscroll-behavior:contain;transition:left .18s ease}
 .modern-secondary-panel[hidden]{display:none}
 .modern-secondary-head{display:flex;align-items:center;justify-content:space-between;padding:0 6px 20px}
 .modern-secondary-head h2{font:750 1.02rem 'Albert Sans';letter-spacing:0;color:var(--text-primary)}

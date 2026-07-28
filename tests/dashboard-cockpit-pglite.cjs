@@ -131,8 +131,8 @@ function closeTo(actual,expected,label){if(Math.abs(Number(actual)-expected)>.00
     if(cockpit.activity.notifications[0]?.body!=='Facture FAC-A-1'||cockpit.activity.notifications[0]?.severity!=='critical')throw new Error('notification summary invalid');
     if(cockpit.recent_documents.some(row=>String(row.number||'').startsWith('FAC-B')))throw new Error('cross-company document leak');
 
-    const saved=(await db.query("select public.save_dashboard_preferences(2,'[\"agenda\",\"receivables\"]','[\"receivables\",\"agenda\"]','{\"receivables\":\"wide\"}','[\"revenue_ht\",\"collected\"]','{\"preset\":\"last_30_days\",\"comparison\":\"year\"}') value")).rows[0].value;
-    if(saved.block_order.join('|')!=='receivables|agenda'||saved.period_config.preset!=='last_30_days')throw new Error('preferences not persisted');
+    const saved=(await db.query("select public.save_dashboard_preferences(2,'[\"agenda\",\"receivables\"]','[\"receivables\",\"agenda\"]','{\"receivables\":\"wide\"}','[\"revenue_ht\",\"collected\",\"pipeline_weighted\"]','{\"preset\":\"last_30_days\",\"comparison\":\"year\"}') value")).rows[0].value;
+    if(saved.block_order.join('|')!=='receivables|agenda'||saved.period_config.preset!=='last_30_days'||!saved.selected_metrics.includes('pipeline_weighted'))throw new Error('preferences not persisted with pipeline widget');
     const tooManyMetrics=await db.query("select public.save_dashboard_preferences(2,'[]','[]','{}','[\"revenue_ht\",\"collected\",\"outstanding\",\"gross_margin\",\"new_clients\"]','{}')").then(()=>null,error=>error);
     if(!tooManyMetrics)throw new Error('dashboard metric limit not enforced');
 

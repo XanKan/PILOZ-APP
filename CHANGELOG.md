@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0-compliance.55 — 28 juillet 2026
+
+- Restaure l’apparence légère du sous-menu latéral tout en conservant son ouverture par-dessus les pages, sans décaler leur contenu.
+- Corrige l’enregistrement des widgets du tableau de bord en autorisant l’indicateur « Pipeline pondéré » déjà proposé par l’interface.
+- Ajoute un test de persistance couvrant explicitement ce widget et aligne les contrôles de production sur la migration `202607280102`.
+
 ## 0.9.0-compliance.54 — 27 juillet 2026
 
 - Correction additive de l’ambiguïté PL/pgSQL dans l’enregistrement d’une transmission SUPER PDP sandbox.
