@@ -1979,7 +1979,7 @@
         index = 0;
       if (global.PilozDocumentEditorV2?.selectItem)
         global.PilozDocumentEditorV2.selectItem(index, itemId);
-      else app().selectItem(index, itemId);
+      else app().selectItem?.(index, itemId);
     }, 80);
   }
   function addToPurchase(itemId) {
