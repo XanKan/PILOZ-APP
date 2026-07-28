@@ -65,9 +65,47 @@
  function callbackNotice(){
   const query=new URLSearchParams(location.hash.split('?')[1]||''),result=query.get('superpdp'),code=query.get('code');
   if(!result)return;
+  if('BroadcastChannel'in window){const channel=new BroadcastChannel('piloz-superpdp-oauth');channel.postMessage({type:'piloz:superpdp-oauth',status:result,code:code||''});channel.close();}
   if(result==='connected')view.success='L’entreprise a autorisé Piloz dans SUPER PDP. Son état de vérification a été chargé.';
   else view.error=`L’autorisation SUPER PDP n’a pas abouti${code?` (${code})`:''}.`;
   history.replaceState(null,'',location.pathname+location.search+'#settings/einvoicing');
+  if(window.name==='piloz-superpdp-authorization')setTimeout(()=>window.close(),80);
+ }
+ async function companyId(){return state().companyId||await api().companyContext();}
+ async function productionStatus(){
+  const id=await companyId(),status=await api().invoke('superpdp-oauth',{action:'status',companyId:id});
+  view.production=status||null;global.PilozSuperPdpStatus=view.production;return view.production;
+ }
+ async function ensureDirectory(status){
+  const current=status||await productionStatus();
+  if(!current?.production_enabled||['active','pending'].includes(String(current.directory_status||'')))return current;
+  await api().invoke('superpdp-oauth',{action:'activate_directory',companyId:await companyId()});
+  return productionStatus();
+ }
+ function oauthPopup(){
+  const width=620,height=760,left=Math.max(0,Math.round((screen.width-width)/2)),top=Math.max(0,Math.round((screen.height-height)/2));
+  const popup=window.open('about:blank','piloz-superpdp-authorization',`popup=yes,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`);
+  if(!popup)throw new Error('Autorisez les fenêtres contextuelles pour terminer l’activation sécurisée.');
+  popup.document.title='Activation de la facturation électronique';
+  popup.document.body.innerHTML='<main style="font:16px system-ui;padding:32px;text-align:center;color:#102a43"><strong>Ouverture de la vérification sécurisée…</strong><p>Cette fenêtre se fermera automatiquement.</p></main>';
+  return popup;
+ }
+ function waitForOauth(popup){
+  const expectedOrigin=(()=>{try{return new URL(global.PilozRuntime?.config?.url||'https://hpxcbemezvynofxiffzs.supabase.co').origin;}catch{return'https://hpxcbemezvynofxiffzs.supabase.co';}})();
+  return new Promise((resolve,reject)=>{
+   let finished=false,closedAt=0;
+   const channel='BroadcastChannel'in window?new BroadcastChannel('piloz-superpdp-oauth'):null;
+   const finish=(callback,value)=>{if(finished)return;finished=true;clearInterval(closedTimer);clearTimeout(timeout);window.removeEventListener('message',onMessage);channel?.close();callback(value);};
+   const accept=data=>{if(data?.type!=='piloz:superpdp-oauth')return;if(data.status==='connected')finish(resolve,data);else finish(reject,new Error(`L’autorisation SUPER PDP n’a pas abouti${data.code?` (${data.code})`:''}.`));};
+   const onMessage=event=>{
+    if(event.source!==popup||event.origin!==expectedOrigin||event.data?.type!=='piloz:superpdp-oauth')return;
+    accept(event.data);
+   };
+   if(channel)channel.onmessage=event=>accept(event.data);
+   const closedTimer=setInterval(()=>{if(!popup.closed)return;closedAt=closedAt||Date.now();if(Date.now()-closedAt>1200)finish(reject,new Error('La vérification a été fermée avant sa validation.'));},300);
+   const timeout=setTimeout(()=>{try{popup.close();}catch{}finish(reject,new Error('La vérification a expiré. Recommencez l’activation.'));},10*60*1000);
+   window.addEventListener('message',onMessage);
+  });
  }
  async function load(){
   const s=state();view.error='';
@@ -88,10 +126,27 @@
   catch(error){view.error=error?.message||'L’opération SUPER PDP a échoué.';}
   finally{view.busy=false;draw();}
  }
- async function startProduction(){
-  if(view.busy)return;view.busy=true;view.error='';draw();
-  try{const result=await api().invoke('superpdp-oauth',{action:'start',companyId:state().companyId});if(!result?.url)throw new Error('SUPER PDP n’a pas fourni de page d’autorisation.');location.assign(result.url);}
-  catch(error){view.error=error?.message||'Impossible d’ouvrir SUPER PDP.';view.busy=false;draw();}
+ async function startProduction(options={}){
+  if(view.busy)return view.production;view.busy=true;view.error='';view.success='';draw();
+  let popup;
+  try{
+   popup=oauthPopup();
+   const result=await api().invoke('superpdp-oauth',{action:'start',companyId:await companyId()});
+   if(!result?.url)throw new Error('SUPER PDP n’a pas fourni de page d’autorisation.');
+   popup.location.replace(result.url);
+   await waitForOauth(popup);
+   let status=await productionStatus();
+   status=await ensureDirectory(status);
+   await load();
+   view.success=status?.production_enabled?'Facturation électronique activée. Les échanges sont désormais gérés dans Piloz.':'Autorisation enregistrée. La vérification de l’entreprise reste en cours.';
+   if(!options.silent)notify(view.success,'success');
+   return status;
+  }catch(error){
+   try{if(popup&&!popup.closed)popup.close();}catch{}
+   view.error=error?.message||'Impossible d’ouvrir SUPER PDP.';
+   if(options.throwOnError)throw error;
+   return null;
+  }finally{view.busy=false;draw();}
  }
  const refreshProduction=()=>run('refresh','État SUPER PDP actualisé.');
  const activateDirectory=()=>run('activate_directory','Demande d’inscription dans l’annuaire enregistrée.');
@@ -104,5 +159,5 @@
  async function sendTestInvoice(){if(view.busy||!view.connector)return;view.busy=true;view.error='';draw();try{await api().invoke('platform-connector',{action:'superpdp_send_test_invoice',companyId:state().companyId,confirmation:'SEND_SUPERPDP_SANDBOX_TEST'});view.confirmOpen=false;await load();view.success='Facture Factur-X de test transmise au bac à sable.';notify(view.success,'success');}catch(error){view.error=error?.message||'L’envoi de test a échoué.';}finally{view.busy=false;draw();}}
  function renderRoute(route,s){if(route==='settings'&&path()==='settings/einvoicing'){const main=document.getElementById('main');if(main)main.innerHTML=header()+'<section class="phase1-card"><p>Chargement du connecteur…</p></section>';load();return true;}return baseRender.call(modern,route,s);}
  modern.renderRoute=renderRoute;
- global.PilozElectronicInvoicing={startProduction,refreshProduction,activateDirectory,askDisconnect,cancelDisconnect,disconnect,testConnection,openConfirmation,closeConfirmation,sendTestInvoice,reload:load};
+ global.PilozElectronicInvoicing={startProduction,productionStatus,ensureDirectory,refreshProduction,activateDirectory,askDisconnect,cancelDisconnect,disconnect,testConnection,openConfirmation,closeConfirmation,sendTestInvoice,reload:load};
 })(window);

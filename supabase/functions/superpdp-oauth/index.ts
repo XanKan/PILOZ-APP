@@ -211,16 +211,34 @@ function appRedirect(status: string, code = "") {
   if (code) query.set("code", code);
   return `${base}/#settings/einvoicing?${query}`;
 }
+function oauthCompletion(status: "connected" | "error", code = "") {
+  const appUrl = (Deno.env.get("PILOZ_APP_URL") || "https://app.piloz.fr").replace(/\/$/, "");
+  const targetOrigin = new URL(appUrl).origin;
+  const fallbackUrl = appRedirect(status, code);
+  const scriptJson = (value: unknown) => JSON.stringify(value).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026");
+  const script = `(()=>{const message=${scriptJson({ type: "piloz:superpdp-oauth", status, code })},target=${scriptJson(targetOrigin)},fallback=${scriptJson(fallbackUrl)};try{if(window.opener&&!window.opener.closed){window.opener.postMessage(message,target);window.close();setTimeout(()=>location.replace(fallback),300);return;}}catch{}location.replace(fallback);})();`;
+  const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Activation Piloz</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4fbfa;color:#102a43;font:16px system-ui}main{max-width:32rem;padding:2rem;text-align:center}strong{display:block;font-size:1.2rem;margin-bottom:.5rem}</style></head><body><main><strong>${status === "connected" ? "Autorisation enregistrée" : "Autorisation interrompue"}</strong><p>Retour automatique dans Piloz…</p></main><script>${script}<\/script></body></html>`;
+  return new Response(html, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store, max-age=0",
+      "Referrer-Policy": "no-referrer",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    },
+  });
+}
 async function oauthCallback(req: Request, adminClient: SupabaseClient) {
   const url = new URL(req.url), state = text(url.searchParams.get("state")), code = text(url.searchParams.get("code"));
-  if (url.searchParams.get("error")) return Response.redirect(appRedirect("error", text(url.searchParams.get("error"))), 303);
-  if (!state || !code) return Response.redirect(appRedirect("error", "oauth_callback_invalid"), 303);
+  if (url.searchParams.get("error")) return oauthCompletion("error", text(url.searchParams.get("error")));
+  if (!state || !code) return oauthCompletion("error", "oauth_callback_invalid");
   const { data: stored, error } = await adminClient.from("superpdp_oauth_states").select("*").eq("state_hash", await sha256(state)).maybeSingle();
-  if (error || !stored || stored.consumed_at || Date.parse(stored.expires_at) <= Date.now()) return Response.redirect(appRedirect("error", "oauth_state_invalid"), 303);
+  if (error || !stored || stored.consumed_at || Date.parse(stored.expires_at) <= Date.now()) return oauthCompletion("error", "oauth_state_invalid");
   const { data: claimedState, error: claimError } = await adminClient.from("superpdp_oauth_states")
     .update({ consumed_at: new Date().toISOString() }).eq("id", stored.id).is("consumed_at", null)
     .select("id").maybeSingle();
-  if (claimError || !claimedState) return Response.redirect(appRedirect("error", "oauth_state_already_used"), 303);
+  if (claimError || !claimedState) return oauthCompletion("error", "oauth_state_already_used");
   try {
     const configuration = oauthConfiguration(), verifier = await decrypt(stored.pkce_verifier_ciphertext);
     const token = await exchangeToken({ grant_type: "authorization_code", code, redirect_uri: configuration.redirectUri, code_verifier: verifier });
@@ -261,12 +279,12 @@ async function oauthCallback(req: Request, adminClient: SupabaseClient) {
     }).eq("id", connector.id);
     if (activateError) throw Object.assign(new Error("connector_storage_failed"), { status: 502 });
     await adminClient.from("superpdp_consent_events").insert({ company_id: stored.company_id, authorization_id: authorization.id, actor_id: stored.user_id, event_type: "authorization_granted", evidence: { provider: "SUPER PDP", company_verification_status: connection.companyVerification, user_identity_verification_status: connection.identityVerification, provider_company_number: text(company.number) } });
-    return Response.redirect(appRedirect("connected"), 303);
+    return oauthCompletion("connected");
   } catch (callbackError) {
     const errorCode = text((callbackError as Error).message, "oauth_callback_failed");
     console.error("[PILOZ SUPER PDP OAuth] callback failed", { code: errorCode, companyId: stored.company_id });
     await adminClient.from("superpdp_consent_events").insert({ company_id: stored.company_id, actor_id: stored.user_id, event_type: "authorization_failed", evidence: { code: errorCode } });
-    return Response.redirect(appRedirect("error", errorCode), 303);
+    return oauthCompletion("error", errorCode);
   }
 }
 async function activateDirectory(adminClient: SupabaseClient, companyId: string, actorId: string) {

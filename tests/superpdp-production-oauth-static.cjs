@@ -9,6 +9,8 @@ const migration=read('supabase/migrations/202607280101_superpdp_production_oauth
 const workflow=read('.github/workflows/superpdp-worker.yml');
 const config=read('supabase/config.toml');
 const docs=read('docs/SUPERPDP_PRODUCTION_SETUP.md');
+const onboarding=read('assets/js/modules/onboarding/professional-onboarding.js');
+const electronicUi=read('assets/js/modules/erp/erp-electronic-invoicing.js');
 
 const checks={
   callback_has_pkce:oauth.includes('code_challenge_method: "S256"')&&oauth.includes('code_verifier: verifier'),
@@ -25,7 +27,13 @@ const checks={
   worker_retries:connector.includes('retry_scheduled')&&connector.includes('Math.pow(2')&&connector.includes('dead_letter'),
   scheduled_worker:workflow.includes('*/5 * * * *')&&workflow.includes('x-piloz-worker-secret')&&workflow.includes('superpdp_process_jobs'),
   edge_jwt_modes:config.includes('[functions.superpdp-oauth]')&&config.includes('[functions.platform-connector]'),
-  documented_setup:docs.includes('authorization_code')&&docs.includes('SUPERPDP_PRODUCTION_CLIENT_SECRET')&&docs.includes('SUPERPDP_WORKER_SECRET')
+  oauth_returns_to_secure_popup:oauth.includes('window.opener.postMessage')&&oauth.includes('piloz:superpdp-oauth')&&oauth.includes("frame-ancestors 'none'")&&oauth.includes('Cache-Control'),
+  popup_validates_source_and_origin:electronicUi.includes('event.source!==popup')&&electronicUi.includes('event.origin!==expectedOrigin')&&electronicUi.includes("window.open('about:blank'")&&!electronicUi.includes('location.assign(result.url)'),
+  popup_survives_opener_isolation:electronicUi.includes("BroadcastChannel('piloz-superpdp-oauth')")&&electronicUi.includes("window.name==='piloz-superpdp-authorization'"),
+  directory_is_automated:electronicUi.includes('status=await ensureDirectory(status)')&&electronicUi.includes("action:'activate_directory'"),
+  onboarding_has_electronic_invoice_step:onboarding.includes('Étape 7 — Facturation électronique')&&onboarding.includes('phase1SetupStep/7')&&onboarding.includes('electronicInvoicingDeferred'),
+  onboarding_uses_shared_oauth_flow:onboarding.includes('PilozElectronicInvoicing.startProduction')&&onboarding.includes('PilozElectronicInvoicing.productionStatus'),
+  documented_setup:docs.includes('authorization_code')&&docs.includes('SUPERPDP_PRODUCTION_CLIENT_SECRET')&&docs.includes('SUPERPDP_WORKER_SECRET')&&docs.includes('étape 7 de l’onboarding')
 };
 
 const failed=Object.entries(checks).filter(([,ok])=>!ok).map(([name])=>name);

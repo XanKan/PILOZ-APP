@@ -1,6 +1,8 @@
 # Activation de SUPER PDP en production
 
-Piloz utilise le flux OAuth 2.0 `authorization_code` recommandé par SUPER PDP pour les ERP. Chaque entreprise cliente autorise séparément Piloz, termine sa vérification dans SUPER PDP et peut demander son inscription dans l’annuaire de réception. Les jetons sont chiffrés côté serveur et ne sont jamais renvoyés au navigateur.
+Piloz utilise le flux OAuth 2.0 `authorization_code` recommandé par SUPER PDP pour les ERP. Chaque entreprise cliente autorise séparément Piloz depuis l’onboarding ou les extensions. Les jetons sont chiffrés côté serveur et ne sont jamais renvoyés au navigateur.
+
+Le fonctionnement quotidien reste dans Piloz : envois, réceptions, statuts, litiges et journaux. Lors de la première activation seulement, une fenêtre sécurisée SUPER PDP peut apparaître pour l’autorisation et les contrôles KYC/KYB obligatoires. Elle se ferme automatiquement et ne remplace jamais l’interface Piloz.
 
 ## 1. Application SUPER PDP
 
@@ -56,14 +58,15 @@ Le bouton de transmission manuelle reste utile pour un diagnostic, mais le fonct
 Dans Piloz :
 
 1. compléter le SIREN et les informations légales de l’entreprise ;
-2. ouvrir `Paramètres > Extensions > Facturation électronique` ;
-3. cliquer sur `Activer SUPER PDP` ;
-4. se connecter à SUPER PDP et autoriser Piloz ;
-5. terminer les contrôles d’identité ou d’autorité demandés par SUPER PDP ;
-6. actualiser le statut dans Piloz ;
-7. cliquer sur `Activer la réception` pour demander l’inscription dans l’annuaire PPF.
+2. à l’étape 7 de l’onboarding, cliquer sur `Activer la facturation électronique` ;
+3. terminer dans la fenêtre sécurisée les contrôles d’identité ou d’autorité demandés ;
+4. revenir automatiquement dans Piloz.
+
+Piloz actualise ensuite le statut et demande automatiquement l’inscription dans l’annuaire de réception lorsque SUPER PDP confirme l’entreprise. L’utilisateur peut reporter l’activation et la reprendre depuis `Paramètres > Extensions > Facturation électronique` avec le même parcours intégré.
 
 La production n’est activée que lorsque SUPER PDP renvoie l’entreprise comme `verified`. Si l’identité du représentant est requise, elle doit également être `verified`.
+
+En offre grise, les écrans réglementaires d’autorisation et de vérification restent hébergés par SUPER PDP. Les masquer entièrement nécessiterait une offre marque blanche et un contrat spécifique avec la plateforme agréée ; Piloz ne contourne jamais ces contrôles.
 
 ## 6. Recette obligatoire
 
