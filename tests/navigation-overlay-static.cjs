@@ -4,6 +4,7 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const modern = fs.readFileSync(path.join(root, 'assets/css/modern-erp.css'), 'utf8');
 const premium = fs.readFileSync(path.join(root, 'assets/css/piloz-premium.css'), 'utf8');
+const navigation = fs.readFileSync(path.join(root, 'assets/js/modules/erp/erp-modern.js'), 'utf8');
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -29,6 +30,7 @@ const checks = [
   ['le theme premium conserve la superposition', premiumMain.includes('margin-left:0') && premiumMain.includes('width:calc(100%-var(--modern-rail-width))') && premiumEditor.includes('left:var(--modern-rail-width)!important')],
   ['le sous-menu passe devant les documents plein ecran', railZ > documentZ && documentZ > 0],
   ['aucun ancien decalage de 232 ou 244 px', !modernMain.includes('232px') && !modernEditor.includes('232px') && !premiumMain.includes('244px') && !premiumEditor.includes('244px')],
+  ['un clic exterieur ferme le sous-menu sans rerendu global', navigation.includes("document.addEventListener('pointerdown'") && navigation.includes("target.closest('.modern-secondary-panel,.modern-primary-item')") && navigation.includes("document.querySelector('.modern-secondary-panel')?.remove()")],
 ];
 
 const failed = checks.filter(([, ok]) => !ok);

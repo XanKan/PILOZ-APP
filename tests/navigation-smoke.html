@@ -95,6 +95,18 @@
       checks.push(['rubriques comptables utiles présentes',accountingItems.includes('Exercices fiscaux')&&accountingItems.includes('Journaux')&&accountingItems.includes('Acomptes')&&!accountingItems.includes('Comptes complémentaires')]);
       PilozModern.openArea('accounting');
       checks.push(['ouverture comptabilité',PilozApp.lastRoute==='accounting/payments']);
+      PilozModern.renderNavigation(document.getElementById('tabs'),state,'accounting/payments');
+      const openSecondary=document.querySelector('.modern-secondary-panel');
+      openSecondary.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));
+      checks.push(['clic dans le sous-menu le conserve',document.querySelector('.modern-secondary-panel')===openSecondary]);
+      main.innerHTML='<button id="outside-document">Ouvrir un document</button>';
+      let outsideAction=0;
+      const outsideDocument=document.getElementById('outside-document');
+      outsideDocument.addEventListener('click',()=>outsideAction++);
+      outsideDocument.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));
+      outsideDocument.click();
+      checks.push(['clic à droite ferme le sous-menu',!document.querySelector('.modern-secondary-panel')&&!document.getElementById('app').classList.contains('modern-subnav-open')]);
+      checks.push(['action cliquée toujours exécutée',outsideAction===1]);
     }catch(error){checks.push(['exécution',false,error.message]);}
     const failed=checks.filter(([,ok])=>!ok),result=document.getElementById('result');
     result.dataset.status=failed.length?'failed':'passed';
