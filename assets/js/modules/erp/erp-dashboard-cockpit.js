@@ -67,7 +67,6 @@
     recent_documents:{label:'Documents récents',description:'Devis, factures, avoirs et achats'},
     customers:{label:'Clients',description:'Nouveaux clients et principaux contributeurs'},
     catalog:{label:'Articles et main d’œuvre',description:'Ventes et marge du catalogue'},
-    stock:{label:'Stock et approvisionnement',description:'Ruptures et niveaux sous seuil'},
     agenda:{label:'Mon agenda',description:'Activités du jour et prochaines actions'},
     purchases:{label:'Achats',description:'Commandes et réceptions attendues'},
     notifications:{label:'Notifications importantes',description:'Alertes qui nécessitent votre attention'},
@@ -86,14 +85,13 @@
     overdue_count:{label:'Factures en retard',short:'En retard',definition:'Factures ouvertes dont l’échéance est dépassée.',route:'sales/due-dates'},
     new_clients:{label:'Nouveaux clients',short:'Nouveaux clients',definition:'Clients créés pendant la période dans votre périmètre autorisé.',route:'sales/clients'},
     purchases_ht:{label:'Achats',short:'Achats HT',definition:'Commandes fournisseurs HT enregistrées pendant la période.',route:'purchases/orders'},
-    stock_value:{label:'Valeur du stock',short:'Stock valorisé',definition:'Stock disponible valorisé au coût de revient lorsque ce droit est accordé.',route:'sales/catalog'},
     gross_result:{label:'Résultat brut estimé',short:'Résultat brut',definition:'Chiffre d’affaires HT net moins coûts mémorisés, avant charges de structure.',route:'reports'}
   };
   const allBlocks=Object.keys(blockDefinitions);
   const defaultMetrics=['revenue_ht','collected','pipeline_weighted','outstanding'];
   const roleBlocks={
-    owner:['receivables','commercial','recent_documents','customers','catalog','agenda','stock','purchases','notifications'],
-    admin:['receivables','commercial','recent_documents','customers','catalog','agenda','stock','purchases','notifications'],
+    owner:['receivables','commercial','recent_documents','customers','catalog','agenda','purchases','notifications'],
+    admin:['receivables','commercial','recent_documents','customers','catalog','agenda','purchases','notifications'],
     accounting:['receivables','recent_documents','customers','catalog','agenda','purchases','notifications'],
     sales:['commercial','recent_documents','customers','agenda','notifications'],
     auditor:['receivables','recent_documents','customers','notifications'],
@@ -355,7 +353,7 @@
   function activePreference(){return ui.edit?ui.draft:ui.preferences;}
   function visibleBlocks(payload){
     const preference=activePreference()||defaultPreference(payload.role),visible=new Set(preference.visible_blocks||[]),order=preference.block_order||[];
-    const available=key=>visible.has(key)&&(key!=='stock'||payload.stock?.enabled!==false)&&(key!=='purchases'||payload.purchases?.enabled!==false);
+    const available=key=>allBlocks.includes(key)&&visible.has(key)&&(key!=='purchases'||payload.purchases?.enabled!==false);
     return[...order.filter(available),...allBlocks.filter(key=>available(key)&&!order.includes(key))];
   }
   function renderSecondary(payload){
@@ -364,9 +362,9 @@
     return`<div class="cockpit-secondary">${blocks.map(key=>frame(key,blockContent(key,payload))).join('')}</div>`;
   }
   function renderCustomizer(payload){
-    const preference=ui.draft,stockEnabled=payload.stock?.enabled!==false,purchasesEnabled=payload.purchases?.enabled!==false;
-    const selectableBlocks=allBlocks.filter(key=>(key!=='stock'||stockEnabled)&&(key!=='purchases'||purchasesEnabled));
-    const selectableMetrics=Object.entries(metricDefinitions).filter(([key])=>(!['gross_margin','gross_result'].includes(key)||payload.summary?.permissions?.margin)&&(key!=='stock_value'||stockEnabled&&payload.stock?.value!==null&&payload.stock?.value!==undefined)&&(key!=='purchases_ht'||purchasesEnabled));
+    const preference=ui.draft,purchasesEnabled=payload.purchases?.enabled!==false;
+    const selectableBlocks=allBlocks.filter(key=>key!=='purchases'||purchasesEnabled);
+    const selectableMetrics=Object.entries(metricDefinitions).filter(([key])=>(!['gross_margin','gross_result'].includes(key)||payload.summary?.permissions?.margin)&&(key!=='purchases_ht'||purchasesEnabled));
     const metricMap=Object.fromEntries(selectableMetrics),selectedMetrics=preference.selected_metrics.filter(key=>metricMap[key]),availableMetrics=selectableMetrics.filter(([key])=>!selectedMetrics.includes(key));
     const selectedBlocks=preference.block_order.filter(key=>selectableBlocks.includes(key)&&preference.visible_blocks.includes(key)),availableBlocks=selectableBlocks.filter(key=>!preference.visible_blocks.includes(key));
     const sortable=(type,keys,labelFor)=>`<div class="cockpit-customizer-sort-list">${keys.map((key,index)=>`<div class="cockpit-customizer-sortable" data-customizer-type="${type}" data-customizer-key="${key}" ondragover="PilozDashboardCockpit.customizerDragOver(event,'${type}','${key}')" ondragleave="PilozDashboardCockpit.customizerDragLeave(event)" ondrop="PilozDashboardCockpit.customizerDrop(event,'${type}','${key}')"><span class="cockpit-customizer-grip" tabindex="0" draggable="true" title="Maintenir puis glisser" aria-label="Déplacer ${esc(labelFor(key))}" ondragstart="PilozDashboardCockpit.customizerDrag(event,'${type}','${key}')" ondragend="PilozDashboardCockpit.customizerEndDrag()">⠿</span><label><input type="checkbox" checked onchange="PilozDashboardCockpit.${type==='metric'?'toggleMetric':'toggleBlock'}('${key}')"><span>${esc(labelFor(key))}</span></label><span class="cockpit-customizer-position">${index+1}</span><div class="cockpit-customizer-order"><button type="button" ${index===0?'disabled':''} aria-label="Monter ${esc(labelFor(key))}" onclick="PilozDashboardCockpit.moveCustomizerItem('${type}','${key}',-1)">↑</button><button type="button" ${index===keys.length-1?'disabled':''} aria-label="Descendre ${esc(labelFor(key))}" onclick="PilozDashboardCockpit.moveCustomizerItem('${type}','${key}',1)">↓</button></div></div>`).join('')||'<p class="cockpit-customizer-empty">Aucun élément affiché.</p>'}</div>`;

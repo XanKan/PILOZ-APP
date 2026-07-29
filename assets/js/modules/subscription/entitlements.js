@@ -7,8 +7,8 @@
  // configuration des offres du site vitrine (PILOZ-SITE).
  const PLAN_FEATURES={
   essential:['crm','quotes','invoices','credit_notes','payments','manual_reminders'],
-  pro:['crm','quotes','invoices','credit_notes','payments','manual_reminders','automatic_reminders','recurring_invoices','deposits','sales_pipeline_automations','purchases','suppliers','purchase_orders','inventory','advanced_templates','advanced_dashboard','margin_reports'],
-  business:['crm','quotes','invoices','credit_notes','payments','manual_reminders','automatic_reminders','recurring_invoices','deposits','sales_pipeline_automations','purchases','suppliers','purchase_orders','inventory','advanced_templates','advanced_dashboard','margin_reports','multi_warehouse','roles_permissions','activity_logs','api_access']
+  pro:['crm','quotes','invoices','credit_notes','payments','manual_reminders','automatic_reminders','recurring_invoices','deposits','sales_pipeline_automations','purchases','suppliers','purchase_orders','advanced_templates','advanced_dashboard','margin_reports'],
+  business:['crm','quotes','invoices','credit_notes','payments','manual_reminders','automatic_reminders','recurring_invoices','deposits','sales_pipeline_automations','purchases','suppliers','purchase_orders','advanced_templates','advanced_dashboard','margin_reports','roles_permissions','activity_logs','api_access']
  };
  const PLAN_META={
   essential:{name:'Essentiel',priceMonthly:29,priceAnnual:290,maxUsers:1},
@@ -19,8 +19,8 @@
   crm:'Suivi commercial',quotes:'Devis',invoices:'Factures',credit_notes:'Avoirs',payments:'Paiements',
   manual_reminders:'Relances manuelles',automatic_reminders:'Relances automatiques',recurring_invoices:'Factures récurrentes',
   deposits:'Factures d’acompte et de solde',sales_pipeline_automations:'Automatisations du pipeline',
-  purchases:'Achats',suppliers:'Fournisseurs',purchase_orders:'Commandes fournisseurs',inventory:'Gestion de stock',
-  multi_warehouse:'Plusieurs entrepôts',advanced_templates:'Modèles personnalisables avancés',
+  purchases:'Achats',suppliers:'Fournisseurs',purchase_orders:'Commandes fournisseurs',
+  advanced_templates:'Modèles personnalisables avancés',
   advanced_dashboard:'Tableaux de bord avancés',margin_reports:'Rapports de marge',roles_permissions:'Rôles et permissions avancés',
   activity_logs:'Historique d’activité avancé',api_access:'Accès API'
  };

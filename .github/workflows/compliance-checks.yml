@@ -24,6 +24,7 @@ jobs:
           node tests/account-footer-static.cjs
           node tests/accounting-item-types-static.cjs
           node tests/auth-extensions-accounting-static.cjs
+          node tests/catalog-roadmap-static.cjs
           node tests/crm-command-center-static.cjs
           node tests/crm-sales-rework-static.cjs
           node tests/deposit-finalization-static.cjs

@@ -58,9 +58,9 @@ window.PilozCommercialWorkspace={openClient:id=>calls.push({name:'openClient',id
   check('prévision non garantie explicitée',main.textContent.includes('Montants attendus, non garantis'));
   check('prévisions semaine et mois affichées',main.textContent.includes('Semaine prochaine')&&main.textContent.includes('Mois prochain'));
   check('actions prioritaires concrètes',main.textContent.includes('FAC-2026-0042')&&main.textContent.includes('Relancer'));
-  check('notifications limitées et blocs métier',document.querySelectorAll('.cockpit-notifications article').length===1&&main.textContent.includes('Stock et approvisionnement'));
+  check('notifications limitées et blocs métier',document.querySelectorAll('.cockpit-notifications article').length===1&&main.textContent.includes('Articles et main d’œuvre'));
   check('échéances avec actions directes',document.querySelectorAll('.cockpit-due-list article>div button').length===2&&main.textContent.includes('Retard moyen'));
-  check('catalogue et stock enrichis',main.textContent.includes('Meilleure vente')&&main.textContent.includes('Valeur du stock'));
+  check('catalogue enrichi sans stock',main.textContent.includes('Meilleure vente')&&!main.textContent.includes('Valeur du stock')&&!main.textContent.includes('Stock et approvisionnement'));
   PilozDashboardCockpit.openDueEmail('invoice-1');PilozDashboardCockpit.openDuePayment('invoice-1');
   check('relance et règlement contextuels',calls.some(call=>call.name==='dueEmail')&&calls.some(call=>call.name==='duePayment'));
   PilozDashboardCockpit.completeActivity('activity-1');PilozDashboardCockpit.showNotifications();
@@ -70,7 +70,7 @@ window.PilozCommercialWorkspace={openClient:id=>calls.push({name:'openClient',id
   PilozDashboardCockpit.setChartMode('comparison');
   check('comparaison graphique limitée à deux séries',document.querySelectorAll('.cockpit-chart-line').length===2&&main.textContent.includes('Période comparée'));
   PilozDashboardCockpit.startCustomize();
-  check('mode personnaliser explicite',!!document.querySelector('.cockpit-customizer')&&document.querySelectorAll('.cockpit-drag-handle').length===9);
+  check('mode personnaliser explicite',!!document.querySelector('.cockpit-customizer')&&document.querySelectorAll('.cockpit-drag-handle').length===8);
   check('indicateurs et blocs triables dans le panneau',document.querySelectorAll('[data-customizer-type="metric"]').length===4&&document.querySelectorAll('[data-customizer-type="block"]').length===9);
   PilozDashboardCockpit.moveCustomizerItem('metric','collected',-1);
   check('ordre des indicateurs modifiable dans le panneau',PilozDashboardCockpit.ui.draft.selected_metrics[0]==='collected'&&document.querySelector('[data-customizer-type="metric"]')?.dataset.customizerKey==='collected');
