@@ -486,7 +486,7 @@ function clearPrivateShell(){
   document.getElementById('app')?.classList.remove('modern-subnav-open');
 }
 function invalidateAuthSession(message='Votre session a expiré. Veuillez vous reconnecter.'){
-  SES=null; LIC=null; if(window.PilozRuntime) window.PilozRuntime.session=null; lsSet('piloz_ses',null); clearPrivateShell();
+  SES=null; LIC=null; lsSet('piloz_ses',null); resetAccountScopedRuntime(null); clearPrivateShell();
   authStatusMessage=message; authStatusKind='error'; authBusy=false;
 }
 function normaliserUrlSb(u){
@@ -568,6 +568,23 @@ try{
 if(CFG && CFG.url){ const n = normaliserUrlSb(CFG.url); if(n!==CFG.url){ CFG.url = n; lsSet('piloz_cfg', CFG); } }
 let SES = lsGet('piloz_ses') || null;         // {access_token, refresh_token, user_id, email}
 window.PilozRuntime={get config(){return CFG;},get session(){return SES;},get state(){return S;},get setupStep(){return typeof phase1SetupStep==='number'?phase1SetupStep:0;},request:sb};
+function sessionStorageIdentity(session=SES){
+  if(!session)return'';
+  return String(session.user_id||sessionIdentityFromToken(session.access_token).user_id||'').trim();
+}
+function legacyStateStorageKey(session=SES){
+  const identity=sessionStorageIdentity(session);
+  return identity?`piloz_crm_v1:${identity}`:'piloz_crm_v1';
+}
+function resetAccountScopedRuntime(nextSession=SES){
+  S=null;
+  window.PilozCurrentUser=null;
+  if(typeof saveT!=='undefined'&&saveT){clearTimeout(saveT);saveT=null;}
+  window.PilozApp?.resetSession?.(nextSession);
+  const veil=document.getElementById('veil'),modal=document.getElementById('modal');
+  if(veil)veil.classList.remove('on');
+  if(modal)modal.replaceChildren();
+}
 if(PENDING_RECOVERY){ SES = {...(SES||{}), ...PENDING_RECOVERY}; authRecovery = true; authMode = 'login'; lsSet('piloz_ses', SES); }
 if(PENDING_OAUTH){ SES = {...(SES||{}), ...PENDING_OAUTH}; window.PilozOAuthSessionPending = true; lsSet('piloz_ses', SES); }
 if(SES){hydrateSessionIdentity(SES);lsSet('piloz_ses',SES);}
@@ -640,6 +657,7 @@ async function deconnecter(){
   authFieldErrors = {};
   authStatusMessage = '';
   lsSet('piloz_ses', null);
+  resetAccountScopedRuntime(null);
   setSync('local');
   applyAuthModeToUrl('login');
   clearPrivateShell();
@@ -686,8 +704,9 @@ async function charger(){
     catch(e){ setSync('offline'); }
   }
   if(!S){
-    if(artefact){ try{ const r = await window.storage.get('piloz_crm_v1'); if(r) S = JSON.parse(r.value); }catch(e){} }
-    else { S = lsGet('piloz_crm_v1'); }
+    const storageKey=legacyStateStorageKey();
+    if(artefact){ try{ const r = await window.storage.get(storageKey); if(r) S = JSON.parse(r.value); }catch(e){} }
+    else { S = lsGet(storageKey); }
   }
   if(!S) S = structuredClone(DEFAUT);
   normaliserEtat();
@@ -703,11 +722,12 @@ async function charger(){
 let saveT = null;
 function sauver(msg){
   clearTimeout(saveT);
+  const storageKey=legacyStateStorageKey(),stateSnapshot=S;
   saveT = setTimeout(async ()=>{
-    const data = JSON.stringify(S);
+    const data = JSON.stringify(stateSnapshot);
     try{
-      if(artefact) await window.storage.set('piloz_crm_v1', data);
-      else localStorage.setItem('piloz_crm_v1', data);
+      if(artefact) await window.storage.set(storageKey, data);
+      else localStorage.setItem(storageKey, data);
     }catch(e){}
     if(CFG && SES){
       setSync('pending');
@@ -2709,6 +2729,7 @@ function authBuildOnboarding(){
 async function authSyncSession(opts={}){
   const remember = opts.remember !== false;
   const onboarding = opts.onboarding || null;
+  resetAccountScopedRuntime(SES);
   if(remember) lsSet('piloz_ses', SES); else lsSet('piloz_ses', null);
   let checkoutClaimed=false;
   try{checkoutClaimed=!!(await window.PilozCheckoutClaim?.claimAfterAuth?.());}
@@ -2988,11 +3009,11 @@ async function boActif(uid, actif){
 <script src="assets/js/modules/subscription/entitlements.js?v=20260721.10"></script>
 <script src="assets/js/modules/onboarding/company-search.js?v=20260721.10"></script>
 <script src="assets/js/modules/onboarding/professional-onboarding.js?v=20260729.9"></script>
-<script src="assets/js/modules/erp/erp-app.js?v=20260728.6"></script>
+<script src="assets/js/modules/erp/erp-app.js?v=20260729.1"></script>
 <script src="assets/js/modules/erp/erp-modern.js?v=20260729.2"></script>
 <script src="assets/js/modules/erp/erp-compliance.js?v=20260727.1"></script>
 <script src="assets/js/modules/erp/erp-commercial-v2.js?v=20260728.2"></script>
-<script src="assets/js/modules/erp/erp-dashboard-cockpit.js?v=20260729.1"></script>
+<script src="assets/js/modules/erp/erp-dashboard-cockpit.js?v=20260729.2"></script>
 <script src="assets/js/modules/erp/erp-accounting-extensions.js?v=20260729.1"></script>
 <script src="assets/js/modules/erp/erp-electronic-invoicing.js?v=20260729.1"></script>
 <script src="assets/js/modules/erp/erp-commercial-workspace.js?v=20260727.1"></script>

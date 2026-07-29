@@ -40,6 +40,7 @@ jobs:
           node tests/onboarding-step6-numbering-static.cjs
           node tests/platform-admin-mfa-static.cjs
           node tests/security-hardening-static.cjs
+          node tests/session-account-isolation-static.cjs
           node tests/settings-navigation-static.cjs
           node tests/site-offer-static.cjs
           node tests/stripe-billing-static.cjs

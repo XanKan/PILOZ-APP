@@ -595,4 +595,5 @@
     drag,dragOver,dragLeave,drop,endDrag,dragKey,customizerDrag,customizerDragOver,customizerDragLeave,customizerDrop,customizerEndDrag,moveCustomizerItem,navigate,openDocument,openDueEmail,openDuePayment,openDocumentList,openClient,
     openItem,openActivity,completeActivity,showNotifications,openPriority,quick
   };
+  global.PilozDashboardCockpit.resetForContext=resetForContext;
 })(window);
