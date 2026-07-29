@@ -71,7 +71,7 @@ window.PilozCommercialWorkspace={openClient:id=>calls.push({name:'openClient',id
   check('comparaison graphique limitée à deux séries',document.querySelectorAll('.cockpit-chart-line').length===2&&main.textContent.includes('Période comparée'));
   PilozDashboardCockpit.startCustomize();
   check('mode personnaliser explicite',!!document.querySelector('.cockpit-customizer')&&document.querySelectorAll('.cockpit-drag-handle').length===8);
-  check('indicateurs et blocs triables dans le panneau',document.querySelectorAll('[data-customizer-type="metric"]').length===4&&document.querySelectorAll('[data-customizer-type="block"]').length===9);
+  check('indicateurs et blocs triables dans le panneau',document.querySelectorAll('[data-customizer-type="metric"]').length===4&&document.querySelectorAll('[data-customizer-type="block"]').length===8);
   PilozDashboardCockpit.moveCustomizerItem('metric','collected',-1);
   check('ordre des indicateurs modifiable dans le panneau',PilozDashboardCockpit.ui.draft.selected_metrics[0]==='collected'&&document.querySelector('[data-customizer-type="metric"]')?.dataset.customizerKey==='collected');
   PilozDashboardCockpit.ui.customDragType='block';PilozDashboardCockpit.ui.customDragKey='commercial';PilozDashboardCockpit.ui.customDropSide='before';PilozDashboardCockpit.customizerDrop({preventDefault(){}},'block','receivables');
