@@ -37,6 +37,7 @@ location.hash='sales/clients';
   check('liste financière réelle',main.textContent.includes('Atelier Dupont')&&main.textContent.includes('1 200,00')&&main.textContent.includes('800,00'));
   check('recherche et filtres',!!main.querySelector('.client-search input')&&main.textContent.includes('Tous les statuts')&&main.textContent.includes('Colonnes'));
   check('sélection et export disponibles',!!main.querySelector('[aria-label^="Sélectionner"]')&&main.textContent.includes('Exporter CSV'));
+  PilozClients.openClientCreator();const companyCreator=document.getElementById('client-create-form');check('création professionnelle demande le contact principal',!!companyCreator?.elements.contact_first_name&&!!companyCreator?.elements.contact_last_name&&!!companyCreator?.elements.email&&!!companyCreator?.elements.phone_e164);PilozClients.closeDrawer();
   location.hash=`sales/clients/${client}?tab=summary`;PilozClients.renderRoute(location.hash.slice(1),state);await wait(60);
   check('route dédiée et synthèse',main.textContent.includes('Fiche client')&&main.textContent.includes('Total facturé')&&main.textContent.includes('Client prioritaire'));
    check('quatorze rubriques client',main.querySelectorAll('.client-tabs button').length===14);

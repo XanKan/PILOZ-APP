@@ -40,9 +40,13 @@ async function expectError(promise,label){const error=await promise.then(()=>nul
     const stages=configuration.stages.filter(row=>row.pipeline_id===pipeline.id&&row.active).sort((a,b)=>Number(a.position)-Number(b.position));
     assert(JSON.stringify(stages.map(row=>row.name))===JSON.stringify(expectedStages),`pipeline commercial actif non conforme: ${stages.map(row=>row.name).join(' | ')}`);
 
-    const prospect=await rpc(db,"select to_jsonb(public.create_crm_party($1::jsonb)) value",[JSON.stringify({relationship_type:'prospect',kind:'company',legal_name:'Société Atlas',trade_name:'Atlas',legal_form:'SAS',email:'atlas@crm.test',phone_e164:'+33102030405',siren:'123456789',siret:'12345678900011',ape_code:'6201Z',address_line_1:'12 rue des Fleurs',postal_code:'75001',city:'Paris',country_code:'FR'})]);
+    const prospect=await rpc(db,"select to_jsonb(public.create_crm_party($1::jsonb)) value",[JSON.stringify({relationship_type:'prospect',kind:'company',legal_name:'Société Atlas',trade_name:'Atlas',legal_form:'SAS',first_name:'Alice',last_name:'Martin',contact_name:'Alice Martin',email:'atlas@crm.test',phone_e164:'+33102030405',siren:'123456789',siret:'12345678900011',ape_code:'6201Z',address_line_1:'12 rue des Fleurs',postal_code:'75001',city:'Paris',country_code:'FR'})]);
     assert(prospect.relationship_type==='prospect'&&prospect.company_id===company,'création rapide prospect invalide');
     assert(prospect.siret==='12345678900011'&&prospect.legal_form==='SAS'&&prospect.ape_code==='6201Z'&&prospect.address_line_1==='12 rue des Fleurs'&&prospect.postal_code==='75001'&&prospect.city==='Paris','données officielles INPI non conservées');
+    await db.exec('reset role');
+    const primaryContact=(await db.query("select first_name,last_name,email,phone_e164,is_primary from public.client_contacts where client_id=$1",[prospect.id])).rows[0];
+    assert(primaryContact?.first_name==='Alice'&&primaryContact?.last_name==='Martin'&&primaryContact?.email==='atlas@crm.test'&&primaryContact?.phone_e164==='+33102030405'&&primaryContact?.is_primary===true,'contact principal non créé avec le client');
+    await setIdentity(db,owner);
     const picker=await rpc(db,"select public.get_crm_party_picker('atlas',6,null) value");
     assert(picker.rows.length===1&&picker.rows[0].id===prospect.id,'recherche multi-champs du sélecteur tiers invalide');
 
@@ -98,6 +102,6 @@ async function expectError(promise,label){const error=await promise.then(()=>nul
     const after=(await rpc(db,"select public.get_crm_pipeline_workspace(null,null,'{}'::jsonb,1,75) value")).opportunities.find(row=>row.id===opportunity.id).name;
     assert(before===after,'RLS lecteur seule contournable en accès direct');
 
-    process.stdout.write(JSON.stringify({ok:true,stages:stages.length,party_picker:true,quick_create:true,inpi_details:true,opportunity:true,document_amount:true,conversion:true,activities:true,reports:true,comparison:true,forecast:true,tenant_isolation:true,read_only:true})+'\n');
+    process.stdout.write(JSON.stringify({ok:true,stages:stages.length,party_picker:true,quick_create:true,primary_contact:true,inpi_details:true,opportunity:true,document_amount:true,conversion:true,activities:true,reports:true,comparison:true,forecast:true,tenant_isolation:true,read_only:true})+'\n');
   }finally{await db.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

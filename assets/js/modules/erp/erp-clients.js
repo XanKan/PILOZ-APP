@@ -1021,7 +1021,11 @@
     }`;
   }
   function coordinatesForm(id, c, state, data = { extra: {} }) {
-    const professional = c.kind !== "person";
+    const professional = c.kind !== "person",
+      primaryContact =
+        (data.extra?.contacts || []).find((contact) => contact.is_primary) ||
+        (data.extra?.contacts || [])[0] ||
+        {};
     return `<form id="client-coordinates-form" class="client-form" onsubmit="event.preventDefault();PilozClients.saveCoordinates('${id}')"><header><div><h2>Coordonnées</h2><p>Les coordonnées courantes du client. Les anciens documents finalisés restent figés.</p></div>${button("Enregistrer", "", "btn-p", 'type="submit" data-client-save')}</header><div class="client-form-grid"><label><span>Type</span><select name="kind" onchange="PilozClients.toggleCoordinateKind(this.value)"><option value="company" ${professional ? "selected" : ""}>Professionnel</option><option value="person" ${!professional ? "selected" : ""}>Particulier</option></select></label><label><span>Statut</span><select name="customer_status">${Object.entries(
       statusLabels,
     )
@@ -1031,7 +1035,7 @@
       )
       .join(
         "",
-      )}</select></label><div data-professional ${professional ? "" : "hidden"}><label><span>Raison sociale *</span><input name="legal_name" value="${esc(c.legal_name || "")}"></label><label><span>Nom commercial</span><input name="trade_name" value="${esc(c.trade_name || "")}"></label><label><span>Forme juridique</span><input name="legal_form" value="${esc(c.legal_form || "")}"></label><label><span>SIREN</span><input name="siren" value="${esc(c.siren || "")}"></label><label><span>SIRET</span><input name="siret" value="${esc(c.siret || "")}"></label><label><span>Code APE</span><input name="ape_code" value="${esc(c.ape_code || "")}"></label><label><span>Numéro de TVA</span><input name="vat_number" value="${esc(c.vat_number || "")}"></label></div><div data-person ${professional ? "hidden" : ""}><label><span>Civilité</span><select name="civility"><option value="">—</option><option value="M." ${c.civility === "M." ? "selected" : ""}>M.</option><option value="Mme" ${c.civility === "Mme" ? "selected" : ""}>Mme</option></select></label><label><span>Prénom *</span><input name="first_name" value="${esc(c.first_name || "")}"></label><label><span>Nom *</span><input name="last_name" value="${esc(c.last_name || "")}"></label></div><label><span>E-mail général</span><input name="email" type="email" value="${esc(c.email || "")}"></label><label><span>Téléphone</span><input name="phone_e164" type="tel" value="${esc(c.phone_e164 || "")}"></label><label><span>Second téléphone</span><input name="secondary_phone_e164" type="tel" value="${esc(c.secondary_phone_e164 || "")}"></label><label><span>Site internet</span><input name="website" type="url" value="${esc(c.website || "")}"></label><label><span>Langue</span><select name="language"><option value="fr">Français</option><option value="en" ${c.language === "en" ? "selected" : ""}>English</option></select></label><label><span>Responsable commercial</span><select name="assigned_user_id"><option value="">Non attribué</option>${(state.data.members || []).map((x) => `<option value="${x.user_id}" ${c.assigned_user_id === x.user_id ? "selected" : ""}>${esc(memberName(state, x.user_id))}</option>`).join("")}</select></label><label class="full"><span>Tags (séparés par des virgules)</span><input name="tags" value="${esc((c.tags || []).join(", "))}"></label><label class="full"><span>Notes internes</span><textarea name="internal_notes" rows="5">${esc(c.internal_notes || "")}</textarea></label></div></form>${preferencesForm(id, entryFor(id)?.summary?.preferences || {}, c, state)}`;
+      )}</select></label><div data-professional ${professional ? "" : "hidden"}><label><span>Raison sociale *</span><input name="legal_name" value="${esc(c.legal_name || "")}"></label><label><span>Nom commercial</span><input name="trade_name" value="${esc(c.trade_name || "")}"></label><label><span>Forme juridique</span><input name="legal_form" value="${esc(c.legal_form || "")}"></label><label><span>SIREN</span><input name="siren" value="${esc(c.siren || "")}"></label><label><span>SIRET</span><input name="siret" value="${esc(c.siret || "")}"></label><label><span>Code APE</span><input name="ape_code" value="${esc(c.ape_code || "")}"></label><label><span>Numéro de TVA</span><input name="vat_number" value="${esc(c.vat_number || "")}"></label><label><span>Prénom du contact principal</span><input name="contact_first_name" value="${esc(primaryContact.first_name || c.first_name || "")}"></label><label><span>Nom du contact principal</span><input name="contact_last_name" value="${esc(primaryContact.last_name || c.last_name || "")}"></label></div><div data-person ${professional ? "hidden" : ""}><label><span>Civilité</span><select name="civility"><option value="">—</option><option value="M." ${c.civility === "M." ? "selected" : ""}>M.</option><option value="Mme" ${c.civility === "Mme" ? "selected" : ""}>Mme</option></select></label><label><span>Prénom *</span><input name="first_name" value="${esc(c.first_name || "")}"></label><label><span>Nom *</span><input name="last_name" value="${esc(c.last_name || "")}"></label></div><label><span>E-mail général</span><input name="email" type="email" value="${esc(c.email || "")}"></label><label><span>Téléphone</span><input name="phone_e164" type="tel" value="${esc(c.phone_e164 || "")}"></label><label><span>Second téléphone</span><input name="secondary_phone_e164" type="tel" value="${esc(c.secondary_phone_e164 || "")}"></label><label><span>Site internet</span><input name="website" type="url" value="${esc(c.website || "")}"></label><label><span>Langue</span><select name="language"><option value="fr">Français</option><option value="en" ${c.language === "en" ? "selected" : ""}>English</option></select></label><label><span>Responsable commercial</span><select name="assigned_user_id"><option value="">Non attribué</option>${(state.data.members || []).map((x) => `<option value="${x.user_id}" ${c.assigned_user_id === x.user_id ? "selected" : ""}>${esc(memberName(state, x.user_id))}</option>`).join("")}</select></label><label class="full"><span>Tags (séparés par des virgules)</span><input name="tags" value="${esc((c.tags || []).join(", "))}"></label><label class="full"><span>Notes internes</span><textarea name="internal_notes" rows="5">${esc(c.internal_notes || "")}</textarea></label></div></form>${preferencesForm(id, entryFor(id)?.summary?.preferences || {}, c, state)}`;
   }
   function entryFor(id) {
     return ui.detail.get(id);
@@ -1255,8 +1259,18 @@
         ape_code: professional ? raw.ape_code || null : null,
         vat_number: professional ? raw.vat_number || null : null,
         civility: professional ? null : raw.civility || null,
-        first_name: professional ? null : raw.first_name?.trim() || null,
-        last_name: professional ? null : raw.last_name?.trim() || null,
+        first_name: professional
+          ? raw.contact_first_name?.trim() || null
+          : raw.first_name?.trim() || null,
+        last_name: professional
+          ? raw.contact_last_name?.trim() || null
+          : raw.last_name?.trim() || null,
+        contact_name: professional
+          ? [raw.contact_first_name, raw.contact_last_name]
+              .map((value) => String(value || "").trim())
+              .filter(Boolean)
+              .join(" ") || null
+          : null,
         email: raw.email?.trim().toLowerCase() || null,
         phone_e164: raw.phone_e164 || null,
         secondary_phone_e164: raw.secondary_phone_e164 || null,
@@ -1274,6 +1288,16 @@
       notify("La raison sociale est obligatoire.", "error");
       return;
     }
+    if (
+      professional &&
+      Boolean(payload.first_name) !== Boolean(payload.last_name)
+    ) {
+      notify(
+        "Renseignez le prénom et le nom du contact principal.",
+        "error",
+      );
+      return;
+    }
     if (!professional && (!payload.first_name || !payload.last_name)) {
       notify("Le prénom et le nom sont obligatoires.", "error");
       return;
@@ -1281,6 +1305,27 @@
     setBusy(true);
     try {
       await api().update("clients", id, payload);
+      if (payload.first_name && payload.last_name) {
+        const contacts =
+            detailEntry(id).tabs.get("coordinates")?.extra?.contacts || [],
+          primary =
+            contacts.find((contact) => contact.is_primary) || contacts[0];
+        await api().rpc("save_client_contact", {
+          target_client_id: id,
+          target_contact: {
+            id: primary?.id || null,
+            civility: professional ? null : payload.civility,
+            first_name: payload.first_name,
+            last_name: payload.last_name,
+            email: payload.email,
+            phone_e164: payload.phone_e164,
+            language: payload.language,
+            is_primary: true,
+            active: true,
+          },
+          target_roles: ["primary"],
+        });
+      }
       invalidate(id);
       await app().refresh();
       openClient(id, "coordinates");
@@ -1713,7 +1758,7 @@
     creatorCompanyResults = [];
     openDrawer(
       "Créer un client",
-      `<form id="client-create-form" class="client-form drawer-form" onsubmit="event.preventDefault();PilozClients.saveNewClient()"><div class="client-kind-choice"><label><input type="radio" name="kind" value="company" checked onchange="PilozClients.toggleCreatorKind('company')"><span>Professionnel<small>Entreprise, association ou organisation</small></span></label><label><input type="radio" name="kind" value="person" onchange="PilozClients.toggleCreatorKind('person')"><span>Particulier<small>Personne physique</small></span></label></div><div class="client-form-grid"><div data-create-company><label class="full client-company-lookup"><span>Recherche INPI</span><input type="search" autocomplete="off" placeholder="Raison sociale, SIREN ou SIRET" oninput="PilozClients.searchCreatorCompany(this.value)"><small>Les informations officielles et l’adresse seront préremplies.</small><div id="client-company-lookup-results" class="phase1-search-results" role="listbox"></div></label><label class="full"><span>Raison sociale *</span><input name="legal_name"></label><label><span>SIREN</span><input name="siren"></label><label><span>SIRET</span><input name="siret"></label><label><span>Nom commercial</span><input name="trade_name"></label><label><span>Forme juridique</span><input name="legal_form"></label><label><span>Code APE / NAF</span><input name="ape_code"></label></div><div data-create-person hidden><label><span>Civilité</span><select name="civility"><option value="">—</option><option>M.</option><option>Mme</option></select></label><label><span>Prénom *</span><input name="first_name"></label><label><span>Nom *</span><input name="last_name"></label></div><label><span>E-mail</span><input name="email" type="email"></label><label><span>Téléphone</span><input name="phone_e164"></label><label class="full"><span>Adresse</span><input name="address_line_1"></label><label><span>Code postal</span><input name="postal_code"></label><label><span>Ville</span><input name="city"></label><label><span>Pays</span><input name="country_code" value="FR"></label><label><span>Statut</span><select name="customer_status"><option value="active">Actif</option><option value="prospect">Prospect</option><option value="watch">À surveiller</option></select></label></div><footer>${button("Annuler", "PilozClients.closeDrawer()")}${button("Créer le client", "", "btn-p", 'type="submit" data-client-save')}</footer></form>`,
+      `<form id="client-create-form" class="client-form drawer-form" onsubmit="event.preventDefault();PilozClients.saveNewClient()"><div class="client-kind-choice"><label><input type="radio" name="kind" value="company" checked onchange="PilozClients.toggleCreatorKind('company')"><span>Professionnel<small>Entreprise, association ou organisation</small></span></label><label><input type="radio" name="kind" value="person" onchange="PilozClients.toggleCreatorKind('person')"><span>Particulier<small>Personne physique</small></span></label></div><div class="client-form-grid"><div data-create-company><label class="full client-company-lookup"><span>Recherche INPI</span><input type="search" autocomplete="off" placeholder="Raison sociale, SIREN ou SIRET" oninput="PilozClients.searchCreatorCompany(this.value)"><small>Les informations officielles et l’adresse seront préremplies.</small><div id="client-company-lookup-results" class="phase1-search-results" role="listbox"></div></label><label class="full"><span>Raison sociale *</span><input name="legal_name"></label><label><span>SIREN</span><input name="siren"></label><label><span>SIRET</span><input name="siret"></label><label><span>Nom commercial</span><input name="trade_name"></label><label><span>Forme juridique</span><input name="legal_form"></label><label><span>Code APE / NAF</span><input name="ape_code"></label><label><span>Prénom du contact principal</span><input name="contact_first_name" autocomplete="given-name"></label><label><span>Nom du contact principal</span><input name="contact_last_name" autocomplete="family-name"></label></div><div data-create-person hidden><label><span>Civilité</span><select name="civility"><option value="">—</option><option>M.</option><option>Mme</option></select></label><label><span>Prénom *</span><input name="first_name"></label><label><span>Nom *</span><input name="last_name"></label></div><label><span>E-mail</span><input name="email" type="email"></label><label><span>Téléphone</span><input name="phone_e164"></label><label class="full"><span>Adresse</span><input name="address_line_1"></label><label><span>Code postal</span><input name="postal_code"></label><label><span>Ville</span><input name="city"></label><label><span>Pays</span><input name="country_code" value="FR"></label><label><span>Statut</span><select name="customer_status"><option value="active">Actif</option><option value="prospect">Prospect</option><option value="watch">À surveiller</option></select></label></div><footer>${button("Annuler", "PilozClients.closeDrawer()")}${button("Créer le client", "", "btn-p", 'type="submit" data-client-save')}</footer></form>`,
       true,
     );
   }
@@ -1800,8 +1845,18 @@
         siret: professional ? raw.siret || null : null,
         ape_code: professional ? raw.ape_code || null : null,
         civility: professional ? null : raw.civility || null,
-        first_name: professional ? null : raw.first_name?.trim() || null,
-        last_name: professional ? null : raw.last_name?.trim() || null,
+        first_name: professional
+          ? raw.contact_first_name?.trim() || null
+          : raw.first_name?.trim() || null,
+        last_name: professional
+          ? raw.contact_last_name?.trim() || null
+          : raw.last_name?.trim() || null,
+        contact_name: professional
+          ? [raw.contact_first_name, raw.contact_last_name]
+              .map((value) => String(value || "").trim())
+              .filter(Boolean)
+              .join(" ") || null
+          : null,
         email: raw.email?.trim().toLowerCase() || null,
         phone_e164: raw.phone_e164 || null,
         address_line_1: raw.address_line_1 || null,
@@ -1812,6 +1867,16 @@
       };
     if (professional && !payload.legal_name) {
       notify("La raison sociale est obligatoire.", "error");
+      return;
+    }
+    if (
+      professional &&
+      Boolean(payload.first_name) !== Boolean(payload.last_name)
+    ) {
+      notify(
+        "Renseignez le prénom et le nom du contact principal.",
+        "error",
+      );
       return;
     }
     if (!professional && (!payload.first_name || !payload.last_name)) {

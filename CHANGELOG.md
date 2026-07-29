@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0-compliance.60 — 29 juillet 2026
+
+- Conserve le prénom, le nom, l’e-mail et le téléphone saisis lors de la création d’un client professionnel.
+- Crée automatiquement le contact principal associé et l’affiche dans la fiche client et l’onglet Contacts.
+- Harmonise ce comportement depuis la Bibliothèque, les devis et factures, le suivi commercial et le pipeline.
+- Répare sans destruction les clients existants dont l’identité du contact était déjà enregistrée.
+
 ## 0.9.0-compliance.57 — 28 juillet 2026
 
 - Ferme immédiatement le sous-menu latéral après la sélection d’une destination, dans Ventes, Achats, Bibliothèque, Suivi commercial, Comptabilité et Paramètres.

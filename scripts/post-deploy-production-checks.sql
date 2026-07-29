@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607290104' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607290105' ok
   union all
   select 'company_access_system_roles',count(*)::text,count(*)=0
   from public.companies company
@@ -18,6 +18,21 @@ with controls as(
   union all
   select 'company_access_users_rpc',coalesce(to_regprocedure('public.list_company_access_users(uuid,text,text,uuid,text,text,text,integer,integer)')::text,'missing'),
     to_regprocedure('public.list_company_access_users(uuid,text,text,uuid,text,text,text,integer,integer)') is not null
+  union all
+  select 'client_primary_contact_trigger',count(*)::text,count(*)=1
+  from pg_trigger
+  where tgrelid='public.clients'::regclass
+    and tgname='clients_create_primary_contact_trigger'
+    and not tgisinternal
+  union all
+  select 'client_identity_primary_contact',count(*)::text,count(*)=0
+  from public.clients client
+  where nullif(trim(client.first_name),'') is not null
+    and nullif(trim(client.last_name),'') is not null
+    and not exists(
+      select 1 from public.client_contacts contact
+      where contact.client_id=client.id and contact.is_primary
+    )
   union all
   select 'accounting_customer_mode_default',count(*)::text,count(*)=0
   from public.accounting_settings where customer_account_mode<>'individualized'
@@ -427,7 +442,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607290104',
+  'schema_version','202607290105',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;
