@@ -9,6 +9,7 @@ const checks={
   onboarding_payment_term_is_select:/<label>Conditions de paiement \*<\/label><select/.test(onboarding),
   configured_payment_options_loaded:onboarding.includes("PilozERP.query('payment_methods'")&&onboarding.includes("PilozERP.query('payment_terms'"),
   onboarding_uses_atomic_rpc:onboarding.includes("PilozERP.rpc('save_company_onboarding_document_configuration'")&&!onboarding.includes('/rest/v1/document_sequences?on_conflict'),
+  production_compatibility_path_is_safe:onboarding.includes("PilozERP.rpc('save_company_numbering_configuration'")&&onboarding.includes("company_document_settings?company_id=eq.")&&!onboarding.includes('/rest/v1/document_sequences?on_conflict'),
   prefixes_are_fixed:onboarding.includes("quotePrefix='DEV'")&&onboarding.includes("invoicePrefix='FAC'")&&onboarding.includes("creditPrefix='AV'")&&onboarding.includes("orderPrefix='CMD'"),
   year_month_are_independent:onboarding.includes("if(includeMonth)return'prefix_month'")&&onboarding.includes("return'prefix_number'"),
   settings_prefixes_are_readonly:settings.includes("field('Préfixe devis','quote_prefix',quotePrefix,'text','readonly aria-readonly=\"true\"')")&&settings.includes("field('Préfixe factures','invoice_prefix',invoicePrefix,'text','readonly aria-readonly=\"true\"')"),
