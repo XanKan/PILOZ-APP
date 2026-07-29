@@ -96,6 +96,17 @@ window.PilozCommercialWorkspace={openClient:id=>calls.push({name:'openClient',id
   PilozDashboardCockpit.openClient('client-1');check('navigation client contextuelle',calls.some(call=>call.name==='openClient'&&call.id==='client-1'));
   PilozDashboardCockpit.quick('quote');check('action rapide devis',calls.some(call=>call.name==='newDocument'&&call.type==='quote'));
   PilozDashboardCockpit.setPeriod('today');await wait(0);PilozDashboardCockpit.setPeriod('current_week');await wait(30);check('requête obsolète annulée',calls.some(call=>isAnalyticalCall(call)&&call.signal?.aborted));
+  Object.assign(PilozDashboardCockpit.ui.data.summary,{invoice_count:0,quote_count:0});
+  Object.assign(PilozDashboardCockpit.ui.data.activity,{today:0,upcoming:0});
+  PilozDashboardCockpit.ui.data.crm={...(PilozDashboardCockpit.ui.data.crm||{}),open_opportunities:0};
+  PilozDashboardCockpit.ui.preferences.period_config.getting_started_dismissed=false;state.data.clients=[];PilozDashboardCockpit.render(state);
+  check('croix discrète disponible sur les premiers pas',!!document.querySelector('.cockpit-onboarding-close[aria-label="Masquer les premiers pas"]'));
+  PilozDashboardCockpit.requestOnboardingDismiss();check('confirmation affichée avant masquage',!!document.querySelector('.cockpit-confirm-dialog[role="dialog"]')&&main.textContent.includes('Masquer les premiers pas ?'));
+  PilozDashboardCockpit.cancelOnboardingDismiss();check('annulation conserve les premiers pas',!!document.querySelector('.cockpit-onboarding')&&!document.querySelector('.cockpit-confirm-dialog'));
+  PilozDashboardCockpit.requestOnboardingDismiss();await PilozDashboardCockpit.confirmOnboardingDismiss();
+  check('tableau de bord affiché immédiatement après confirmation',!document.querySelector('.cockpit-onboarding')&&document.querySelectorAll('.cockpit-kpi').length===4);
+  check('masquage conservé dans les préférences utilisateur',calls.some(call=>call.name==='save_dashboard_preferences'&&call.args.target_period_config.getting_started_dismissed===true));
+  PilozDashboardCockpit.render(state);check('premiers pas restent masqués après nouveau rendu',!document.querySelector('.cockpit-onboarding'));
   const companyCalls=calls.filter(isAnalyticalCall).length;state.companyId='company-2';PilozModern.renderRoute('dashboard',state);await wait(40);check('cache isolé par entreprise',calls.filter(isAnalyticalCall).length>companyCalls);
   const cssText=[...document.styleSheets].flatMap(sheet=>{try{return[...sheet.cssRules].map(rule=>rule.cssText)}catch{return[]}}).join(' ');check('responsive mobile et tablette présent',cssText.includes('max-width: 620px')&&cssText.includes('max-width: 860px'));
   check('barres latérales vertes retirées des widgets',!cssText.includes('.cockpit-kpi::before'));

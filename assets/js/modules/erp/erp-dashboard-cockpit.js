@@ -107,7 +107,7 @@
     customStart:'',customEnd:'',preferences:null,preferencesReady:false,
     edit:false,draft:null,dragged:'',dropTarget:'',dropSide:'before',
     customDragType:'',customDragKey:'',customDropSide:'before',
-    chartMode:'performance',documentTab:'quote',customerMode:'revenue',saving:false,persistTimer:null
+    chartMode:'performance',documentTab:'quote',customerMode:'revenue',saving:false,persistTimer:null,onboardingConfirm:false
   };
 
   function contextKey(state){return`${state.companyId||''}:${global.PilozRuntime?.session?.user_id||''}`;}
@@ -116,7 +116,7 @@
     if(ui.context===key)return;
     ui.context=key;ui.data=null;ui.error='';ui.loading=false;ui.requestId+=1;
     ui.controller?.abort();ui.controller=null;ui.preferences=null;ui.preferencesReady=false;
-    ui.edit=false;ui.draft=null;ui.period='current_month';ui.comparison='previous';ui.customStart='';ui.customEnd='';
+    ui.edit=false;ui.draft=null;ui.period='current_month';ui.comparison='previous';ui.customStart='';ui.customEnd='';ui.onboardingConfirm=false;
     ui.customDragType='';ui.customDragKey='';ui.customDropSide='before';
   }
   function cacheKey(state){return[contextKey(state),ui.period,ui.customStart,ui.customEnd,ui.comparison].join('|');}
@@ -402,8 +402,13 @@
     return`<header class="cockpit-header"><div class="cockpit-hero"><div class="cockpit-welcome"><span>${esc(todayLabel())}</span><h1>${esc(title)}</h1><p>Voici les éléments qui méritent votre attention aujourd’hui.</p><div class="cockpit-hero-meta"><span class="cockpit-scope-badge">${icon('users')}${esc(scopeLabel(payload.summary))}</span><span>${esc(refreshLabel(payload))}</span><span>${esc(periodLabel(payload.summary))}</span></div></div>${quickActions(payload.summary)}</div><div class="cockpit-filterbar"><div class="cockpit-filterbar-main cockpit-period">${periodShortcuts()}<label class="cockpit-select-field"><span>Autre période</span><select aria-label="Choisir une période" onchange="PilozDashboardCockpit.setPeriod(this.value)">${periods.map(([key,label])=>`<option value="${key}" ${ui.period===key?'selected':''}>${esc(label)}</option>`).join('')}</select></label><label class="cockpit-select-field"><span>Comparaison</span><select aria-label="Choisir une comparaison" onchange="PilozDashboardCockpit.setComparison(this.value)">${comparisons.map(([key,label])=>`<option value="${key}" ${ui.comparison===key?'selected':''}>${esc(label)}</option>`).join('')}</select></label></div>${ui.period==='custom'?`<div class="cockpit-custom-dates"><label>Du<input type="date" value="${esc(ui.customStart)}" max="${esc(ui.customEnd||'')}" onchange="PilozDashboardCockpit.setCustomDate('start',this.value)"></label><label>Au<input type="date" value="${esc(ui.customEnd)}" min="${esc(ui.customStart||'')}" onchange="PilozDashboardCockpit.setCustomDate('end',this.value)"></label></div>`:''}<div class="cockpit-filterbar-actions"><span class="cockpit-comparison-help">${esc(comparisonHelp(payload.summary))}</span><button class="cockpit-icon-button" onclick="PilozDashboardCockpit.refresh()" aria-label="Actualiser le tableau de bord" title="Actualiser">${icon('refresh')}</button><button class="cockpit-customize-button" onclick="PilozDashboardCockpit.startCustomize()">${icon('sliders')}<span>Personnaliser</span></button></div></div></header>`;
   }
   function isNewCompany(payload,state){return number(payload.summary?.invoice_count)===0&&number(payload.summary?.quote_count)===0&&number(payload.activity?.today)===0&&number(payload.activity?.upcoming)===0&&number(payload.crm?.open_opportunities)===0&&(state.data.clients||[]).length===0;}
+  function onboardingDismissed(){return ui.preferences?.period_config?.getting_started_dismissed===true;}
   function renderOnboarding(){
-    return`<section class="cockpit-onboarding"><div><span>Premiers pas</span><h2>Bienvenue dans Piloz</h2><p>Commencez par créer votre premier client, puis transformez votre activité en devis et en factures.</p></div><div><button onclick="PilozDashboardCockpit.quick('client')">Ajouter un client</button><button class="primary" onclick="PilozDashboardCockpit.quick('quote')">Créer un devis</button><button onclick="PilozDashboardCockpit.quick('item')">Ajouter un élément du catalogue</button></div></section>`;
+    return`<section class="cockpit-onboarding"><button type="button" class="cockpit-onboarding-close" onclick="PilozDashboardCockpit.requestOnboardingDismiss()" aria-label="Masquer les premiers pas" title="Masquer les premiers pas">×</button><div><span>Premiers pas</span><h2>Bienvenue dans Piloz</h2><p>Commencez par créer votre premier client, puis transformez votre activité en devis et en factures.</p></div><div><button onclick="PilozDashboardCockpit.quick('client')">Ajouter un client</button><button class="primary" onclick="PilozDashboardCockpit.quick('quote')">Créer un devis</button><button onclick="PilozDashboardCockpit.quick('item')">Ajouter un élément du catalogue</button></div></section>`;
+  }
+  function renderOnboardingConfirm(){
+    if(!ui.onboardingConfirm)return'';
+    return`<div class="cockpit-confirm-backdrop" role="presentation" onclick="if(event.target===this)PilozDashboardCockpit.cancelOnboardingDismiss()"><section class="cockpit-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="cockpit-dismiss-title"><button type="button" class="cockpit-confirm-close" onclick="PilozDashboardCockpit.cancelOnboardingDismiss()" aria-label="Fermer">×</button><span>Tableau de bord</span><h2 id="cockpit-dismiss-title">Masquer les premiers pas ?</h2><p>Vous accéderez directement à votre tableau de bord. Les raccourcis pour créer vos clients, devis et articles resteront disponibles dans les menus.</p><footer><button type="button" onclick="PilozDashboardCockpit.cancelOnboardingDismiss()">Annuler</button><button type="button" class="primary" onclick="PilozDashboardCockpit.confirmOnboardingDismiss()">Afficher le tableau de bord</button></footer></section></div>`;
   }
   function skeleton(){
     return`<div class="cockpit-shell is-loading" aria-busy="true"><div class="cockpit-skeleton hero"></div><div class="cockpit-skeleton-row">${Array.from({length:4},()=>'<div class="cockpit-skeleton"></div>').join('')}</div><div class="cockpit-skeleton-grid"><div class="cockpit-skeleton chart"></div><div class="cockpit-skeleton chart"></div></div></div>`;
@@ -421,7 +426,8 @@
     if(!ui.data){main.innerHTML=skeleton();if(!ui.loading)setTimeout(()=>load(false),0);return;}
     const payload=ui.data;
     const density=(activePreference()?.period_config?.density||'comfortable');
-    main.innerHTML=`<main class="cockpit-shell density-${esc(density)}">${renderHeader(payload)}${ui.error?`<div class="cockpit-local-error" role="status">Certaines données n’ont pas pu être actualisées. <button onclick="PilozDashboardCockpit.refresh()">Réessayer</button></div>`:''}${ui.edit?renderCustomizer(payload):''}${isNewCompany(payload,state)?renderOnboarding():`${renderKpis(payload)}<section class="cockpit-analytics">${renderChart(payload)}${renderForecast(payload.forecast,payload.summary.currency)}</section>${renderPriority(payload.priority_actions,payload.summary.currency,payload.summary.permissions?.write)}${renderSecondary(payload)}`}</main>`;
+    const showOnboarding=isNewCompany(payload,state)&&!onboardingDismissed();
+    main.innerHTML=`<main class="cockpit-shell density-${esc(density)}">${renderHeader(payload)}${ui.error?`<div class="cockpit-local-error" role="status">Certaines données n’ont pas pu être actualisées. <button onclick="PilozDashboardCockpit.refresh()">Réessayer</button></div>`:''}${ui.edit?renderCustomizer(payload):''}${showOnboarding?renderOnboarding():`${renderKpis(payload)}<section class="cockpit-analytics">${renderChart(payload)}${renderForecast(payload.forecast,payload.summary.currency)}</section>${renderPriority(payload.priority_actions,payload.summary.currency,payload.summary.permissions?.write)}${renderSecondary(payload)}`}${renderOnboardingConfirm()}</main>`;
   }
 
   function setPeriod(value){
@@ -520,6 +526,22 @@
     catch(error){console.error('[PILOZ Cockpit] Préférences non enregistrées',{status:error?.status||0,code:error?.code||'',message:error?.message||String(error)});global.toast?.('La disposition n’a pas pu être enregistrée.');}
     finally{ui.saving=false;render(currentState());}
   }
+  function requestOnboardingDismiss(){
+    if(ui.saving)return;ui.onboardingConfirm=true;render(currentState());
+    requestAnimationFrame(()=>document.querySelector('.cockpit-confirm-dialog .primary')?.focus());
+  }
+  function cancelOnboardingDismiss(){if(ui.saving)return;ui.onboardingConfirm=false;render(currentState());}
+  async function confirmOnboardingDismiss(){
+    if(ui.saving||!ui.preferences)return;
+    const previous=clonePreference(ui.preferences),next=clonePreference(ui.preferences);
+    next.period_config={...(next.period_config||{}),getting_started_dismissed:true};
+    ui.saving=true;ui.onboardingConfirm=false;ui.preferences=next;render(currentState());
+    try{await persistPreference(next,true);global.toast?.('Les premiers pas ont été masqués.');}
+    catch(error){
+      console.error('[PILOZ Cockpit] Masquage des premiers pas non enregistré',{status:error?.status||0,code:error?.code||'',message:error?.message||String(error)});
+      ui.preferences=previous;ui.onboardingConfirm=true;global.toast?.('Le choix n’a pas pu être enregistré.');
+    }finally{ui.saving=false;render(currentState());}
+  }
   function schedulePeriodSave(){
     if(!ui.preferencesReady||!ui.preferences)return;clearTimeout(ui.persistTimer);
     ui.persistTimer=setTimeout(()=>persistPreference(ui.preferences,true).catch(error=>console.error('[PILOZ Cockpit] Période non enregistrée',{code:error?.code||'',message:error?.message||String(error)})),500);
@@ -569,6 +591,7 @@
   global.PilozDashboardCockpit={
     ui,render,load,refresh,invalidate,markStale,setPeriod,setComparison,setCustomDate,setChartMode,setDocumentTab,setCustomerMode,
     startCustomize,cancelCustomize,resetCustomize,toggleMetric,toggleBlock,toggleSize,setDensity,saveCustomize,
+    requestOnboardingDismiss,cancelOnboardingDismiss,confirmOnboardingDismiss,
     drag,dragOver,dragLeave,drop,endDrag,dragKey,customizerDrag,customizerDragOver,customizerDragLeave,customizerDrop,customizerEndDrag,moveCustomizerItem,navigate,openDocument,openDueEmail,openDuePayment,openDocumentList,openClient,
     openItem,openActivity,completeActivity,showNotifications,openPriority,quick
   };
