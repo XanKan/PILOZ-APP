@@ -72,8 +72,11 @@ Deno.serve(async req=>{
   }
   if(action==="companies.create"){
    requirePermission("companies.write");requirePermission("users.write");const companyValues=record(payload.company),subscriptionValues=record(payload.subscription);
-   const ownerEmail=email(companyValues.owner_email),ownerUserId=payload.ownerUserId?uuid(payload.ownerUserId):null;let userId=ownerUserId;
-   if(!userId){const {data,error}=await privileged().auth.admin.inviteUserByEmail(ownerEmail,{data:{first_name:text(companyValues.owner_first_name,100),last_name:text(companyValues.owner_last_name,100)},redirectTo:"https://app.piloz.fr/?mode=login"});if(error||!data.user)throw Object.assign(new Error(error?.message?.toLowerCase().includes("already")?"Ce propriétaire existe déjà. Ajoutez-le depuis sa fiche utilisateur.":"L’invitation du propriétaire a échoué."),{status:error?.status||400});userId=data.user.id;}
+   const firstName=text(companyValues.owner_first_name,100),lastName=text(companyValues.owner_last_name,100),ownerEmail=email(companyValues.owner_email);
+   if(!firstName||!lastName)throw Object.assign(new Error("Le prénom et le nom du propriétaire sont obligatoires."),{status:400});
+   companyValues.provisioning_name=text(companyValues.provisioning_name,180)||`Entreprise à configurer — ${firstName} ${lastName}`;
+   const ownerUserId=payload.ownerUserId?uuid(payload.ownerUserId):null;let userId=ownerUserId;
+   if(!userId){const {data,error}=await privileged().auth.admin.inviteUserByEmail(ownerEmail,{data:{first_name:firstName,last_name:lastName},redirectTo:"https://app.piloz.fr/?mode=login"});if(error||!data.user)throw Object.assign(new Error(error?.message?.toLowerCase().includes("already")?"Ce propriétaire existe déjà. Ajoutez-le depuis sa fiche utilisateur.":"L’invitation du propriétaire a échoué."),{status:error?.status||400});userId=data.user.id;}
    const {data,error}=await client.rpc("platform_admin_create_company",{target_owner_user_id:userId,target_company:companyValues,target_subscription:subscriptionValues,target_reason:text(payload.reason,500)});if(error)throw error;
    return response(req,{company:data,ownerUserId:userId,invitationSent:!ownerUserId},201);
   }

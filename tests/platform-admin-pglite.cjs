@@ -152,10 +152,15 @@ async function bootstrap(db){
 
     const proVersion=(await db.query("select id from public.subscription_plan_versions where plan_key='pro' and effective_to is null limit 1")).rows[0].id;
     const created=(await db.query("select * from public.platform_admin_create_company($1,$2::jsonb,$3::jsonb,'Ouverture validée')",[
-      secondOwner,JSON.stringify({legal_name:'Nouvelle Entreprise SAS',trade_name:'Nouvelle Entreprise',siren:'123123123',siret:'12312312300015',email:'nouvelle@entreprise.test',country:'France',country_code:'FR',currency:'EUR',language:'fr',owner_first_name:'Nouvelle',owner_last_name:'Propriétaire',admin_tags:['test']}),
+      secondOwner,JSON.stringify({provisioning_name:'Entreprise a configurer - Nouvelle Proprietaire',provisioning_pending:true,trade_name:'Entreprise a configurer - Nouvelle Proprietaire',owner_first_name:'Nouvelle',owner_last_name:'Proprietaire'}),
       JSON.stringify({plan_version_id:proVersion,billing_interval:'annual',status:'trialing',trial_days:21,max_users:8,feature_overrides:{api_access:true}})
     ])).rows[0];
     if(!created.id)throw new Error('companies: secure creation failed');
+    await db.exec('reset role');
+    const pendingOnboarding=(await db.query('select s.legal_name,s.trade_name,s.siret,s.onboarding_completed_at,p.onboarding_completed from public.company_settings s join public.user_preferences p on p.company_id=s.company_id where s.company_id=$1',[created.id])).rows[0];
+    if(pendingOnboarding.legal_name!==null||pendingOnboarding.trade_name!==null||pendingOnboarding.siret!==null||pendingOnboarding.onboarding_completed_at!==null||pendingOnboarding.onboarding_completed!==false)
+      throw new Error(`companies: provisioning invented onboarding data ${JSON.stringify(pendingOnboarding)}`);
+    await setIdentity(db,superAdmin,'aal2');
     const createdSubscription=(await db.query('select plan_key,billing_interval,status,trial_ends_at from public.subscriptions where company_id=$1',[created.id])).rows[0];
     if(createdSubscription.plan_key!=='pro'||createdSubscription.billing_interval!=='annual'||createdSubscription.status!=='trialing')
       throw new Error(`companies: subscription provisioning failed ${JSON.stringify(createdSubscription)}`);

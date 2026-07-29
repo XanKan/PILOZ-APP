@@ -6,6 +6,8 @@ const stepOneSection=onboarding.slice(onboarding.indexOf('if(step===1)'),onboard
 
 const checks={
   step_one_only_saves_company_identity:stepOneSection.includes('legal_name:')&&stepOneSection.includes('siret:')&&!stepOneSection.includes('company_document_settings')&&!stepOneSection.includes('document_sequences')&&!stepOneSection.includes('company_addresses'),
+  provisional_company_name_replaced:onboarding.includes("if(step===1)await PilozERP.request(`/rest/v1/companies?id=eq.${encodeURIComponent(companyId)}`")&&onboarding.includes("name:trim(identity.tradeName)||trim(identity.legalName)"),
+  provisional_label_hidden:onboarding.includes("/^Entreprise à configurer\\s*[—-]/i")&&onboarding.includes("x.tradeName=''"),
   address_saved_only_on_step_two:onboarding.includes("if(step===2){const payload={company_id:companyId,kind:'registered'")&&onboarding.includes("PilozERP.insert('company_addresses',payload)"),
   document_configuration_saved_only_on_step_six:onboarding.includes("if(step===6){await PilozERP.request('/rest/v1/company_document_settings"),
   inline_accessible_error:onboarding.includes('class="phase1-setup-error" role="alert" aria-live="assertive"'),

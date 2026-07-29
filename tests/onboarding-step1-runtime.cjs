@@ -32,7 +32,7 @@ const context={
   PilozERP:{
     async companyContext(){return '00000000-0000-0000-0000-000000000002';},
     async upsertCompanySettings(companyId,payload){calls.settings.push({companyId,payload});return[payload];},
-    async request(...args){calls.requests.push(args);throw new Error('L’étape 1 ne doit pas appeler cette requête.');},
+    async request(...args){calls.requests.push(args);return null;},
     async query(...args){calls.queries.push(args);throw new Error('L’étape 1 ne doit pas lire les adresses.');},
     async insert(...args){calls.inserts.push(args);throw new Error('L’étape 1 ne doit pas insérer une adresse.');},
     async update(){throw new Error('L’étape 1 ne doit pas modifier une adresse.');},
@@ -46,7 +46,9 @@ vm.runInContext(source,context,{filename:'professional-onboarding.js'});
 (async()=>{
   await context.phase1SetupNext();
   assert.equal(calls.settings.length,1);
-  assert.equal(calls.requests.length,0);
+  assert.equal(calls.requests.length,1);
+  assert.match(calls.requests[0][0],/\/rest\/v1\/companies\?id=eq\./);
+  assert.equal(JSON.parse(calls.requests[0][1].body).name,'Test');
   assert.equal(calls.queries.length,0);
   assert.equal(calls.inserts.length,0);
   assert.equal(calls.settings[0].payload.legal_name,'Société Test');
