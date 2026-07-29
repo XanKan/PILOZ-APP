@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0-compliance.64 — 29 juillet 2026
+
+- Transforme les 18 capsules de l’Académie Piloz en simulations guidées qui demandent une action réelle à l’apprenant.
+- Ajoute 54 exercices de clic, saisie, sélection, choix, interrupteur et glisser-déposer dans un environnement de démonstration sans données métier.
+- Ajoute un coach contextuel, des indices, la validation des réponses, un retour d’erreur et un écran de réussite.
+- Conserve la progression et les capsules terminées par utilisateur et par entreprise, avec reprise et recommencement.
+
 ## 0.9.0-compliance.63 — 29 juillet 2026
 
 - Remplace la présentation administrative répétitive des articles par des guides pratiques orientés action.

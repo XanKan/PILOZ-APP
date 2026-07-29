@@ -22,8 +22,15 @@ for (const label of ["Documentation", "Formation", "Pilo", "Mes tickets", "Conta
   assert.ok(app.includes(label), `Entrée d'aide absente : ${label}`);
 }
 assert.ok(app.includes("TRAINING_COURSES"), "Le catalogue de formation doit être disponible");
+assert.ok(app.includes("TRAINING_EXERCISES"), "Chaque capsule doit proposer de vraies actions interactives");
 assert.ok(app.includes("saveTrainingProgress"), "La progression des formations doit être conservée");
 assert.ok(app.includes("help/training"), "La route Formation doit être rendue par le centre d’aide");
+assert.ok(app.includes("trainingSimulator"), "La formation doit utiliser un simulateur Piloz guidé");
+assert.ok(app.includes("Données de démonstration"), "Le simulateur doit signaler qu'il ne modifie aucune donnée réelle");
+for (const interaction of ["completeTrainingAction", "validateTrainingInput", "trainingSelect", "trainingChoice", "trainingToggle", "trainingDrop"]) {
+  assert.ok(app.includes(interaction), `Interaction de formation absente : ${interaction}`);
+}
+assert.ok(!app.includes("toggleTraining,seekTraining"), "L'ancien lecteur passif ne doit plus piloter les formations");
 assert.ok(app.includes("guidePresentation"), "Les articles doivent être présentés comme des guides pratiques");
 assert.ok(app.includes("Comment faire"), "Le gabarit administratif doit être remplacé par un guidage orienté action");
 assert.ok(app.includes("openTraining(courseId,lessonId)"), "Un article doit pouvoir ouvrir directement sa formation associée");
