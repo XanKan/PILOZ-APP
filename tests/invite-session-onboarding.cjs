@@ -4,6 +4,7 @@ const vm=require('node:vm');
 
 const index=fs.readFileSync('index.html','utf8');
 const apiSource=fs.readFileSync('assets/js/api/erp-api.js','utf8');
+const onboardingSource=fs.readFileSync('assets/js/modules/onboarding/professional-onboarding.js','utf8');
 const helperStart=index.indexOf('function isValidUuid(value)');
 const helperEnd=index.indexOf('window.PilozSessionIdentityFromToken=sessionIdentityFromToken;')+'window.PilozSessionIdentityFromToken=sessionIdentityFromToken;'.length;
 assert(helperStart>0&&helperEnd>helperStart,'Les helpers de session doivent rester présents dans index.html.');
@@ -59,5 +60,7 @@ vm.runInContext(apiSource,context,{filename:'erp-api.js'});
   assert.equal(await vm.runInContext('cloudCharger()',legacyContext),null,'La table historique absente ne doit pas faire échouer la connexion.');
   assert.equal(await vm.runInContext('cloudCharger()',legacyContext),null);
   assert.equal(legacyRequests,1,'Le stockage historique absent ne doit pas être interrogé en boucle.');
+  assert(onboardingSource.includes("if(error?.name==='AbortError'||requestController.signal.aborted)return;"),'Une recherche d’adresse annulée ne doit jamais être affichée comme une erreur.');
+  assert(index.includes('professional-onboarding.js?v=20260729.3'),'Le cache du module d’onboarding doit être invalidé.');
   console.log('PASS invite session onboarding');
 })().catch(error=>{console.error(error);process.exitCode=1;});
