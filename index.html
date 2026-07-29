@@ -331,7 +331,7 @@ body.auth-checking #auth-loading{display:flex}
 <link rel="stylesheet" href="assets/css/piloz-brand.css?v=20260723.1">
 <link rel="stylesheet" href="assets/css/piloz-premium.css?v=20260728.1">
 <link rel="stylesheet" href="assets/css/accounting-extensions.css?v=20260727.3">
-<link rel="stylesheet" href="assets/css/piloz-ios.css?v=20260728.1">
+<link rel="stylesheet" href="assets/css/piloz-ios.css?v=20260729.2">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/images/piloz-favicon.png?v=20260723.1">
 <link rel="shortcut icon" type="image/png" href="assets/images/piloz-favicon.png?v=20260723.1">
 <link rel="apple-touch-icon" sizes="180x180" href="assets/images/piloz-apple-touch-icon.png?v=20260723.1">
@@ -591,11 +591,41 @@ if(SES){hydrateSessionIdentity(SES);lsSet('piloz_ses',SES);}
 if(PENDING_HASH_ERROR){ authStatusMessage = PENDING_HASH_ERROR; authStatusKind = 'error'; }
 let syncEtat = 'local';                      // local | ok | pending | offline
 function setSync(s){ syncEtat = s; const f=document.getElementById('syncfoot'); if(f) f.innerHTML = piedSync(); }
+function nomEntrepriseConnectee(){
+  const settings = window.PilozApp?.getState?.()?.data?.settings?.[0] || {};
+  const identity = S?.entreprise?.identity || {};
+  const company = S?.onboarding?.company || {};
+  const candidates = [
+    settings.trade_name,
+    settings.legal_name,
+    identity.tradeName,
+    identity.legalName,
+    company.tradeName,
+    company.name,
+    S?.factu?.societe?.nom
+  ];
+  const name = candidates.map(value=>String(value||'').trim()).find(Boolean);
+  return name || 'Mon entreprise';
+}
 function piedSync(){
   if(!CFG || !SES) return 'Mode local — données sur ce poste.<br><a href="#" style="color:#FFB4A3" onclick="vue=\'params\';render();return false">Connecter le cloud →</a>';
-  const ic = {ok:'☁️ Synchronisé', pending:'⏳ Enregistrement…', offline:'⚠️ Hors ligne — sauvegardé sur ce poste'}[syncEtat]||'☁️';
-  return `${ic}<br><b>LOGICIEL PILOZ</b><br><a href="mailto:${esc(ADMIN_EMAIL)}">ERP.PILOZ@OUTLOOK.COM</a> · <a href="#" onclick="deconnecter();return false">Déconnexion</a>`;
+  const status = {
+    ok:{label:'Synchronisé',className:'is-synced'},
+    pending:{label:'Enregistrement…',className:'is-pending'},
+    offline:{label:'Hors ligne — sauvegardé sur ce poste',className:'is-offline'}
+  }[syncEtat] || {label:'Connecté',className:'is-synced'};
+  const companyName = nomEntrepriseConnectee();
+  return `<div class="rail-account-card">
+    <div class="rail-sync-status ${status.className}"><span class="rail-sync-dot" aria-hidden="true"></span><span>${esc(status.label)}</span></div>
+    <div class="rail-company-name" title="${esc(companyName)}">${esc(companyName)}</div>
+    <button type="button" class="rail-logout-button" onclick="deconnecter()" aria-label="Se déconnecter de ${esc(companyName)}">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4M14 8l4 4-4 4M18 12H9"/></svg>
+      <span>Se déconnecter</span>
+    </button>
+  </div>`;
 }
+function rafraichirPiedCompte(){const f=document.getElementById('syncfoot');if(f)f.innerHTML=piedSync();}
+window.PilozRefreshAccountFooter=rafraichirPiedCompte;
 async function sb(path, opts={}, retry=true){
   const h = {'apikey':CFG.key, 'Content-Type':'application/json', ...(opts.headers||{})};
   if(SES) h['Authorization'] = 'Bearer ' + SES.access_token;

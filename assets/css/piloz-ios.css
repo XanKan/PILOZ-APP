@@ -43,6 +43,33 @@ body[data-theme="dark"]{
   --shadow-md:var(--ios-shadow-raised);
 }
 
+/* Compte connecté — identité de l'entreprise et déconnexion */
+.rail-foot{
+  margin:8px 12px 14px!important;
+  padding:12px!important;
+  border:1px solid rgba(255,255,255,.1)!important;
+  border-radius:16px;
+  background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.035))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+  color:rgba(238,248,250,.72)!important;
+  overflow:visible!important;
+}
+.rail-account-card{display:grid;gap:9px;min-width:0}
+.rail-sync-status{display:flex;align-items:center;gap:7px;min-width:0;font-size:.66rem;font-weight:650;color:rgba(222,236,242,.6)}
+.rail-sync-status span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rail-sync-dot{width:7px;height:7px;border-radius:999px;flex:0 0 7px;background:#46cfc0;box-shadow:0 0 0 3px rgba(70,207,192,.12)}
+.rail-sync-status.is-pending .rail-sync-dot{background:#f6c76a;box-shadow:0 0 0 3px rgba(246,199,106,.12)}
+.rail-sync-status.is-offline .rail-sync-dot{background:#ff8c7a;box-shadow:0 0 0 3px rgba(255,140,122,.12)}
+.rail-company-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff;font-size:.78rem;font-weight:760;letter-spacing:.01em}
+.rail-logout-button{
+  width:100%;min-height:36px;padding:8px 10px;border:1px solid rgba(255,255,255,.12);border-radius:11px;
+  background:rgba(255,255,255,.06);color:rgba(241,249,250,.88);display:flex;align-items:center;justify-content:center;gap:8px;
+  font:700 .7rem 'Albert Sans',sans-serif;cursor:pointer;transition:background .16s ease,border-color .16s ease,transform .16s ease,box-shadow .16s ease;
+}
+.rail-logout-button svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.rail-logout-button:hover{background:rgba(70,207,192,.13);border-color:rgba(70,207,192,.34);color:#fff;box-shadow:0 8px 20px rgba(0,0,0,.12);transform:translateY(-1px)}
+.rail-logout-button:focus-visible{outline:2px solid #46cfc0;outline-offset:2px}
+
 html{background:var(--ios-canvas)}
 body,
 body[data-theme="dark"]{
