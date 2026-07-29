@@ -12,6 +12,23 @@ Deno.test("une question simple sur les factures ouvre le guide métier",()=>{
 
 Deno.test("une question CII reste une question technique",()=>{
   assertEquals(detectPilozIntent("À quoi sert le format CII d'une facture électronique ?"),null);
+  assertEquals(intentArticleSlugs("À quoi sert le format CII d'une facture électronique ?")[0],"comprendre-cii");
+});
+
+Deno.test("les principales fonctions Piloz ouvrent leur guide officiel",()=>{
+  const routes:Array<[string,string]>=[
+    ["comment personnaliser les widgets du tableau de bord","personnaliser-tableau-de-bord"],
+    ["comment inviter un utilisateur et modifier son rôle","gerer-utilisateurs-roles"],
+    ["comment déplacer une opportunité dans le pipeline","deplacer-opportunite-pipeline"],
+    ["comment enregistrer un paiement","enregistrer-reglement"],
+    ["comment préparer mon export comptable FEC","generer-export-comptable"],
+    ["comment traiter une facture fournisseur en litige","traiter-facture-fournisseur-electronique"],
+    ["comment activer le MFA","proteger-compte-mfa"],
+    ["comment créer un ticket pour le support","creer-ticket-support"],
+    ["à quoi sert une archive fiscale KMS","archives-fiscales"],
+    ["la gestion des stocks est-elle disponible ?","la-gestion-des-stocks-est-elle-disponible"]
+  ];
+  for(const [question,slug] of routes)assertEquals(intentArticleSlugs(question)[0],slug,question);
 });
 
 Deno.test("la réponse de secours ne restitue jamais les titres Markdown",async()=>{

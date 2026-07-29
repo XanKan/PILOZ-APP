@@ -57,7 +57,64 @@ export function detectPilozIntent(question:string):PilozIntent|null{
   return null;
 }
 
-export function intentArticleSlugs(question:string){const intent=detectPilozIntent(question);return intent?intentArticles[intent]:[];}
+type DocumentationRoute={match:RegExp;slugs:string[]};
+
+// The full-text search remains useful for detailed questions, but these routes
+// guarantee that a workflow question starts from the matching Piloz guide.
+// Rules are evaluated in order, from the most specific topic to the broadest.
+const documentationRoutes:DocumentationRoute[]=[
+  {match:/\b(cii)\b/,slugs:["comprendre-cii","comprendre-facturation-electronique"]},
+  {match:/\b(ubl)\b/,slugs:["comprendre-ubl","comprendre-facturation-electronique"]},
+  {match:/\b(factur x)\b/,slugs:["comprendre-factur-x","comprendre-facturation-electronique"]},
+  {match:/\b(pdf.*facture electronique|facture electronique.*pdf)\b/,slugs:["difference-pdf-facture-electronique","comprendre-facturation-electronique"]},
+  {match:/\b(facturation electronique|plateforme agreee|pdp|super pdp|identifiant electronique)\b/,slugs:["comprendre-facturation-electronique"]},
+  {match:/\b(archive fiscale|archives fiscales|signature kms|kms|registre fiscal)\b/,slugs:["archives-fiscales"]},
+  {match:/\b(compte client individualise|411[a-z0-9]*|compte auxiliaire|compte num)\b/,slugs:["comptes-clients-individualises","generer-export-comptable"]},
+  {match:/\b(tva sur encaissement|declaration de tva|preparer la tva)\b/,slugs:["preparer-tva-encaissements","configurer-comptabilite"]},
+  {match:/\b(export comptable|journal de vente|ecriture comptable|fec)\b/,slugs:["generer-export-comptable","configurer-comptabilite"]},
+  {match:/\b(parametrage comptable|configurer la comptabilite|plan comptable|compte de vente|journal comptable)\b/,slugs:["configurer-comptabilite"]},
+  {match:/\b(facture fournisseur|facture d achat|factures recues|approuver.*facture|litige.*facture|refuser.*facture)\b/,slugs:["traiter-facture-fournisseur-electronique"]},
+  {match:/\b(commande fournisseur|bon de commande fournisseur|reception fournisseur|achat fournisseur)\b/,slugs:["gerer-commande-fournisseur"]},
+  {match:/\b(creer.*fournisseur|ajouter.*fournisseur|fiche fournisseur|bibliotheque.*fournisseur)\b/,slugs:["creer-fournisseur"]},
+  {match:/\b(echeance|relance client|facture en retard|reste a payer)\b/,slugs:["suivre-echeances-relancer"]},
+  {match:/\b(reglement|paiement|encaisser|encaissement)\b/,slugs:["enregistrer-reglement"]},
+  {match:/\b(avoir|corriger une facture|annuler une facture)\b/,slugs:["corriger-facture-avoir"]},
+  {match:/\b(facture de situation|facture d avancement|situation suivante|avancement)\b/,slugs:["factures-situation"]},
+  {match:/\b(brouillon.*finalise|finalise.*brouillon|difference.*brouillon|document provisoire)\b/,slugs:["difference-brouillon-finalise"]},
+  {match:/\b(devis)\b/,slugs:["creer-valider-devis"]},
+  {match:/\b(facture|facturer)\b/,slugs:["creer-finaliser-facture"]},
+  {match:/\b(creer.*client|ajouter.*client|fiche client|contact principal|recherche inpi)\b/,slugs:["creer-client-contact-principal"]},
+  {match:/\b(article|service|catalogue|main d oeuvre|unite de vente)\b/,slugs:["creer-article-service"]},
+  {match:/\b(deplacer.*opportunite|colonne.*pipeline|etape.*pipeline|glisser deposer.*pipeline)\b/,slugs:["deplacer-opportunite-pipeline"]},
+  {match:/\b(opportunite|affaire commerciale)\b/,slugs:["gerer-opportunite","comprendre-suivi-commercial"]},
+  {match:/\b(pipeline|suivi commercial|crm)\b/,slugs:["comprendre-suivi-commercial"]},
+  {match:/\b(prospect|qualification commerciale)\b/,slugs:["creer-qualifier-prospect"]},
+  {match:/\b(activite commerciale|relance commerciale|rendez vous|prochaine action)\b/,slugs:["planifier-activite-relance"]},
+  {match:/\b(widget|personnaliser.*tableau de bord|tableau de bord.*personnaliser|indicateur.*tableau de bord)\b/,slugs:["personnaliser-tableau-de-bord"]},
+  {match:/\b(onboarding|configuration initiale|premiers pas|terminer.*configuration)\b/,slugs:["terminer-configuration-initiale"]},
+  {match:/\b(information.*entreprise|configurer.*entreprise|adresse.*entreprise|fiscalite.*entreprise|coordonnees bancaires)\b/,slugs:["configurer-entreprise"]},
+  {match:/\b(utilisateur|invitation|role|permission|droit d acces|equipe et acces)\b/,slugs:["gerer-utilisateurs-roles"]},
+  {match:/\b(google agenda|agenda google)\b/,slugs:["connecter-google-agenda"]},
+  {match:/\b(outlook calendar|calendrier outlook|agenda microsoft)\b/,slugs:["connecter-outlook-calendar"]},
+  {match:/\b(gmail)\b/,slugs:["connecter-gmail"]},
+  {match:/\b(outlook mail|messagerie outlook|email microsoft)\b/,slugs:["connecter-outlook-mail"]},
+  {match:/\b(extension|connecter un service|service externe)\b/,slugs:["configurer-extension"]},
+  {match:/\b(mfa|double authentification|authentification multifacteur|securite du compte)\b/,slugs:["proteger-compte-mfa"]},
+  {match:/\b(abonnement|licence|offre piloz|facturation piloz)\b/,slugs:["comprendre-abonnement"]},
+  {match:/\b(piece jointe|justificatif|fichier|stockage documentaire)\b/,slugs:["gerer-fichiers-justificatifs"]},
+  {match:/\b(importer.*donnee|exporter.*donnee|reprise de donnees|restituer.*donnee)\b/,slugs:["importer-exporter-donnees"]},
+  {match:/\b(stock|gestion des stocks)\b/,slugs:["la-gestion-des-stocks-est-elle-disponible"]},
+  {match:/\b(ticket|contacter le support|aide et support|signaler un probleme)\b/,slugs:["creer-ticket-support"]},
+  {match:/\b(document.*pas.*enregistre|erreur.*enregistrement|impossible.*enregistrer)\b/,slugs:["document-non-enregistre"]},
+  {match:/\b(conformite|certification|nf525|nf203|afnor)\b/,slugs:["etat-conformite-piloz"]}
+];
+
+export function intentArticleSlugs(question:string){
+  const intent=detectPilozIntent(question);
+  if(intent)return intentArticles[intent];
+  const value=` ${normalize(question)} `;
+  return documentationRoutes.find(route=>route.match.test(value))?.slugs||[];
+}
 
 const guidedAnswers:Record<PilozIntent,string>={
   create_invoice:"Pour créer une facture dans Piloz :\n1. Ouvrez Ventes > Factures.\n2. Cliquez sur « Créer une facture ».\n3. Sélectionnez le client, ou créez-le depuis le sélecteur.\n4. Ajoutez les articles ou services, puis vérifiez les quantités, prix, TVA, dates et échéance.\n5. Cliquez sur « Enregistrer comme brouillon » si vous devez la reprendre plus tard.\n6. Quand tout est correct, cliquez sur « Finaliser la facture » et confirmez.\n\nLe client est obligatoire pour finaliser. La facture reçoit alors son numéro définitif et ne peut plus être modifiée directement ; une correction se fait avec un avoir.",
