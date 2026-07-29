@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.0-compliance.61 — 29 juillet 2026
+
+- Ajoute le centre d’aide Piloz avec documentation officielle, recherche, retours utiles et suivi des tickets réels.
+- Introduit Pilo, assistant strictement fondé sur les articles publiés, autorisés et compatibles avec la version ouverte.
+- Crée un parcours de ticket support en quatre étapes, des pièces jointes privées et une numérotation atomique `SUP-AAAA-######`.
+- Ajoute au back-office les espaces Documentation, Support et Suggestions avec notes internes, brouillons, SLA, affectations et historique audité.
+- Installe 35 catégories documentaires, les articles de démarrage et la documentation de facturation électronique sans promesse de disponibilité non vérifiée.
+- Renforce l’isolation multi-entreprise, les permissions, les contrôles de version, l’indexation et les notifications support.
+
 ## 0.9.0-compliance.60 — 29 juillet 2026
 
 - Conserve le prénom, le nom, l’e-mail et le téléphone saisis lors de la création d’un client professionnel.

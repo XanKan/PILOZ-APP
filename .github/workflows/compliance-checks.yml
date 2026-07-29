@@ -41,6 +41,7 @@ jobs:
           node tests/onboarding-step1-static.cjs
           node tests/onboarding-step6-numbering-static.cjs
           node tests/platform-admin-mfa-static.cjs
+          node tests/pilo-support-static.cjs
           node tests/security-hardening-static.cjs
           node tests/session-account-isolation-static.cjs
           node tests/settings-navigation-static.cjs
@@ -63,6 +64,10 @@ jobs:
         env:
           PILOZ_PGLITE_ROOT: ${{ runner.temp }}/piloz-pglite/node_modules/@electric-sql/pglite
         run: node tests/platform-admin-pglite.cjs
+      - name: Verify Pilo, official documentation and support isolation
+        env:
+          PILOZ_PGLITE_ROOT: ${{ runner.temp }}/piloz-pglite/node_modules/@electric-sql/pglite
+        run: node tests/pilo-support-pglite.cjs
       - name: Verify accounting fiscal maintenance and closure
         env:
           PILOZ_PGLITE_ROOT: ${{ runner.temp }}/piloz-pglite/node_modules/@electric-sql/pglite
