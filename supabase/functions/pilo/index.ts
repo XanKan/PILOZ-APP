@@ -1,5 +1,5 @@
 import {createClient} from "npm:@supabase/supabase-js@2";
-import {DisabledEmbeddingProvider,OpenAIResponsesAssistantProvider,ResilientAssistantProvider,SupabaseDocumentationSearchProvider} from "../_shared/pilo-providers.ts";
+import {DisabledEmbeddingProvider,intentArticleSlugs,OpenAIResponsesAssistantProvider,ResilientAssistantProvider,SupabaseDocumentationSearchProvider,type DocumentationSource} from "../_shared/pilo-providers.ts";
 
 const origins=new Set(["https://app.piloz.fr","http://localhost:4173","http://localhost:5173","http://127.0.0.1:4173","http://127.0.0.1:5173"]);
 const allowedMimes=new Set(["application/pdf","image/png","image/jpeg","image/webp","text/plain","text/csv","application/vnd.openxmlformats-officedocument.wordprocessingml.document","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]);
@@ -17,6 +17,16 @@ function safeName(value:unknown){const original=clean(value,240),parts=original.
 function bytesFromBase64(value:string){const binary=atob(value),bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);return bytes;}
 function isStockQuestion(question:string){const normalized=question.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();return/(^|\W)(stock|stocks|inventaire|inventaires)(\W|$)/.test(normalized);}
 async function privacySafeIdentifier(userId:string,companyId:string){const bytes=new TextEncoder().encode(`${userId}:${companyId}:pilo`),digest=await crypto.subtle.digest("SHA-256",bytes);return`pilo_${Array.from(new Uint8Array(digest)).slice(0,16).map(value=>value.toString(16).padStart(2,"0")).join("")}`;}
+async function canonicalSources(client:any,question:string):Promise<DocumentationSource[]>{
+  const slugs=intentArticleSlugs(question);if(!slugs.length)return[];
+  const {data,error}=await client.from("knowledge_articles").select("id,slug,title,summary,content,availability,published_at").in("slug",slugs).eq("status","published").eq("language","fr");
+  if(error){console.error("[pilo] canonical documentation lookup failed",{message:error.message});return[];}
+  const rows=Array.isArray(data)?data:[];
+  return slugs.map(slug=>rows.find((row:any)=>row.slug===slug)).filter(Boolean).map((row:any)=>({
+    id:row.id,slug:row.slug,title:row.title,summary:row.summary||"",excerpt:String(row.content||row.summary||"").slice(0,4000),categoryName:"Documentation Piloz",availability:row.availability||"available",publishedAt:row.published_at||null
+  }));
+}
+function mergeSources(priority:DocumentationSource[],search:DocumentationSource[]){const seen=new Set<string>();return[...priority,...search].filter(source=>source?.id&&!seen.has(source.id)&&seen.add(source.id)).slice(0,6);}
 
 Deno.serve(async req=>{
   if(req.method==="OPTIONS")return new Response("ok",{headers:cors(req)});
@@ -50,7 +60,8 @@ Deno.serve(async req=>{
       const history=(Array.isArray(previousMessages)?previousMessages:[]).reverse().map(message=>({role:message.role as "user"|"assistant",content:clean(message.content,4000)}));
       const search=new SupabaseDocumentationSearchProvider(userClient),embeddings=new DisabledEmbeddingProvider(),openAIKey=Deno.env.get("OPENAI_API_KEY")||"",model=Deno.env.get("OPENAI_MODEL")||"gpt-5.6-sol";
       const assistant=new ResilientAssistantProvider(openAIKey?new OpenAIResponsesAssistantProvider(openAIKey,model):null);
-      let sources=await search.search({question,companyId,safeContext:safe||{},limit:6}),result;
+      const [prioritySources,searchedSources]=await Promise.all([canonicalSources(admin,question),search.search({question,companyId,safeContext:safe||{},limit:6})]);
+      let sources=mergeSources(prioritySources,searchedSources),result;
       if(isStockQuestion(question)){
         const stock=sources.find(source=>source.slug==="la-gestion-des-stocks-est-elle-disponible");if(stock)sources=[stock];
         result={answer:"La gestion des stocks fait actuellement partie de la roadmap Piloz et n’est pas encore disponible dans la version actuelle.",answerLevel:"high" as const,provider:"official_roadmap",isRoadmap:true};

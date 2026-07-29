@@ -15,6 +15,7 @@ const knowledge = read("supabase/migrations/202607290107_official_knowledge_base
 const intake = read("supabase/migrations/202607290109_support_ticket_intake_details.sql");
 const restrictions = read("supabase/migrations/202607290112_knowledge_access_indexing_and_review.sql");
 const reliability = read("supabase/migrations/202607290113_help_support_reliability.sql");
+const guidedAnswers = read("supabase/migrations/202607290114_pilo_guided_answers.sql");
 
 for (const label of ["Documentation", "Pilo", "Mes tickets", "Contacter le support"]) {
   assert.ok(app.includes(label), `Entrée d'aide absente : ${label}`);
@@ -22,6 +23,9 @@ for (const label of ["Documentation", "Pilo", "Mes tickets", "Contacter le suppo
 assert.ok(app.includes("Bonjour, je suis Pilo. Comment puis-je vous aider ?"));
 assert.ok(app.includes("Je peux discuter avec vous et vous guider dans Piloz en m’appuyant sur la documentation officielle."));
 assert.ok(providers.includes("OpenAIResponsesAssistantProvider"), "Pilo doit disposer d’un fournisseur IA réel");
+assert.ok(providers.includes("detectPilozIntent"), "Pilo doit distinguer une procédure métier d'un format technique");
+assert.ok(providers.includes("Ventes > Factures"), "La création d'une facture doit produire un guidage concret");
+assert.ok(providers.includes("Ne recopie jamais les titres Markdown"), "Le fournisseur IA ne doit pas restituer le gabarit documentaire brut");
 assert.ok(providers.includes("https://api.openai.com/v1/responses"), "Pilo doit utiliser l’API Responses officielle");
 assert.ok(providers.includes("store:false"), "Les réponses Pilo ne doivent pas être conservées chez le fournisseur IA");
 assert.ok(providers.includes('private model="gpt-5.6-sol"'), "Le modèle résolu officiellement doit être configuré par défaut");
@@ -61,6 +65,9 @@ assert.ok(restrictions.includes("app_version_min"));
 assert.ok(restrictions.includes("knowledge-article-attachments"));
 assert.ok(reliability.includes("candidate.token_hits>0"), "La recherche doit accepter les formulations naturelles partielles");
 assert.ok(!reliability.includes("requested_module is not null and exists"), "Le module courant ne doit pas masquer la documentation pertinente");
+assert.ok(guidedAnswers.includes("left(article.content,2400)"), "La recherche doit transmettre les étapes utiles et pas seulement l'introduction");
+assert.ok(guidedAnswers.includes("candidate.slug='creer-finaliser-facture'"), "Le guide de facture doit être prioritaire pour une question opérationnelle");
+assert.ok(app.includes("localPiloAnswer(question,sources)"), "Le mode dégradé doit lui aussi répondre avec une procédure lisible");
 assert.ok(foundation.includes("support-ticket-attachments"));
 assert.ok(foundation.includes("'support-ticket-attachments','support-ticket-attachments',false"), "Les pièces jointes ne doivent pas être publiques");
 
