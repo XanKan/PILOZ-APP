@@ -52,6 +52,7 @@ Deno.serve(async req=>{
   success.searchParams.set("mode","signup");success.searchParams.set("stripe","checkout_success");success.searchParams.set("session_id","{CHECKOUT_SESSION_ID}");success.searchParams.set("plan",planKey);success.searchParams.set("billing",billingInterval);success.searchParams.set("source","stripe-checkout");
   const checkout=await stripe.checkout.sessions.create({
    mode:"subscription",payment_method_collection:"always",client_reference_id:claimId,
+   allow_promotion_codes:true,
    line_items:[{price:mapping.external_price_id,quantity:1}],success_url:success.toString(),cancel_url:"https://piloz.fr/#tarifs",
    billing_address_collection:"required",
    subscription_data:{trial_period_days:14,trial_settings:{end_behavior:{missing_payment_method:"cancel"}},metadata:{piloz_checkout_claim_id:claimId,piloz_plan_key:planKey,piloz_plan_version_id:version.id,billing_interval:billingInterval}},

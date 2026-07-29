@@ -18,6 +18,7 @@ const checks={
  idempotent_events:billingMigration.includes('event_id text primary key')&&webhook.includes('duplicate:true'),
  checkout_and_portal:billing.includes('checkout.sessions.create')&&billing.includes('billingPortal.sessions.create'),
  card_required_during_trial:publicCheckout.includes('payment_method_collection:"always"')&&publicCheckout.includes('trial_period_days:14'),
+ promotion_codes_allowed:publicCheckout.includes('allow_promotion_codes:true')&&billing.includes('allow_promotion_codes:true'),
  managed_payments_tax_code:publicCheckout.includes('txcd_10103001')&&billing.includes('txcd_10103001')&&!publicCheckout.includes('tax_id_collection'),
  plan_update_confirmed_by_stripe:billing.includes('subscription_update_confirm')&&billing.includes('items:[{id:item.id,price:mapping.external_price_id'),
  secure_checkout_claim:onboardingMigration.includes('stripe_onboarding_grants')&&onboardingMigration.includes('enable row level security')&&onboardingMigration.includes('revoke all on public.stripe_onboarding_grants')&&webhook.includes('stripe_onboarding_grants')&&billing.includes('grant.status!=="ready"')&&!publicCheckout.includes('claimToken'),
