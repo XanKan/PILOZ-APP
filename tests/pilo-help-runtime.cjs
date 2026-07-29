@@ -45,7 +45,7 @@ vm.runInContext(fs.readFileSync('assets/js/modules/erp/erp-help-support.js','utf
  const form={values:{question:'Comment finaliser une facture ?'},reset(){this.values={};}};
  const pending=context.PilozHelp.askPilo(form);
  assert.match(floatingBody.innerHTML,/Comment finaliser une facture/,'le message utilisateur doit apparaître avant la réponse réseau');
- assert.match(floatingBody.innerHTML,/Recherche dans la documentation officielle/,'l’état de recherche doit apparaître immédiatement');
+ assert.match(floatingBody.innerHTML,/Pilo prépare sa réponse/,'l’état de réponse IA doit apparaître immédiatement');
  resolveInvoke({answer:'Voici la procédure officielle.',answerLevel:'high',sources:[],canCreateTicket:false});
  await pending;
  assert.match(floatingBody.innerHTML,/Voici la procédure officielle/,'la réponse doit apparaître sans fermer le chat');

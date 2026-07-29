@@ -20,8 +20,16 @@ for (const label of ["Documentation", "Pilo", "Mes tickets", "Contacter le suppo
   assert.ok(app.includes(label), `Entrée d'aide absente : ${label}`);
 }
 assert.ok(app.includes("Bonjour, je suis Pilo. Comment puis-je vous aider ?"));
-assert.ok(app.includes("Je peux rechercher une réponse dans la documentation officielle Piloz ou vous aider sur la page actuellement ouverte."));
-assert.ok(providers.includes("Je n’ai pas trouvé de réponse suffisamment précise dans la documentation Piloz."));
+assert.ok(app.includes("Je peux discuter avec vous et vous guider dans Piloz en m’appuyant sur la documentation officielle."));
+assert.ok(providers.includes("OpenAIResponsesAssistantProvider"), "Pilo doit disposer d’un fournisseur IA réel");
+assert.ok(providers.includes("https://api.openai.com/v1/responses"), "Pilo doit utiliser l’API Responses officielle");
+assert.ok(providers.includes("store:false"), "Les réponses Pilo ne doivent pas être conservées chez le fournisseur IA");
+assert.ok(providers.includes('private model="gpt-5.6-sol"'), "Le modèle résolu officiellement doit être configuré par défaut");
+assert.ok(pilo.includes('Deno.env.get("OPENAI_API_KEY")'), "La clé OpenAI doit rester exclusivement côté serveur");
+assert.ok(pilo.includes("privacySafeIdentifier"), "Un identifiant de sûreté pseudonymisé est requis");
+assert.ok(pilo.includes('clean(body.conversationId,40)'), "Pilo doit réutiliser une conversation validée");
+assert.ok(app.includes("conversationId:ui.piloConversationId"), "Le navigateur doit transmettre uniquement l’identifiant de conversation");
+assert.ok(!app.includes("OPENAI_API_KEY"), "La clé OpenAI ne doit jamais apparaître dans le navigateur");
 assert.ok(pilo.includes("La gestion des stocks fait actuellement partie de la roadmap Piloz et n’est pas encore disponible dans la version actuelle."));
 assert.ok(knowledge.includes("La gestion des stocks est-elle disponible dans Piloz ?"));
 assert.ok(knowledge.includes("Sa disponibilité sera annoncée officiellement lors de sa mise en production."));

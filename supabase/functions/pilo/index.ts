@@ -1,5 +1,5 @@
 import {createClient} from "npm:@supabase/supabase-js@2";
-import {DisabledEmbeddingProvider,OfficialExtractiveAssistantProvider,SupabaseDocumentationSearchProvider} from "../_shared/pilo-providers.ts";
+import {DisabledEmbeddingProvider,OpenAIResponsesAssistantProvider,ResilientAssistantProvider,SupabaseDocumentationSearchProvider} from "../_shared/pilo-providers.ts";
 
 const origins=new Set(["https://app.piloz.fr","http://localhost:4173","http://localhost:5173","http://127.0.0.1:4173","http://127.0.0.1:5173"]);
 const allowedMimes=new Set(["application/pdf","image/png","image/jpeg","image/webp","text/plain","text/csv","application/vnd.openxmlformats-officedocument.wordprocessingml.document","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]);
@@ -16,6 +16,7 @@ function uuid(value:unknown){const result=clean(value,40);if(!/^[0-9a-f]{8}-[0-9
 function safeName(value:unknown){const original=clean(value,240),parts=original.split("."),extension=(parts.length>1?parts.pop():"bin")!.toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,10)||"bin",base=parts.join(".").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9_-]/g,"-").replace(/-+/g,"-").slice(0,80)||"fichier";return{original,storage:`${base}.${extension}`};}
 function bytesFromBase64(value:string){const binary=atob(value),bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);return bytes;}
 function isStockQuestion(question:string){const normalized=question.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();return/(^|\W)(stock|stocks|inventaire|inventaires)(\W|$)/.test(normalized);}
+async function privacySafeIdentifier(userId:string,companyId:string){const bytes=new TextEncoder().encode(`${userId}:${companyId}:pilo`),digest=await crypto.subtle.digest("SHA-256",bytes);return`pilo_${Array.from(new Uint8Array(digest)).slice(0,16).map(value=>value.toString(16).padStart(2,"0")).join("")}`;}
 
 Deno.serve(async req=>{
   if(req.method==="OPTIONS")return new Response("ok",{headers:cors(req)});
@@ -34,17 +35,31 @@ Deno.serve(async req=>{
       const question=clean(body.question,2000);if(question.length<2)return reply(req,{error:"La question est trop courte."},400);
       const {data:canAsk}=await userClient.rpc("has_company_permission",{target_company_id:companyId,target_permission:"help.assistant.use"});if(canAsk!==true)return reply(req,{error:"Vous n’avez pas accès à Pilo."},403);
       const {data:safe,error:safeError}=await userClient.rpc("sanitize_assistant_context",{input_context:body.safeContext||{}});if(safeError)throw safeError;
-      const search=new SupabaseDocumentationSearchProvider(userClient),assistant=new OfficialExtractiveAssistantProvider(),embeddings=new DisabledEmbeddingProvider();
+      const requestedConversationId=clean(body.conversationId,40);
+      let conversation:any=null;
+      if(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestedConversationId)){
+        const {data}=await admin.from("assistant_conversations").select("id,company_id,user_id,status").eq("id",requestedConversationId).eq("company_id",companyId).eq("user_id",user.id).eq("status","open").maybeSingle();
+        conversation=data||null;
+      }
+      if(!conversation){
+        const {data,error}=await admin.from("assistant_conversations").insert({company_id:companyId,user_id:user.id,title:question.slice(0,120),safe_context:safe||{}}).select("id,company_id,user_id,status").single();
+        if(error)throw error;conversation=data;
+      }
+      const {data:previousMessages,error:historyError}=await admin.from("assistant_messages").select("role,content,created_at").eq("conversation_id",conversation.id).in("role",["user","assistant"]).order("created_at",{ascending:false}).limit(12);
+      if(historyError)throw historyError;
+      const history=(Array.isArray(previousMessages)?previousMessages:[]).reverse().map(message=>({role:message.role as "user"|"assistant",content:clean(message.content,4000)}));
+      const search=new SupabaseDocumentationSearchProvider(userClient),embeddings=new DisabledEmbeddingProvider(),openAIKey=Deno.env.get("OPENAI_API_KEY")||"",model=Deno.env.get("OPENAI_MODEL")||"gpt-5.6-sol";
+      const assistant=new ResilientAssistantProvider(openAIKey?new OpenAIResponsesAssistantProvider(openAIKey,model):null);
       let sources=await search.search({question,companyId,safeContext:safe||{},limit:6}),result;
       if(isStockQuestion(question)){
         const stock=sources.find(source=>source.slug==="la-gestion-des-stocks-est-elle-disponible");if(stock)sources=[stock];
-        result={answer:"La gestion des stocks fait actuellement partie de la roadmap Piloz et n’est pas encore disponible dans la version actuelle.",answerLevel:"high" as const,isRoadmap:true};
-      }else result={...(await assistant.answer({question,sources})),isRoadmap:false};
+        result={answer:"La gestion des stocks fait actuellement partie de la roadmap Piloz et n’est pas encore disponible dans la version actuelle.",answerLevel:"high" as const,provider:"official_roadmap",isRoadmap:true};
+      }else result={...(await assistant.answer({question,sources,history,safeContext:safe||{},safetyIdentifier:await privacySafeIdentifier(user.id,companyId)})),isRoadmap:false};
       let unansweredId:string|null=null;if(result.answerLevel==="none"){const {data,error}=await userClient.rpc("record_unanswered_pilo_question",{target_company_id:companyId,question_text:question,safe_context:safe||{}});if(error)throw error;unansweredId=data;}
-      const {data:conversation,error:conversationError}=await admin.from("assistant_conversations").insert({company_id:companyId,user_id:user.id,title:question.slice(0,120),safe_context:safe||{}}).select("id").single();if(conversationError)throw conversationError;
       const {error:userMessageError}=await admin.from("assistant_messages").insert({conversation_id:conversation.id,role:"user",content:question,safe_context:safe||{}});if(userMessageError)throw userMessageError;
-      const {data:assistantMessage,error:assistantMessageError}=await admin.from("assistant_messages").insert({conversation_id:conversation.id,role:"assistant",content:result.answer,answer_level:result.answerLevel,source_article_ids:sources.map(source=>source.id),safe_context:{provider:"official_extract",embedding_provider:embeddings.enabled?"configured":"disabled"}}).select("id").single();if(assistantMessageError)throw assistantMessageError;
-      return reply(req,{answer:result.answer,answerLevel:result.answerLevel,sources:sources.map(source=>({id:source.id,slug:source.slug,title:source.title,availability:source.availability})),conversationId:conversation.id,messageId:assistantMessage.id,unansweredId,canCreateTicket:result.answerLevel==="none"||result.isRoadmap,isRoadmap:result.isRoadmap});
+      const {data:assistantMessage,error:assistantMessageError}=await admin.from("assistant_messages").insert({conversation_id:conversation.id,role:"assistant",content:result.answer,answer_level:result.answerLevel,source_article_ids:sources.map(source=>source.id),safe_context:{provider:result.provider,model:result.provider==="openai_responses"?model:null,embedding_provider:embeddings.enabled?"configured":"disabled"}}).select("id").single();if(assistantMessageError)throw assistantMessageError;
+      await admin.from("assistant_conversations").update({updated_at:new Date().toISOString(),safe_context:safe||{}}).eq("id",conversation.id);
+      return reply(req,{answer:result.answer,answerLevel:result.answerLevel,sources:sources.map(source=>({id:source.id,slug:source.slug,title:source.title,availability:source.availability})),conversationId:conversation.id,messageId:assistantMessage.id,unansweredId,canCreateTicket:result.answerLevel==="none"||result.isRoadmap,isRoadmap:result.isRoadmap,aiEnabled:result.provider==="openai_responses"});
     }
     if(action==="attach-ticket-file"){
       const ticketId=uuid(body.ticketId),fileName=safeName(body.fileName),mimeType=clean(body.mimeType,160).toLowerCase(),size=Number(body.size||0),encoded=String(body.fileBase64||"");
