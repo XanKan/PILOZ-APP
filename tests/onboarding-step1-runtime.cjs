@@ -33,7 +33,7 @@ const context={
     async companyContext(){return '00000000-0000-0000-0000-000000000002';},
     async upsertCompanySettings(companyId,payload){calls.settings.push({companyId,payload});return[payload];},
     async request(...args){calls.requests.push(args);return null;},
-    async query(...args){calls.queries.push(args);if(args[0]==='vat_rates')return[{id:'vat-20',rate:20,label:'Taux normal · 20 %',is_default:true,active:true}];throw new Error('L’étape 1 ne doit pas lire les adresses.');},
+    async query(...args){calls.queries.push(args);if(args[0]==='vat_rates')return[{id:'vat-20',rate:20,label:'Taux normal · 20 %',is_default:true,active:true}];if(args[0]==='company_logos')return[];throw new Error('L’étape 1 ne doit pas lire les adresses.');},
     async insert(...args){calls.inserts.push(args);throw new Error('L’étape 1 ne doit pas insérer une adresse.');},
     async update(){throw new Error('L’étape 1 ne doit pas modifier une adresse.');},
     async invoke(){return{};},
@@ -83,5 +83,14 @@ vm.runInContext(source,context,{filename:'professional-onboarding.js'});
   assert.equal(context.PilozRuntime.state.entreprise.fiscality.vatRegime,'');
   assert.doesNotMatch(node.innerHTML,/N° TVA intracommunautaire/);
   assert.match(node.innerHTML,/automatiquement fixé à 0 %/);
+
+  context.phase1SetupStep=5;
+  context.PilozERP.upload=async()=>({});
+  context.PilozERP.insert=async(...args)=>{calls.inserts.push(args);return[args[1]];};
+  context.PilozERP.signedUrl=async()=>({signedURL:'https://example.test/logo-clair.png'});
+  await context.professionalUploadLogo({type:'image/png',size:1024,name:'logo-clair.png'},'light');
+  assert.equal(context.PilozRuntime.state.entreprise.identity.logoDeferred,false);
+  assert.match(node.innerHTML,/src="https:\/\/example\.test\/logo-clair\.png"/);
+  assert.match(node.innerHTML,/logo-clair\.png · Cliquer pour remplacer/);
   console.log('PASS onboarding step 1 runtime');
 })().catch(error=>{console.error(error);process.exit(1);});
