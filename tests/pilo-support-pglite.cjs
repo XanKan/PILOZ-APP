@@ -60,7 +60,7 @@ function assert(value,message){if(!value)throw new Error(message);}
   await setIdentity(db,owner);
   const wrongModule=(await db.query("select count(*)::int count from public.search_piloz_documentation('gestion des stocks',$1,'{\"module\":\"sales\",\"app_version\":\"1.0.0\"}'::jsonb,8) where slug='la-gestion-des-stocks-est-elle-disponible'",[companyA])).rows[0].count;
   const allowedModule=(await db.query("select count(*)::int count from public.search_piloz_documentation('gestion des stocks',$1,'{\"module\":\"settings\",\"role\":\"owner\",\"app_version\":\"1.0.0\"}'::jsonb,8) where slug='la-gestion-des-stocks-est-elle-disponible'",[companyA])).rows[0].count;
-  assert(wrongModule===0&&allowedModule===1,'filtrage documentaire par module ou role incorrect');
+  assert(wrongModule===1&&allowedModule===1,'la documentation doit rester trouvable hors de son module de prédilection');
   await db.exec('reset role');
   await db.query("update public.knowledge_articles set app_version_min='9.0.0' where id=$1",[stockId]);
   await setIdentity(db,owner);

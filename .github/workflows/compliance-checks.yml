@@ -41,6 +41,7 @@ jobs:
           node tests/onboarding-step1-static.cjs
           node tests/onboarding-step6-numbering-static.cjs
           node tests/platform-admin-mfa-static.cjs
+          node tests/pilo-help-runtime.cjs
           node tests/pilo-support-static.cjs
           node tests/security-hardening-static.cjs
           node tests/session-account-isolation-static.cjs

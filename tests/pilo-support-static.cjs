@@ -14,6 +14,7 @@ const foundation = read("supabase/migrations/202607290106_documentation_pilo_sup
 const knowledge = read("supabase/migrations/202607290107_official_knowledge_base.sql");
 const intake = read("supabase/migrations/202607290109_support_ticket_intake_details.sql");
 const restrictions = read("supabase/migrations/202607290112_knowledge_access_indexing_and_review.sql");
+const reliability = read("supabase/migrations/202607290113_help_support_reliability.sql");
 
 for (const label of ["Documentation", "Pilo", "Mes tickets", "Contacter le support"]) {
   assert.ok(app.includes(label), `Entrée d'aide absente : ${label}`);
@@ -29,6 +30,9 @@ assert.ok(app.includes("target_details"), "Les informations de qualification doi
 assert.ok(app.includes("assistantConversationId"), "La conversation Pilo doit pouvoir être liée au ticket");
 assert.ok(app.includes("comment:comment||null"), "Le retour facultatif doit conserver son commentaire");
 assert.ok(app.includes("10 Mo"), "La limite de pièce jointe doit être visible");
+assert.ok(app.includes("renderPiloSurfaces()"), "Le chat flottant doit être rafraîchi immédiatement après l'envoi");
+assert.ok(app.includes("piloz-ticket-overlay-root"), "Le formulaire de ticket doit être visible hors de la page Aide");
+assert.ok(!app.includes("openTicket({category:'general'"), "Les tickets issus d'un article doivent utiliser une catégorie serveur valide");
 
 const categoryBlock = app.match(/const categoryLabels=\{([^;]+)\};/)?.[1] || "";
 assert.ok(categoryBlock.includes("roadmap:"), "La catégorie spéciale Fonctionnalité à venir est requise");
@@ -44,6 +48,8 @@ assert.ok(restrictions.includes("knowledge_article_modules"));
 assert.ok(restrictions.includes("knowledge_article_roles"));
 assert.ok(restrictions.includes("app_version_min"));
 assert.ok(restrictions.includes("knowledge-article-attachments"));
+assert.ok(reliability.includes("candidate.token_hits>0"), "La recherche doit accepter les formulations naturelles partielles");
+assert.ok(!reliability.includes("requested_module is not null and exists"), "Le module courant ne doit pas masquer la documentation pertinente");
 assert.ok(foundation.includes("support-ticket-attachments"));
 assert.ok(foundation.includes("'support-ticket-attachments','support-ticket-attachments',false"), "Les pièces jointes ne doivent pas être publiques");
 
