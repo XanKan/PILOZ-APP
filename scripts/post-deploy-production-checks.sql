@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607290105' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607290112' ok
   union all
   select 'company_access_system_roles',count(*)::text,count(*)=0
   from public.companies company
@@ -432,6 +432,30 @@ with controls as(
   select 'superpdp_exchange_environment_valid',count(*)::text,count(*)=0
   from public.superpdp_invoice_exchanges where environment not in('sandbox','production')
   union all
+  select 'knowledge_articles_rls',coalesce(relrowsecurity::text,'missing'),coalesce(relrowsecurity,false)
+  from (select relrowsecurity from pg_class where oid=to_regclass('public.knowledge_articles')) knowledge_table
+  union all
+  select 'support_tickets_rls',coalesce(relrowsecurity::text,'missing'),coalesce(relrowsecurity,false)
+  from (select relrowsecurity from pg_class where oid=to_regclass('public.support_tickets')) support_table
+  union all
+  select 'support_attachments_rls',coalesce(relrowsecurity::text,'missing'),coalesce(relrowsecurity,false)
+  from (select relrowsecurity from pg_class where oid=to_regclass('public.support_ticket_attachments')) support_attachment_table
+  union all
+  select 'knowledge_attachments_rls',coalesce(relrowsecurity::text,'missing'),coalesce(relrowsecurity,false)
+  from (select relrowsecurity from pg_class where oid=to_regclass('public.knowledge_article_attachments')) knowledge_attachment_table
+  union all
+  select 'pilo_documentation_search_rpc',
+    coalesce(to_regprocedure('public.search_piloz_documentation(text,uuid,jsonb,integer)')::text,'missing'),
+    to_regprocedure('public.search_piloz_documentation(text,uuid,jsonb,integer)') is not null
+      and not has_function_privilege('anon','public.search_piloz_documentation(text,uuid,jsonb,integer)','EXECUTE')
+      and has_function_privilege('authenticated','public.search_piloz_documentation(text,uuid,jsonb,integer)','EXECUTE')
+  union all
+  select 'support_ticket_creation_rpc',
+    coalesce(to_regprocedure('public.create_support_ticket(uuid,text,text,text,text,text,text,jsonb,text,jsonb,uuid)')::text,'missing'),
+    to_regprocedure('public.create_support_ticket(uuid,text,text,text,text,text,text,jsonb,text,jsonb,uuid)') is not null
+      and not has_function_privilege('anon','public.create_support_ticket(uuid,text,text,text,text,text,text,jsonb,text,jsonb,uuid)','EXECUTE')
+      and has_function_privilege('authenticated','public.create_support_ticket(uuid,text,text,text,text,text,text,jsonb,text,jsonb,uuid)','EXECUTE')
+  union all
   select 'over_reversed_payments',count(*)::text,count(*)=0 from(
     select original.id from public.payments original
     left join public.payments reversal on reversal.reverses_payment_id=original.id and reversal.status='confirmed'
@@ -442,7 +466,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607290105',
+  'schema_version','202607290112',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;
