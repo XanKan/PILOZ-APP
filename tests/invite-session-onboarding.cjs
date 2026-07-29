@@ -65,7 +65,7 @@ vm.runInContext(apiSource,context,{filename:'erp-api.js'});
   assert(onboardingSource.includes('professionalSetVatSubject(this.value)'),'Le changement d’assujettissement doit appliquer les règles fiscales immédiatement.');
   assert(!onboardingSource.includes("input('Taux de TVA par défaut'"),'Le taux de TVA ne doit plus être un champ libre dans l’onboarding.');
   assert(onboardingSource.includes("default_vat_rate:subjectToVat?Number(fiscality.defaultVatRate)||0:0"),'Une entreprise non assujettie doit être enregistrée avec une TVA à 0.');
-  assert(index.includes('professional-onboarding.js?v=20260729.9'),'Le cache du module d’onboarding doit être invalidé.');
+  assert(index.includes('professional-onboarding.js?v=20260729.10'),'Le cache du module d’onboarding doit être invalidé.');
   assert(index.includes('phase1-foundation.css?v=20260729.4'),'Le cache des styles de l’onboarding doit être invalidé.');
   assert(onboardingSource.includes("logoDropzone('light','Logo clair')")&&onboardingSource.includes("logoDropzone('dark','Logo sombre',true)"),'L’étape 5 doit afficher les zones des deux variantes de logo.');
   assert(onboardingSource.includes("PilozERP.signedUrl('company-assets',path,3600)")&&onboardingSource.includes('logoPreviews[variant]'),'Le logo importé doit être rechargé et affiché dans sa zone de dépôt.');
