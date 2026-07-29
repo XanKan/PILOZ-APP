@@ -2,6 +2,7 @@ const fs=require('node:fs');
 
 const onboarding=fs.readFileSync('assets/js/modules/onboarding/professional-onboarding.js','utf8');
 const styles=fs.readFileSync('assets/css/phase1-foundation.css','utf8');
+const foundation=fs.readFileSync('assets/js/phase1-foundation.js','utf8');
 const stepOneSection=onboarding.slice(onboarding.indexOf('if(step===1)'),onboarding.indexOf('if(step===2)'));
 
 const checks={
@@ -18,6 +19,12 @@ const checks={
   form_data_preserved_on_failure:onboarding.includes("const forbidden=String(error?.code||'')==='42501'")&&!onboarding.includes('location.reload()'),
   double_submission_blocked:onboarding.includes('if(setupBusy)return;')&&onboarding.includes("setupBusy?'Enregistrement…'"),
   toast_above_onboarding:styles.includes('.toast{z-index:10000!important}'),
+  onboarding_above_navigation:styles.includes('.phase1-setup{position:fixed;inset:0;z-index:9000'),
+  sidebar_pointer_lock:styles.includes('.phase1-onboarding-navigation-locked .rail{pointer-events:none;user-select:none}'),
+  sidebar_keyboard_lock:foundation.includes("rail.setAttribute('inert','')")&&foundation.includes("rail.setAttribute('aria-disabled','true')"),
+  navigation_unlocks_on_close:foundation.includes("function phase1CloseSetup(){const node=document.getElementById('phase1-setup');if(node)node.remove();phase1SetOnboardingNavigationLock(false);}"),
+  professional_onboarding_activates_lock:onboarding.includes('phase1SetOnboardingNavigationLock(true);'),
+  completion_uses_safe_close:onboarding.includes("sauver('Configuration enregistrée');phase1CloseSetup();PilozApp?.refresh();"),
 };
 
 console.log(JSON.stringify(checks,null,2));

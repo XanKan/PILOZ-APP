@@ -16,6 +16,7 @@ const context={
   phase1SetupStep:1,
   phase1EnsureState(){},
   phase1CloseSetup(){},
+  phase1SetOnboardingNavigationLock(){},
   phase1SetEntreprise(path,value){const parts=path.split('.');let target=context.PilozRuntime.state.entreprise;while(parts.length>1)target=target[parts.shift()];target[parts[0]]=value;if(path==='fiscality.subjectToVat'&&value===false)Object.assign(context.PilozRuntime.state.entreprise.fiscality,{vatNumber:'',vatRegime:'',defaultVatRate:0});},
   phase1SetEntrepriseChoice(path,raw){context.phase1SetEntreprise(path,raw===''?null:raw==='true'?true:raw==='false'?false:raw);},
   phase1BooleanOptions(){return '<option value="true">Oui</option>';},
