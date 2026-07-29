@@ -27,6 +27,8 @@ assert.ok(app.includes("saveTrainingProgress"), "La progression des formations d
 assert.ok(app.includes("help/training"), "La route Formation doit être rendue par le centre d’aide");
 assert.ok(app.includes("trainingSimulator"), "La formation doit utiliser un simulateur Piloz guidé");
 assert.ok(app.includes("Données de démonstration"), "Le simulateur doit signaler qu'il ne modifie aucune donnée réelle");
+assert.ok(app.includes("loadedKey=`${trainingStorageKey()}:${lesson.id}`"), "La progression doit être isolée par utilisateur, entreprise et capsule");
+assert.ok(app.includes("saved.step??(saved.completed?lesson.steps.length:0)"), "Une ancienne position vidéo ne doit pas valider une capsule interactive");
 for (const interaction of ["completeTrainingAction", "validateTrainingInput", "trainingSelect", "trainingChoice", "trainingToggle", "trainingDrop"]) {
   assert.ok(app.includes(interaction), `Interaction de formation absente : ${interaction}`);
 }
