@@ -686,6 +686,19 @@
         target_client_id: id,
       });
       if (!entry.summary?.client) throw new Error("Client introuvable.");
+      if (
+        !entry.summary.primary_contact &&
+        entry.summary.client.first_name &&
+        entry.summary.client.last_name &&
+        (await global.PilozEnsureClientPrimaryContact(
+          id,
+          entry.summary.client,
+        ))
+      ) {
+        entry.summary = await api().rpc("get_client_workspace_summary", {
+          target_client_id: id,
+        });
+      }
     } catch (error) {
       entry.error = error.message || "Client introuvable.";
     } finally {
