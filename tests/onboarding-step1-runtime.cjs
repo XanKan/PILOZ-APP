@@ -16,8 +16,8 @@ const context={
   phase1SetupStep:1,
   phase1EnsureState(){},
   phase1CloseSetup(){},
-  phase1SetEntreprise(){},
-  phase1SetEntrepriseChoice(){},
+  phase1SetEntreprise(path,value){const parts=path.split('.');let target=context.PilozRuntime.state.entreprise;while(parts.length>1)target=target[parts.shift()];target[parts[0]]=value;if(path==='fiscality.subjectToVat'&&value===false)Object.assign(context.PilozRuntime.state.entreprise.fiscality,{vatNumber:'',vatRegime:'',defaultVatRate:0});},
+  phase1SetEntrepriseChoice(path,raw){context.phase1SetEntreprise(path,raw===''?null:raw==='true'?true:raw==='false'?false:raw);},
   phase1BooleanOptions(){return '<option value="true">Oui</option>';},
   sauver(){},
   toast(){},
@@ -33,7 +33,7 @@ const context={
     async companyContext(){return '00000000-0000-0000-0000-000000000002';},
     async upsertCompanySettings(companyId,payload){calls.settings.push({companyId,payload});return[payload];},
     async request(...args){calls.requests.push(args);return null;},
-    async query(...args){calls.queries.push(args);throw new Error('L’étape 1 ne doit pas lire les adresses.');},
+    async query(...args){calls.queries.push(args);if(args[0]==='vat_rates')return[{id:'vat-20',rate:20,label:'Taux normal · 20 %',is_default:true,active:true}];throw new Error('L’étape 1 ne doit pas lire les adresses.');},
     async insert(...args){calls.inserts.push(args);throw new Error('L’étape 1 ne doit pas insérer une adresse.');},
     async update(){throw new Error('L’étape 1 ne doit pas modifier une adresse.');},
     async invoke(){return{};},
@@ -62,5 +62,26 @@ vm.runInContext(source,context,{filename:'professional-onboarding.js'});
   assert.equal(calls.settings.length,1);
   assert.match(node.innerHTML,/Le SIRET saisi est invalide/);
   assert.match(node.innerHTML,/role="alert"/);
+
+  context.phase1SetupStep=4;
+  context.PilozCalculations.validSiren=()=>true;
+  Object.assign(context.PilozRuntime.state.entreprise.fiscality,{subjectToVat:false,vatNumber:'FR12345678901',vatRegime:'Réel normal',defaultVatRate:20});
+  await context.phase1SetupNext();
+  const fiscalPayload=calls.settings.at(-1).payload;
+  assert.equal(fiscalPayload.subject_to_vat,false);
+  assert.equal(fiscalPayload.vat_number,null);
+  assert.equal(fiscalPayload.vat_regime,null);
+  assert.equal(fiscalPayload.default_vat_rate,0);
+
+  context.phase1SetupStep=4;
+  context.professionalSetVatSubject('true');
+  assert.equal(context.PilozRuntime.state.entreprise.fiscality.defaultVatRate,20);
+  assert.match(node.innerHTML,/data-onboarding-path="fiscality.defaultVatRate"/);
+  assert.doesNotMatch(node.innerHTML,/Taux de TVA par défaut<\/label><input/);
+  context.professionalSetVatSubject('false');
+  assert.equal(context.PilozRuntime.state.entreprise.fiscality.defaultVatRate,0);
+  assert.equal(context.PilozRuntime.state.entreprise.fiscality.vatRegime,'');
+  assert.doesNotMatch(node.innerHTML,/N° TVA intracommunautaire/);
+  assert.match(node.innerHTML,/automatiquement fixé à 0 %/);
   console.log('PASS onboarding step 1 runtime');
 })().catch(error=>{console.error(error);process.exit(1);});
