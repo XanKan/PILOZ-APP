@@ -24,6 +24,10 @@ for (const label of ["Documentation", "Formation", "Pilo", "Mes tickets", "Conta
 assert.ok(app.includes("TRAINING_COURSES"), "Le catalogue de formation doit être disponible");
 assert.ok(app.includes("saveTrainingProgress"), "La progression des formations doit être conservée");
 assert.ok(app.includes("help/training"), "La route Formation doit être rendue par le centre d’aide");
+assert.ok(app.includes("guidePresentation"), "Les articles doivent être présentés comme des guides pratiques");
+assert.ok(app.includes("Comment faire"), "Le gabarit administratif doit être remplacé par un guidage orienté action");
+assert.ok(app.includes("openTraining(courseId,lessonId)"), "Un article doit pouvoir ouvrir directement sa formation associée");
+assert.ok(!app.includes("${safeMarkdown(article.content)}</div>${article.source_url"), "La vue article ne doit plus afficher le gabarit documentaire brut");
 assert.ok(academy.includes("prise-en-main-piloz-15-minutes"), "Le parcours de prise en main doit être publié");
 assert.ok(academy.includes("checklist-avant-finalisation-facture"), "La checklist de finalisation doit être publiée");
 assert.ok(app.includes("Bonjour, je suis Pilo. Comment puis-je vous aider ?"));

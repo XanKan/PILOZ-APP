@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0-compliance.63 — 29 juillet 2026
+
+- Remplace la présentation administrative répétitive des articles par des guides pratiques orientés action.
+- Réorganise automatiquement les contenus existants en « L’essentiel », « Comment faire », prérequis, résultat et dépannage.
+- Relie chaque guide à la capsule de formation interactive correspondante et améliore la lecture sur mobile.
+- Précise que l’Académie contient des capsules interactives intégrées, sans présenter celles-ci comme des vidéos enregistrées.
+
 ## 0.9.0-compliance.62 — 29 juillet 2026
 
 - Refonte le centre de documentation en parcours métiers, recherche guidée, accès par thème et checklists opérationnelles.
