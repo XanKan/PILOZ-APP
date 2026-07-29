@@ -1,0 +1,64 @@
+const fs=require('node:fs');
+const vm=require('node:vm');
+const assert=require('node:assert/strict');
+
+const source=fs.readFileSync('assets/js/modules/onboarding/professional-onboarding.js','utf8');
+const node={innerHTML:'',className:'',querySelector:()=>({focus(){}})};
+const calls={settings:[],requests:[],queries:[],inserts:[]};
+const context={
+  console,
+  encodeURIComponent,
+  setTimeout,
+  clearTimeout,
+  requestAnimationFrame(callback){callback();},
+  esc(value){return String(value??'').replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));},
+  document:{getElementById(){return node;},createElement(){return node;},body:{appendChild(){}}},
+  phase1SetupStep:1,
+  phase1EnsureState(){},
+  phase1CloseSetup(){},
+  phase1SetEntreprise(){},
+  phase1SetEntrepriseChoice(){},
+  phase1BooleanOptions(){return '<option value="true">Oui</option>';},
+  sauver(){},
+  toast(){},
+  PilozApp:{refresh(){}},
+  PilozCalculations:{validSiren(){return true;},e164(){return '+33123456789';}},
+  PilozRuntime:{session:{user_id:'00000000-0000-0000-0000-000000000001'},state:{entreprise:{
+    identity:{legalName:'Société Test',tradeName:'Test',legalForm:'SAS',siren:'732829320',siret:'73282932000074',apeCode:'6201Z',activity:'Logiciel',creationDate:'2026-01-01',country:'France'},
+    fiscality:{subjectToVat:true,defaultVatRate:20,currency:'EUR',language:'fr'},
+    documents:{quotePrefix:'DEV',quoteNextNumber:1,invoicePrefix:'FAC',invoiceNextNumber:1,creditPrefix:'AV',creditNextNumber:1,orderPrefix:'CMD',quoteValidityDays:30,defaultPaymentTerms:'À réception',defaultPaymentMethod:'Virement bancaire'},
+    banking:{},setup:{lastStep:1,electronicInvoicingDeferred:true},
+  }}},
+  PilozERP:{
+    async companyContext(){return '00000000-0000-0000-0000-000000000002';},
+    async upsertCompanySettings(companyId,payload){calls.settings.push({companyId,payload});return[payload];},
+    async request(...args){calls.requests.push(args);throw new Error('L’étape 1 ne doit pas appeler cette requête.');},
+    async query(...args){calls.queries.push(args);throw new Error('L’étape 1 ne doit pas lire les adresses.');},
+    async insert(...args){calls.inserts.push(args);throw new Error('L’étape 1 ne doit pas insérer une adresse.');},
+    async update(){throw new Error('L’étape 1 ne doit pas modifier une adresse.');},
+    async invoke(){return{};},
+  },
+};
+context.window=context;
+vm.createContext(context);
+vm.runInContext(source,context,{filename:'professional-onboarding.js'});
+
+(async()=>{
+  await context.phase1SetupNext();
+  assert.equal(calls.settings.length,1);
+  assert.equal(calls.requests.length,0);
+  assert.equal(calls.queries.length,0);
+  assert.equal(calls.inserts.length,0);
+  assert.equal(calls.settings[0].payload.legal_name,'Société Test');
+  assert.equal(calls.settings[0].payload.siret,'73282932000074');
+  assert.equal(Object.hasOwn(calls.settings[0].payload,'onboarding_completed_at'),false);
+  assert.equal(context.phase1SetupStep,2);
+
+  context.phase1SetupStep=1;
+  context.PilozCalculations.validSiren=()=>false;
+  await context.phase1SetupNext();
+  assert.equal(calls.settings.length,1);
+  assert.match(node.innerHTML,/Le SIRET saisi est invalide/);
+  assert.match(node.innerHTML,/role="alert"/);
+  console.log('PASS onboarding step 1 runtime');
+})().catch(error=>{console.error(error);process.exit(1);});
