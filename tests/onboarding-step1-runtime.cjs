@@ -22,22 +22,23 @@ const context={
   phase1BooleanOptions(){return '<option value="true">Oui</option>';},
   sauver(){},
   toast(){},
-  PilozApp:{refresh(){}},
+  PilozApp:{refresh(){},getState(){return{data:{docSettings:[]}};}},
   PilozCalculations:{validSiren(){return true;},e164(){return '+33123456789';}},
   PilozRuntime:{session:{user_id:'00000000-0000-0000-0000-000000000001'},state:{entreprise:{
     identity:{legalName:'Société Test',tradeName:'Test',legalForm:'SAS',siren:'732829320',siret:'73282932000074',apeCode:'6201Z',activity:'Logiciel',creationDate:'2026-01-01',country:'France'},
     fiscality:{subjectToVat:true,defaultVatRate:20,currency:'EUR',language:'fr'},
     documents:{quotePrefix:'DEV',quoteNextNumber:1,invoicePrefix:'FAC',invoiceNextNumber:1,creditPrefix:'AV',creditNextNumber:1,orderPrefix:'CMD',quoteValidityDays:30,defaultPaymentTerms:'À réception',defaultPaymentMethod:'Virement bancaire'},
-    banking:{},setup:{lastStep:1,electronicInvoicingDeferred:true},
+    banking:{accountHolder:'',bankName:'',iban:'',bic:'',mandateReference:'',remindLater:true},setup:{lastStep:1,electronicInvoicingDeferred:true},
   }}},
   PilozERP:{
     async companyContext(){return '00000000-0000-0000-0000-000000000002';},
     async upsertCompanySettings(companyId,payload){calls.settings.push({companyId,payload});return[payload];},
     async request(...args){calls.requests.push(args);return null;},
-    async query(...args){calls.queries.push(args);if(args[0]==='vat_rates')return[{id:'vat-20',rate:20,label:'Taux normal · 20 %',is_default:true,active:true}];if(args[0]==='company_logos')return[];throw new Error('L’étape 1 ne doit pas lire les adresses.');},
+    async query(...args){calls.queries.push(args);if(args[0]==='vat_rates')return[{id:'vat-20',rate:20,label:'Taux normal · 20 %',is_default:true,active:true}];if(args[0]==='company_logos')return[];if(args[0]==='payment_methods')return[{code:'bank_transfer',label:'Virement bancaire',active:true,is_default:true,position:10}];if(args[0]==='payment_terms')return[{code:'receipt',label:'À réception',active:true,is_default:true,position:10}];throw new Error('L’étape 1 ne doit pas lire les adresses.');},
     async insert(...args){calls.inserts.push(args);throw new Error('L’étape 1 ne doit pas insérer une adresse.');},
     async update(){throw new Error('L’étape 1 ne doit pas modifier une adresse.');},
     async invoke(){return{};},
+    async rpc(){return{};},
   },
 };
 context.window=context;
@@ -93,5 +94,13 @@ vm.runInContext(source,context,{filename:'professional-onboarding.js'});
   assert.equal(context.PilozRuntime.state.entreprise.identity.logoDeferred,false);
   assert.match(node.innerHTML,/src="https:\/\/example\.test\/logo-clair\.png"/);
   assert.match(node.innerHTML,/logo-clair\.png · Cliquer pour remplacer/);
+
+  context.phase1SetupStep=6;
+  Object.assign(context.PilozRuntime.state.entreprise.banking,{accountHolder:'Société Test',bankName:'Banque Test',iban:'FR7630006000011234567890189',bic:'AGRIFRPP',mandateReference:'MANDAT-001',remindLater:false});
+  await context.phase1SetupNext();
+  const bankRequest=calls.requests.find(([path,options])=>path==='/rest/v1/company_document_settings?on_conflict=company_id'&&JSON.parse(options.body).iban);
+  assert(bankRequest,'Les coordonnées bancaires doivent être persistées à l’étape 6.');
+  assert.deepEqual(JSON.parse(bankRequest[1].body),{company_id:'00000000-0000-0000-0000-000000000002',bank_account_holder:'Société Test',bank_name:'Banque Test',iban:'FR7630006000011234567890189',bic:'AGRIFRPP',mandate_reference:'MANDAT-001'});
+  assert.equal(context.phase1SetupStep,7);
   console.log('PASS onboarding step 1 runtime');
 })().catch(error=>{console.error(error);process.exit(1);});
