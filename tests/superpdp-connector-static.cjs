@@ -32,6 +32,7 @@ const checks={
   extension_catalog:extensions.includes("id:'superpdp'")&&extensions.includes("internalRoute:'settings/einvoicing'"),
   ui_loaded:html.includes('erp-electronic-invoicing.js'),
   production_ui:ui.includes('SUPER PDP · Production')&&ui.includes('Automatisation active'),
+  no_visible_sandbox_controls:!/bac à sable|environnement de test|Envoyer une facture de test|Tester la connexion/i.test(ui),
   piloz_remains_production:edge.includes('appEnvironment: "production"')
 };
 const failed=Object.entries(checks).filter(([,ok])=>!ok).map(([name])=>name);

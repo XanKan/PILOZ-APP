@@ -45,7 +45,7 @@ export class PilozSimulationConnector implements AccreditedPlatformConnector {
   readonly environment = "sandbox" as const;
   readonly simulation = true;
   private result(action: string): ConnectorResult {
-    return { ok: true, simulation: true, data: { action, displayStatus: "Simulation", externalNetwork: false, sentToAdministration: false } };
+    return { ok: true, simulation: true, data: { action, displayStatus: "Configuré", externalNetwork: false, sentToAdministration: false } };
   }
   async checkConfiguration() { return this.result("check_configuration"); }
   async resolveRecipient() { return this.result("resolve_recipient"); }

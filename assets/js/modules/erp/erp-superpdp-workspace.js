@@ -111,7 +111,6 @@
     && connector?.status === 'active'
     && connector?.production_enabled === true
   );
-  const exchangeEnvironment = (data, exchange) => exchange?.environment === 'production' || productionActive(data) ? 'production' : 'sandbox';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   }[char]));
@@ -254,7 +253,7 @@
       const count = allRows.filter(row => matchesFilter(data, row, filter.id)).length;
       return `<button class="${ui.filter === filter.id ? 'active' : ''}" onclick="PilozSuperPdpWorkspace.setFilter('${filter.id}')">${esc(filter.label)} <small>${count}</small></button>`;
     }).join('');
-    return `<aside class="superpdp-supplier-list"><header><div><h1>Factures fournisseurs</h1><span>${allRows.length} document${allRows.length > 1 ? 's' : ''}</span></div></header><div class="superpdp-sandbox-banner"><b>SUPER PDP · ${production ? 'production' : 'bac à sable'}</b><span>${production ? 'Réception automatique activée pour cette entreprise.' : 'Réception de test activée. PILOZ reste en production.'}</span><button ${ui.busy ? 'disabled' : ''} onclick="PilozSuperPdpWorkspace.syncIncoming()">${ui.busy ? 'Synchronisation…' : 'Actualiser maintenant'}</button></div><nav class="superpdp-supplier-tabs" aria-label="Filtrer les factures fournisseurs">${tabs}</nav><div class="superpdp-supplier-list-scroll">${rows.map(row => {
+    return `<aside class="superpdp-supplier-list"><header><div><h1>Factures fournisseurs</h1><span>${allRows.length} document${allRows.length > 1 ? 's' : ''}</span></div></header><div class="superpdp-sandbox-banner"><b>SUPER PDP</b><span>${production ? 'Réception automatique activée pour cette entreprise.' : 'Activez la connexion pour recevoir automatiquement les factures fournisseurs.'}</span><button ${ui.busy ? 'disabled' : ''} onclick="${production ? 'PilozSuperPdpWorkspace.syncIncoming()' : "PilozApp.go('settings/einvoicing')"}">${production ? (ui.busy ? 'Synchronisation…' : 'Actualiser maintenant') : 'Configurer SUPER PDP'}</button></div><nav class="superpdp-supplier-tabs" aria-label="Filtrer les factures fournisseurs">${tabs}</nav><div class="superpdp-supplier-list-scroll">${rows.map(row => {
       const supplier = supplierFor(data, row.supplier_id);
       const active = row.id === selected?.id;
       const exchange = exchangeFor(data, row.id);
@@ -283,22 +282,20 @@
     if (!document) return '<aside class="superpdp-supplier-side"></aside>';
     const supplier = supplierFor(data, document.supplier_id);
     const exchange = exchangeFor(data, document.id);
-    const targetEnvironment = exchangeEnvironment(data, exchange);
     const lines = (data.lines || []).filter(row => row.document_id === document.id);
     const code = workflowStatus(data, document);
-    return `<aside class="superpdp-supplier-side"><header><small>Facture fournisseur</small><b>${esc(document.number || document.client_reference || 'Référence non renseignée')}</b></header><section><strong>${money(document.total_incl_tax, document.currency)}</strong><span>dont ${money(document.total_tax, document.currency)} de TVA</span><dl><dt>Fournisseur</dt><dd>${esc(supplier?.legal_name || '—')}</dd><dt>Émission</dt><dd>${date(document.issue_date)}</dd><dt>Échéance</dt><dd>${date(document.due_date)}</dd><dt>Statut PILOZ</dt><dd>${esc(pilozStatusLabel(document.status))}</dd><dt>Lignes</dt><dd>${lines.length}</dd></dl></section>${exchange ? `<section class="superpdp-supplier-workflow"><div class="superpdp-workflow-heading"><div><h3>Traitement de la facture</h3><span>Statut transmis à la PA</span></div>${statusBadge(code)}</div>${workflowActions(code)}<p class="superpdp-workflow-note">Cette décision ne comptabilise pas la facture et n’enregistre aucun paiement.</p>${workflowHistory(data, exchange)}</section><section class="superpdp-supplier-exchange"><h3>Facture électronique</h3><b>Reçue via SUPER PDP · ${targetEnvironment === 'production' ? 'production' : 'bac à sable'}</b><dl><dt>Format</dt><dd>${esc(exchange.xml_format || 'CII / Factur-X')}</dd><dt>Dernière synchro.</dt><dd>${datetime(exchange.last_synced_at)}</dd></dl><p>${targetEnvironment === 'production' ? 'Échange réel enregistré dans le journal de facturation électronique.' : 'Échange de test : aucune donnée n’a été transmise en production.'}</p></section>` : ''}</aside>`;
+    return `<aside class="superpdp-supplier-side"><header><small>Facture fournisseur</small><b>${esc(document.number || document.client_reference || 'Référence non renseignée')}</b></header><section><strong>${money(document.total_incl_tax, document.currency)}</strong><span>dont ${money(document.total_tax, document.currency)} de TVA</span><dl><dt>Fournisseur</dt><dd>${esc(supplier?.legal_name || '—')}</dd><dt>Émission</dt><dd>${date(document.issue_date)}</dd><dt>Échéance</dt><dd>${date(document.due_date)}</dd><dt>Statut PILOZ</dt><dd>${esc(pilozStatusLabel(document.status))}</dd><dt>Lignes</dt><dd>${lines.length}</dd></dl></section>${exchange ? `<section class="superpdp-supplier-workflow"><div class="superpdp-workflow-heading"><div><h3>Traitement de la facture</h3><span>Statut transmis à la PA</span></div>${statusBadge(code)}</div>${workflowActions(code)}<p class="superpdp-workflow-note">Cette décision ne comptabilise pas la facture et n’enregistre aucun paiement.</p>${workflowHistory(data, exchange)}</section><section class="superpdp-supplier-exchange"><h3>Facture électronique</h3><b>Reçue via SUPER PDP</b><dl><dt>Format</dt><dd>${esc(exchange.xml_format || 'CII / Factur-X')}</dd><dt>Dernière synchro.</dt><dd>${datetime(exchange.last_synced_at)}</dd></dl><p>Échange enregistré dans le journal de facturation électronique.</p></section>` : ''}</aside>`;
   }
 
   function modal() {
     const decision = DECISIONS[ui.decision];
     if (!decision) return '';
     const reasons = decision.reasons.map(code => `<option value="${esc(code)}">${esc(REASON_LABELS[code] || code)}</option>`).join('');
-    const production = productionActive(runtime()?.data || {});
-    return `<div class="superpdp-workflow-modal-backdrop" onclick="if(event.target===this)PilozSuperPdpWorkspace.closeDecision()"><section class="superpdp-workflow-modal" role="dialog" aria-modal="true" aria-labelledby="superpdp-decision-title"><header><div><h2 id="superpdp-decision-title">${esc(decision.title)}</h2><p>${esc(decision.help)}</p></div><button onclick="PilozSuperPdpWorkspace.closeDecision()" aria-label="Fermer">×</button></header><form id="superpdp-decision-form" onsubmit="event.preventDefault();PilozSuperPdpWorkspace.submitDecision()"><label><span>Type de motif *</span><select name="reasonCode" required><option value="">Choisir un motif AFNOR…</option>${reasons}</select></label><label><span>Explication transmise au fournisseur *</span><textarea name="note" required maxlength="1200" placeholder="Expliquez clairement votre décision…"></textarea></label><p>Le motif normalisé et votre explication seront horodatés dans PILOZ puis envoyés à SUPER PDP en ${production ? 'production' : 'bac à sable'}.</p><footer><button type="button" onclick="PilozSuperPdpWorkspace.closeDecision()">Annuler</button><button type="submit" class="${ui.decision === 'fr:210' ? 'danger' : 'primary'}" ${ui.busy ? 'disabled' : ''}>${ui.busy ? 'Transmission…' : esc(decision.submit)}</button></footer></form></section></div>`;
+    return `<div class="superpdp-workflow-modal-backdrop" onclick="if(event.target===this)PilozSuperPdpWorkspace.closeDecision()"><section class="superpdp-workflow-modal" role="dialog" aria-modal="true" aria-labelledby="superpdp-decision-title"><header><div><h2 id="superpdp-decision-title">${esc(decision.title)}</h2><p>${esc(decision.help)}</p></div><button onclick="PilozSuperPdpWorkspace.closeDecision()" aria-label="Fermer">×</button></header><form id="superpdp-decision-form" onsubmit="event.preventDefault();PilozSuperPdpWorkspace.submitDecision()"><label><span>Type de motif *</span><select name="reasonCode" required><option value="">Choisir un motif AFNOR…</option>${reasons}</select></label><label><span>Explication transmise au fournisseur *</span><textarea name="note" required maxlength="1200" placeholder="Expliquez clairement votre décision…"></textarea></label><p>Le motif normalisé et votre explication seront horodatés dans PILOZ puis transmis à SUPER PDP.</p><footer><button type="button" onclick="PilozSuperPdpWorkspace.closeDecision()">Annuler</button><button type="submit" class="${ui.decision === 'fr:210' ? 'danger' : 'primary'}" ${ui.busy ? 'disabled' : ''}>${ui.busy ? 'Transmission…' : esc(decision.submit)}</button></footer></form></section></div>`;
   }
 
   function scheduleAutoSync() {
-    if (!canSync() || ui.busy || ui.autoBusy || Date.now() - ui.lastAutoSyncAt < 120000) return;
+    if (!canSync() || !productionActive(runtime()?.data || {}) || ui.busy || ui.autoBusy || Date.now() - ui.lastAutoSyncAt < 120000) return;
     ui.lastAutoSyncAt = Date.now();
     setTimeout(() => syncIncoming(true), 0);
   }
@@ -416,7 +413,7 @@
         const failed = Number(result.failed || 0);
         const found = Number(result.found || 0);
         if (failed) notify(`${imported} facture(s) importée(s). ${failed} facture(s) reçue(s) n’ont pas pu être intégrées.`);
-        else if (!found) notify(`Synchronisation terminée : aucune nouvelle facture reçue dans ${result.environment === 'production' ? 'SUPER PDP production' : 'le bac à sable SUPER PDP'}.`);
+        else if (!found) notify('Synchronisation terminée : aucune nouvelle facture reçue via SUPER PDP.');
         else notify(`${imported} nouvelle(s) facture(s) fournisseur importée(s). Les statuts ont été actualisés.`);
       }
     } catch (error) {

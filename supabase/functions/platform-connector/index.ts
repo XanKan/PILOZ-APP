@@ -1194,12 +1194,12 @@ Deno.serve(async req => {
     }
     if (action === "configure_sandbox" && companyId) {
       const { data, error } = await userClient.rpc("create_platform_sandbox", { target_company_id: companyId });
-      if (error) return json({ error: "Le bac à sable n'a pas pu être configuré." }, 403);
-      return json({ connectorId: data, displayStatus: "Simulation", simulation: true, production: false });
+      if (error) return json({ error: "Le connecteur SUPER PDP n'a pas pu être configuré." }, 403);
+      return json({ connectorId: data, displayStatus: "Configuré", simulation: true, production: false });
     }
     if (action === "simulate" && body.recordId && body.idempotencyKey) {
       const { data, error } = await userClient.rpc("run_platform_sandbox_simulation", { target_record_id: body.recordId, target_operation: body.operation || "send_invoice", target_idempotency_key: body.idempotencyKey });
-      if (error) return json({ error: "La simulation n'a pas abouti.", code: error.code || "simulation_failed" }, 409);
+      if (error) return json({ error: "L'opération n'a pas abouti.", code: error.code || "simulation_failed" }, 409);
       return json(data);
     }
     if (action === "production") return json({ error: "La production SUPER PDP se configure depuis Paramètres > Extensions > Facturation électronique.", code: "superpdp_production_managed_by_oauth" }, 409);
@@ -1220,15 +1220,15 @@ Deno.serve(async req => {
       superpdp_status_audit_failed: "La décision a été transmise, mais son statut n’a pas pu être enregistré dans PILOZ.",
       forbidden: "Vous n’avez pas l’autorisation de gérer la facturation électronique.",
       superpdp_credentials_not_configured: "Les identifiants serveur SUPER PDP ne sont pas encore configurés.",
-      superpdp_authentication_failed: "SUPER PDP a refusé les identifiants de l’application sandbox.",
-      superpdp_account_is_not_sandbox: "L’application SUPER PDP configurée n’appartient pas au bac à sable.",
-      superpdp_sandbox_required: "Le connecteur SUPER PDP est verrouillé sur le bac à sable.",
+      superpdp_authentication_failed: "SUPER PDP a refusé les identifiants de l’application.",
+      superpdp_account_is_not_sandbox: "L’application SUPER PDP configurée n’est pas compatible avec cet environnement.",
+      superpdp_sandbox_required: "Le connecteur SUPER PDP n’est pas activé pour les échanges réels.",
       superpdp_production_authorization_missing: "Cette entreprise n’a pas encore autorisé SUPER PDP en production.",
       superpdp_production_authorization_required: "Terminez l’activation SUPER PDP de cette entreprise avant de transmettre des factures.",
       superpdp_production_reauthorization_required: "L’autorisation SUPER PDP a expiré. Reconnectez l’entreprise depuis les paramètres.",
       superpdp_job_queue_unavailable: "La file d’envoi SUPER PDP est temporairement indisponible.",
-      superpdp_test_confirmation_required: "Confirmez explicitement l’envoi de la facture de test.",
-      superpdp_connector_not_configured: "Testez d’abord la connexion SUPER PDP dans les paramètres.",
+      superpdp_test_confirmation_required: "Cette action nécessite une confirmation explicite.",
+      superpdp_connector_not_configured: "Configurez d’abord la connexion SUPER PDP dans les paramètres.",
       finalized_fiscal_document_required: "Finalisez la facture avant de la transmettre.",
       final_pdf_unavailable: "Le PDF définitif n’est pas encore disponible. Réessayez dans quelques instants.",
       canonical_invoice_invalid: "La facture ne contient pas toutes les données requises pour la facturation électronique.",
@@ -1236,7 +1236,7 @@ Deno.serve(async req => {
       superpdp_buyer_electronic_address_required: "L’identifiant électronique du client est manquant.",
       superpdp_invoice_lines_required: "La facture doit contenir au moins une ligne facturable.",
       superpdp_invoice_conversion_failed: "SUPER PDP n’a pas pu convertir cette facture en Factur-X et CII. Vérifiez les montants, la TVA et les coordonnées des deux entreprises.",
-      superpdp_sandbox_routing_failed: "SUPER PDP n’a pas fourni les entreprises de test nécessaires au routage dans le bac à sable.",
+      superpdp_sandbox_routing_failed: "SUPER PDP n’a pas fourni les entreprises nécessaires au routage.",
       superpdp_xml_unavailable: "Aucun XML électronique n’est encore disponible pour ce document.",
       superpdp_invoice_send_failed: "SUPER PDP a refusé cette facture. Consultez le détail fourni par la plateforme.",
       superpdp_artifact_storage_failed: "Les fichiers Factur-X et CII ont été créés, mais Piloz n’a pas pu les archiver.",
