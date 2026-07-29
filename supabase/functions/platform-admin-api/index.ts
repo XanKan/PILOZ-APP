@@ -73,7 +73,7 @@ Deno.serve(async req=>{
   if(action==="companies.create"){
    requirePermission("companies.write");requirePermission("users.write");const companyValues=record(payload.company),subscriptionValues=record(payload.subscription);
    const ownerEmail=email(companyValues.owner_email),ownerUserId=payload.ownerUserId?uuid(payload.ownerUserId):null;let userId=ownerUserId;
-   if(!userId){const {data,error}=await privileged().auth.admin.inviteUserByEmail(ownerEmail,{data:{first_name:text(companyValues.owner_first_name,100),last_name:text(companyValues.owner_last_name,100)},redirectTo:"https://app.piloz.fr"});if(error||!data.user)throw Object.assign(new Error(error?.message?.toLowerCase().includes("already")?"Ce propriétaire existe déjà. Ajoutez-le depuis sa fiche utilisateur.":"L’invitation du propriétaire a échoué."),{status:error?.status||400});userId=data.user.id;}
+   if(!userId){const {data,error}=await privileged().auth.admin.inviteUserByEmail(ownerEmail,{data:{first_name:text(companyValues.owner_first_name,100),last_name:text(companyValues.owner_last_name,100)},redirectTo:"https://app.piloz.fr/?mode=login"});if(error||!data.user)throw Object.assign(new Error(error?.message?.toLowerCase().includes("already")?"Ce propriétaire existe déjà. Ajoutez-le depuis sa fiche utilisateur.":"L’invitation du propriétaire a échoué."),{status:error?.status||400});userId=data.user.id;}
    const {data,error}=await client.rpc("platform_admin_create_company",{target_owner_user_id:userId,target_company:companyValues,target_subscription:subscriptionValues,target_reason:text(payload.reason,500)});if(error)throw error;
    return response(req,{company:data,ownerUserId:userId,invitationSent:!ownerUserId},201);
   }
@@ -91,7 +91,7 @@ Deno.serve(async req=>{
   }
   if(action==="users.invite"){
    requirePermission("users.write");const companyId=uuid(payload.companyId),targetEmail=email(payload.email),role=text(payload.role,20)||"member";
-   const {data:invitation,error:inviteError}=await privileged().auth.admin.inviteUserByEmail(targetEmail,{data:{first_name:text(payload.firstName,100),last_name:text(payload.lastName,100)},redirectTo:"https://app.piloz.fr"});
+   const {data:invitation,error:inviteError}=await privileged().auth.admin.inviteUserByEmail(targetEmail,{data:{first_name:text(payload.firstName,100),last_name:text(payload.lastName,100)},redirectTo:"https://app.piloz.fr/?mode=login"});
    if(inviteError||!invitation.user)throw Object.assign(new Error(inviteError?.message?.toLowerCase().includes("already")?"Cet utilisateur existe déjà. Utilisez son identifiant pour le rattacher.":"L’invitation n’a pas pu être envoyée."),{status:inviteError?.status||400});
    const reason=text(payload.reason,500)||"Invitation par un administrateur Piloz";
    const {error:memberError}=await client.rpc("platform_admin_manage_company_user",{target_company_id:companyId,target_user_id:invitation.user.id,target_role:role,target_operation:"attach",target_reason:reason});if(memberError)throw memberError;
@@ -107,9 +107,15 @@ Deno.serve(async req=>{
    await client.rpc("platform_admin_record_auth_action",{target_user_id:userId,target_company_id:companyId,target_action:suspended?"user.auth_suspended":"user.auth_reactivated",target_reason:reason,target_new_state:{suspended}});
    return response(req,{userId:data.user.id,suspended});
   }
+  if(action==="users.activation_email"){
+   requirePermission("users.write");const targetEmail=email(payload.email),userId=uuid(payload.userId),companyId=payload.companyId?uuid(payload.companyId):null,reason=text(payload.reason,500);
+   if(!reason)throw new Error("Le motif est obligatoire");const {error}=await privileged().auth.resetPasswordForEmail(targetEmail,{redirectTo:"https://app.piloz.fr/?mode=login"});if(error)throw error;
+   await client.rpc("platform_admin_record_auth_action",{target_user_id:userId,target_company_id:companyId,target_action:"user.activation_email_resent",target_reason:reason,target_new_state:{requested:true}});
+   return response(req,{sent:true});
+  }
   if(action==="users.password_reset"){
    requirePermission("users.write");const targetEmail=email(payload.email),userId=uuid(payload.userId),companyId=payload.companyId?uuid(payload.companyId):null,reason=text(payload.reason,500);
-   if(!reason)throw new Error("Le motif est obligatoire");const {error}=await privileged().auth.resetPasswordForEmail(targetEmail,{redirectTo:"https://app.piloz.fr"});if(error)throw error;
+   if(!reason)throw new Error("Le motif est obligatoire");const {error}=await privileged().auth.resetPasswordForEmail(targetEmail,{redirectTo:"https://app.piloz.fr/?mode=login"});if(error)throw error;
    await client.rpc("platform_admin_record_auth_action",{target_user_id:userId,target_company_id:companyId,target_action:"user.password_reset_requested",target_reason:reason,target_new_state:{requested:true}});
    return response(req,{sent:true});
   }

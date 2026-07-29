@@ -53,7 +53,7 @@ Deno.serve(async req=>{
       if(existingUser&&members?.some(member=>member.user_id===existingUser!.id))throw new Error("Cet utilisateur appartient déjà à l’entreprise.");
       let invitedUserId=existingUser?.id||null,deliveryStatus="not_configured",invitationSent=false,deliveryError:string|null=null;
       if(!existingUser){
-        const {data,error}=await admin.auth.admin.inviteUserByEmail(targetEmail,{data:{first_name:firstName,last_name:lastName,full_name:`${firstName} ${lastName}`},redirectTo:"https://app.piloz.fr/#dashboard"});
+        const {data,error}=await admin.auth.admin.inviteUserByEmail(targetEmail,{data:{first_name:firstName,last_name:lastName,full_name:`${firstName} ${lastName}`},redirectTo:"https://app.piloz.fr/?mode=login"});
         if(error||!data.user){deliveryStatus="failed";deliveryError=error?.message||"Invitation Auth impossible";}else{invitedUserId=data.user.id;deliveryStatus="sent";invitationSent=true;}
       }
       const token=crypto.randomUUID()+crypto.randomUUID(),tokenHash=await sha256(token),status=deliveryStatus==="sent"?"sent":"pending";
@@ -67,7 +67,7 @@ Deno.serve(async req=>{
       const invitationId=uuid(payload.invitationId) as string,{data:invitation}=await admin.from("company_invitations").select("*").eq("id",invitationId).eq("company_id",companyId).maybeSingle();
       if(!invitation||!["pending","sent","failed","expired"].includes(invitation.status))throw new Error("Cette invitation ne peut plus être renvoyée.");
       let sent=false,errorText:null|string=null;
-      if(!invitation.invited_user_id){const result=await admin.auth.admin.inviteUserByEmail(invitation.email,{data:{first_name:invitation.first_name,last_name:invitation.last_name},redirectTo:"https://app.piloz.fr/#dashboard"});sent=!result.error;if(result.data.user)invitation.invited_user_id=result.data.user.id;errorText=result.error?.message||null;}
+      if(!invitation.invited_user_id){const result=await admin.auth.admin.inviteUserByEmail(invitation.email,{data:{first_name:invitation.first_name,last_name:invitation.last_name},redirectTo:"https://app.piloz.fr/?mode=login"});sent=!result.error;if(result.data.user)invitation.invited_user_id=result.data.user.id;errorText=result.error?.message||null;}
       else errorText="Le compte existe déjà : l’invitation sera proposée à sa prochaine connexion.";
       const next={status:sent?"sent":"pending",delivery_status:sent?"sent":"not_configured",delivery_error:errorText,send_count:Number(invitation.send_count||0)+(sent?1:0),last_sent_at:sent?new Date().toISOString():invitation.last_sent_at,expires_at:new Date(Date.now()+7*86400000).toISOString(),invited_user_id:invitation.invited_user_id,updated_at:new Date().toISOString()};
       await admin.from("company_invitations").update(next).eq("id",invitationId);await audit("invitation.resent","company_invitation",invitationId,{status:invitation.status},{status:next.status,delivery_status:next.delivery_status});

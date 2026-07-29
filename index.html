@@ -522,7 +522,7 @@ try{
     history.replaceState(null,'',location.pathname + location.search);
   } else if(hash.startsWith('#')){
     const hp = new URLSearchParams(hash.slice(1));
-    if(hp.get('type')==='recovery' && hp.get('access_token')){
+    if(['recovery','invite'].includes(hp.get('type')) && hp.get('access_token')){
       PENDING_RECOVERY = {
         access_token: hp.get('access_token') || '',
         refresh_token: hp.get('refresh_token') || '',

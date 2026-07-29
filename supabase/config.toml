@@ -13,6 +13,36 @@ schema_paths = []
 enabled = false
 sql_paths = []
 
+# Les invitations et les réinitialisations doivent toujours revenir sur
+# l'application publiée. Les URL d'administration restent explicitement
+# autorisées pour les invitations de l'équipe interne Piloz.
+[auth]
+site_url = "https://app.piloz.fr"
+additional_redirect_urls = [
+  "https://app.piloz.fr",
+  "https://app.piloz.fr/**",
+  "https://admin.piloz.fr",
+  "https://admin.piloz.fr/**"
+]
+
+# Conserver les protections MFA et les paramètres OTP de production lors d'un
+# `supabase config push`. Sans ces valeurs, la CLI proposerait ses valeurs
+# locales par défaut, moins strictes.
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[auth.email]
+max_frequency = "1m0s"
+otp_length = 8
+otp_expiry = 3600
+
+# Le stockage vectoriel n'est pas utilisé par Piloz et nécessite un plan
+# Supabase payant. Le désactiver évite qu'un push de configuration tente de
+# l'activer par défaut.
+[storage.vector]
+enabled = false
+
 # Stripe signe lui-même chaque webhook. Cette route publique ne dépend donc
 # pas d'un JWT Supabase ; la signature HMAC Stripe reste obligatoire.
 [functions.stripe-webhook]
