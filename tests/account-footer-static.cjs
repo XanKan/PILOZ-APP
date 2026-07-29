@@ -17,6 +17,7 @@ assert.match(footer, /class="rail-company-name"/, 'Le nom de la société doit �
 assert.match(footer, /class="rail-logout-button"/, 'Un bouton de déconnexion dédié doit être rendu.');
 assert.match(footer, /onclick="deconnecter\(\)"/, 'Le bouton doit déclencher la déconnexion existante.');
 assert.doesNotMatch(footer, /LOGICIEL PILOZ|ERP\.PILOZ@OUTLOOK\.COM/i, 'Le pied ne doit plus afficher l’identité fixe de Piloz.');
+assert.doesNotMatch(footer, /Synchronisé|rail-sync-status/, 'Le pied connecté doit rester limité au nom de la société et à la déconnexion.');
 assert.match(app, /PilozRefreshAccountFooter\?\.\(\)/, 'Le pied doit être rafraîchi après le chargement des données de la société.');
 assert.match(css, /\.rail-account-card/);
 assert.match(css, /\.rail-logout-button:hover/);
