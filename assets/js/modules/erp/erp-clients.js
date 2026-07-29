@@ -32,6 +32,44 @@
   const notify = (message, kind = "info") =>
     global.PilozCommercialV2?.notify?.(message, kind) ||
     global.toast?.(message);
+  async function ensureClientPrimaryContact(clientId, client = {}) {
+    const firstName = String(client.first_name || "").trim(),
+      lastName = String(client.last_name || "").trim();
+    if (!clientId || !firstName || !lastName) return true;
+    try {
+      const existing = await api().query(
+        "client_contacts",
+        `select=id&client_id=eq.${encodeURIComponent(clientId)}&is_primary=eq.true&limit=1`,
+      );
+      if (Array.isArray(existing) && existing.length) return true;
+      await api().rpc("save_client_contact", {
+        target_client_id: clientId,
+        target_contact: {
+          id: null,
+          civility: client.civility || null,
+          first_name: firstName,
+          last_name: lastName,
+          email: client.email || null,
+          phone_e164: client.phone_e164 || null,
+          language: client.language || "fr",
+          is_primary: true,
+          active: true,
+        },
+        target_roles: ["primary"],
+      });
+      return true;
+    } catch (error) {
+      console.error("[PILOZ Clients] Contact principal non créé", {
+        client_id: clientId,
+        code: error?.code || "",
+        status: error?.status || 0,
+        message: error?.message || String(error),
+      });
+      return false;
+    }
+  }
+  global.PilozEnsureClientPrimaryContact =
+    global.PilozEnsureClientPrimaryContact || ensureClientPrimaryContact;
   const button = (label, handler, kind = "btn-o", attrs = "") =>
     `<button ${/\btype\s*=/.test(attrs) ? "" : 'type="button"'} class="btn ${kind}" onclick="${handler}" ${attrs}>${esc(label)}</button>`;
   const clientName = (row) =>
@@ -1903,6 +1941,7 @@
       }
       const saved = (await api().insert("clients", payload))[0];
       if (!saved?.id) throw new Error("Identifiant du client absent.");
+      await global.PilozEnsureClientPrimaryContact(saved.id, payload);
       if (payload.address_line_1)
         await api().rpc("save_client_address", {
           target_client_id: saved.id,
