@@ -33,6 +33,9 @@ assert.ok(app.includes("10 Mo"), "La limite de pièce jointe doit être visible"
 assert.ok(app.includes("renderPiloSurfaces()"), "Le chat flottant doit être rafraîchi immédiatement après l'envoi");
 assert.ok(app.includes("piloz-ticket-overlay-root"), "Le formulaire de ticket doit être visible hors de la page Aide");
 assert.ok(!app.includes("openTicket({category:'general'"), "Les tickets issus d'un article doivent utiliser une catégorie serveur valide");
+assert.ok(!app.includes("name,description,icon,position"), "La documentation ne doit pas demander la colonne inexistante knowledge_categories.icon");
+assert.ok(!app.includes("availability,source_label,source_url"), "La documentation ne doit pas demander les colonnes article inexistantes source_label/source_url");
+assert.ok(app.includes("ui.docsLoaded=true;ui.docsLoading=false"), "Une erreur documentaire doit arrêter le rechargement automatique en boucle");
 
 const categoryBlock = app.match(/const categoryLabels=\{([^;]+)\};/)?.[1] || "";
 assert.ok(categoryBlock.includes("roadmap:"), "La catégorie spéciale Fonctionnalité à venir est requise");
