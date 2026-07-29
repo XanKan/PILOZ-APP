@@ -99,6 +99,18 @@ async function saveDraft(db,type,existingId=null,unitPrice=100,extraLines=[],cli
   const db=new PGlite({extensions:{pgcrypto}});
   try{
     await bootstrap(db);
+    const onboardingNumbering=await db.query(
+      `select (public.save_company_onboarding_document_configuration(
+        $1,1,'prefix_year_month',1,'prefix_year_month',1,30,'days_30','bank_transfer','fr'
+      )).*`,
+      [company]
+    );
+    if(onboardingNumbering.rows[0]?.quote_prefix!=='DEV'
+      ||onboardingNumbering.rows[0]?.invoice_prefix!=='FAC'
+      ||onboardingNumbering.rows[0]?.credit_prefix!=='AV'
+      ||onboardingNumbering.rows[0]?.order_prefix!=='CMD'
+      ||onboardingNumbering.rows[0]?.default_payment_method!=='bank_transfer')
+      throw new Error(`onboarding: invalid atomic document configuration ${JSON.stringify(onboardingNumbering.rows[0])}`);
     await db.exec('reset role');
     await db.exec(`
       insert into auth.users(id,email,raw_user_meta_data) values('${commercialActor}','commercial@piloz.fr',jsonb_build_object('first_name','Camille'));

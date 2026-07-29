@@ -36,6 +36,8 @@ jobs:
           node tests/navigation-multitab-static.cjs
           node tests/navigation-overlay-static.cjs
           node tests/oauth-license-static.cjs
+          node tests/onboarding-step1-static.cjs
+          node tests/onboarding-step6-numbering-static.cjs
           node tests/platform-admin-mfa-static.cjs
           node tests/security-hardening-static.cjs
           node tests/settings-navigation-static.cjs
