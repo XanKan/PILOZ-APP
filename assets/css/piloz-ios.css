@@ -56,14 +56,16 @@ body[data-theme="dark"]{
 }
 .rail-account-card{display:grid;gap:9px;min-width:0}
 .rail-company-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff;font-size:.78rem;font-weight:760;letter-spacing:.01em}
-.rail-logout-button{
-  width:100%;min-height:36px;padding:8px 10px;border:1px solid rgba(255,255,255,.12);border-radius:11px;
-  background:rgba(255,255,255,.06);color:rgba(241,249,250,.88);display:flex;align-items:center;justify-content:center;gap:8px;
-  font:700 .7rem 'Albert Sans',sans-serif;cursor:pointer;transition:background .16s ease,border-color .16s ease,transform .16s ease,box-shadow .16s ease;
+.rail-account-actions{display:flex;align-items:center;gap:8px}
+.rail-help-button,.rail-logout-button{
+  width:38px;height:38px;padding:0;border:1px solid rgba(255,255,255,.12);border-radius:12px;
+  background:rgba(255,255,255,.06);color:rgba(241,249,250,.88);display:grid;place-items:center;
+  cursor:pointer;transition:background .16s ease,border-color .16s ease,transform .16s ease,box-shadow .16s ease;
 }
-.rail-logout-button svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.rail-logout-button:hover{background:rgba(70,207,192,.13);border-color:rgba(70,207,192,.34);color:#fff;box-shadow:0 8px 20px rgba(0,0,0,.12);transform:translateY(-1px)}
-.rail-logout-button:focus-visible{outline:2px solid #46cfc0;outline-offset:2px}
+.rail-help-button svg,.rail-logout-button svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.rail-help-button:hover,.rail-logout-button:hover,.rail-help-button.active{background:rgba(70,207,192,.14);border-color:rgba(70,207,192,.38);color:#fff;box-shadow:0 8px 20px rgba(0,0,0,.12);transform:translateY(-1px)}
+.rail-help-button.active{color:#7ee7dc}
+.rail-help-button:focus-visible,.rail-logout-button:focus-visible{outline:2px solid #46cfc0;outline-offset:2px}
 
 html{background:var(--ios-canvas)}
 body,

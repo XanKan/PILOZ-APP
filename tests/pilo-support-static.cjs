@@ -16,13 +16,21 @@ const intake = read("supabase/migrations/202607290109_support_ticket_intake_deta
 const restrictions = read("supabase/migrations/202607290112_knowledge_access_indexing_and_review.sql");
 const reliability = read("supabase/migrations/202607290113_help_support_reliability.sql");
 const guidedAnswers = read("supabase/migrations/202607290114_pilo_guided_answers.sql");
+const academy = read("supabase/migrations/202607290115_help_academy_documentation.sql");
 
-for (const label of ["Documentation", "Pilo", "Mes tickets", "Contacter le support"]) {
+for (const label of ["Documentation", "Formation", "Pilo", "Mes tickets", "Contacter le support"]) {
   assert.ok(app.includes(label), `Entrée d'aide absente : ${label}`);
 }
+assert.ok(app.includes("TRAINING_COURSES"), "Le catalogue de formation doit être disponible");
+assert.ok(app.includes("saveTrainingProgress"), "La progression des formations doit être conservée");
+assert.ok(app.includes("help/training"), "La route Formation doit être rendue par le centre d’aide");
+assert.ok(academy.includes("prise-en-main-piloz-15-minutes"), "Le parcours de prise en main doit être publié");
+assert.ok(academy.includes("checklist-avant-finalisation-facture"), "La checklist de finalisation doit être publiée");
 assert.ok(app.includes("Bonjour, je suis Pilo. Comment puis-je vous aider ?"));
 assert.ok(app.includes("Je peux discuter avec vous et vous guider dans Piloz en m’appuyant sur la documentation officielle."));
 assert.ok(providers.includes("OpenAIResponsesAssistantProvider"), "Pilo doit disposer d’un fournisseur IA réel");
+assert.ok(providers.includes("CloudflareWorkersAIAssistantProvider"), "Pilo doit pouvoir utiliser Cloudflare Workers AI");
+assert.ok(providers.includes("api.cloudflare.com/client/v4/accounts"), "Cloudflare doit être appelé côté serveur par son API officielle");
 assert.ok(providers.includes("detectPilozIntent"), "Pilo doit distinguer une procédure métier d'un format technique");
 assert.ok(providers.includes("Ventes > Factures"), "La création d'une facture doit produire un guidage concret");
 assert.ok(providers.includes("Ne recopie jamais les titres Markdown"), "Le fournisseur IA ne doit pas restituer le gabarit documentaire brut");
@@ -30,10 +38,13 @@ assert.ok(providers.includes("https://api.openai.com/v1/responses"), "Pilo doit 
 assert.ok(providers.includes("store:false"), "Les réponses Pilo ne doivent pas être conservées chez le fournisseur IA");
 assert.ok(providers.includes('private model="gpt-5.6-sol"'), "Le modèle résolu officiellement doit être configuré par défaut");
 assert.ok(pilo.includes('Deno.env.get("OPENAI_API_KEY")'), "La clé OpenAI doit rester exclusivement côté serveur");
+assert.ok(pilo.includes('Deno.env.get("CLOUDFLARE_API_TOKEN")'), "Le jeton Cloudflare doit rester exclusivement côté serveur");
+assert.ok(pilo.includes('Deno.env.get("CLOUDFLARE_ACCOUNT_ID")'), "L’identifiant Cloudflare doit rester exclusivement côté serveur");
 assert.ok(pilo.includes("privacySafeIdentifier"), "Un identifiant de sûreté pseudonymisé est requis");
 assert.ok(pilo.includes('clean(body.conversationId,40)'), "Pilo doit réutiliser une conversation validée");
 assert.ok(app.includes("conversationId:ui.piloConversationId"), "Le navigateur doit transmettre uniquement l’identifiant de conversation");
 assert.ok(!app.includes("OPENAI_API_KEY"), "La clé OpenAI ne doit jamais apparaître dans le navigateur");
+assert.ok(!app.includes("CLOUDFLARE_API_TOKEN"), "Le jeton Cloudflare ne doit jamais apparaître dans le navigateur");
 assert.ok(pilo.includes("La gestion des stocks fait actuellement partie de la roadmap Piloz et n’est pas encore disponible dans la version actuelle."));
 assert.ok(knowledge.includes("La gestion des stocks est-elle disponible dans Piloz ?"));
 assert.ok(knowledge.includes("Sa disponibilité sera annoncée officiellement lors de sa mise en production."));
@@ -88,4 +99,4 @@ for (const forbidden of ["Piloz est certifié NF525", "Piloz est une plateforme 
   assert.ok(!knowledge.includes(forbidden), `Allégation interdite détectée : ${forbidden}`);
 }
 
-console.log(JSON.stringify({ ok: true, navigation: 4, safeContext: 11, privateAttachments: true, feedbackComments: true }));
+console.log(JSON.stringify({ ok: true, navigation: 5, trainingCourses: 6, safeContext: 11, privateAttachments: true, feedbackComments: true }));

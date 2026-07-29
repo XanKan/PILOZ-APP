@@ -1,11 +1,11 @@
 {
   "application": "PILOZ-APP",
-  "version": "0.9.0-compliance.61",
+  "version": "0.9.0-compliance.62",
   "release_status": "pre-release",
   "release_date": "2026-07-28",
   "source_base_commit": "66f0a01",
   "build_commit": "injected-at-deployment",
-  "schema_version": "202607290113",
+  "schema_version": "202607290115",
   "calculation_version": "financial-v2-deposit-deduction",
   "pdf_generator_version": "pdf-v3-cgv",
   "canonical_invoice_version": "1.0",

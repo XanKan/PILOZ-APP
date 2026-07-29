@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0-compliance.62 — 29 juillet 2026
+
+- Refonte le centre de documentation en parcours métiers, recherche guidée, accès par thème et checklists opérationnelles.
+- Ajoute l’Académie Piloz avec 6 parcours, 18 capsules interactives, chapitres, lecteur et progression conservée par utilisateur.
+- Branche Pilo sur Cloudflare Workers AI côté serveur avec repli automatique sur OpenAI puis sur les guides officiels.
+- Déplace l’accès Aide dans le pied du menu et réduit la déconnexion à une icône compacte, sans exposer les actions non autorisées.
+
 ## 0.9.0-compliance.61 — 29 juillet 2026
 
 - Ajoute le centre d’aide Piloz avec documentation officielle, recherche, retours utiles et suivi des tickets réels.

@@ -613,10 +613,14 @@ function piedSync(){
   const companyName = nomEntrepriseConnectee();
   return `<div class="rail-account-card">
     <div class="rail-company-name" title="${esc(companyName)}">${esc(companyName)}</div>
-    <button type="button" class="rail-logout-button" onclick="deconnecter()" aria-label="Se déconnecter de ${esc(companyName)}">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4M14 8l4 4-4 4M18 12H9"/></svg>
-      <span>Se déconnecter</span>
-    </button>
+    <div class="rail-account-actions">
+      <button type="button" class="rail-help-button" onclick="window.PilozHelp?.openArea()" aria-label="Ouvrir l’aide et le support" title="Aide et support">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.4 2.4 0 1 1 3.2 2.27c-.65.29-1 .73-1 1.48v.25M12 17h.01"/></svg>
+      </button>
+      <button type="button" class="rail-logout-button" onclick="deconnecter()" aria-label="Se déconnecter de ${esc(companyName)}" title="Se déconnecter">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4M14 8l4 4-4 4M18 12H9"/></svg>
+      </button>
+    </div>
   </div>`;
 }
 function rafraichirPiedCompte(){const f=document.getElementById('syncfoot');if(f)f.innerHTML=piedSync();}

@@ -1,5 +1,5 @@
 import {createClient} from "npm:@supabase/supabase-js@2";
-import {DisabledEmbeddingProvider,intentArticleSlugs,OpenAIResponsesAssistantProvider,ResilientAssistantProvider,SupabaseDocumentationSearchProvider,type DocumentationSource} from "../_shared/pilo-providers.ts";
+import {CloudflareWorkersAIAssistantProvider,DisabledEmbeddingProvider,intentArticleSlugs,OpenAIResponsesAssistantProvider,ResilientAssistantProvider,SupabaseDocumentationSearchProvider,type AssistantProvider,type DocumentationSource} from "../_shared/pilo-providers.ts";
 
 const origins=new Set(["https://app.piloz.fr","http://localhost:4173","http://localhost:5173","http://127.0.0.1:4173","http://127.0.0.1:5173"]);
 const allowedMimes=new Set(["application/pdf","image/png","image/jpeg","image/webp","text/plain","text/csv","application/vnd.openxmlformats-officedocument.wordprocessingml.document","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]);
@@ -58,8 +58,13 @@ Deno.serve(async req=>{
       const {data:previousMessages,error:historyError}=await admin.from("assistant_messages").select("role,content,created_at").eq("conversation_id",conversation.id).in("role",["user","assistant"]).order("created_at",{ascending:false}).limit(12);
       if(historyError)throw historyError;
       const history=(Array.isArray(previousMessages)?previousMessages:[]).reverse().map(message=>({role:message.role as "user"|"assistant",content:clean(message.content,4000)}));
-      const search=new SupabaseDocumentationSearchProvider(userClient),embeddings=new DisabledEmbeddingProvider(),openAIKey=Deno.env.get("OPENAI_API_KEY")||"",model=Deno.env.get("OPENAI_MODEL")||"gpt-5.6-sol";
-      const assistant=new ResilientAssistantProvider(openAIKey?new OpenAIResponsesAssistantProvider(openAIKey,model):null);
+      const search=new SupabaseDocumentationSearchProvider(userClient),embeddings=new DisabledEmbeddingProvider();
+      const cloudflareAccountId=Deno.env.get("CLOUDFLARE_ACCOUNT_ID")||"",cloudflareToken=Deno.env.get("CLOUDFLARE_API_TOKEN")||"",cloudflareModel=Deno.env.get("CLOUDFLARE_AI_MODEL")||"@cf/zai-org/glm-4.7-flash";
+      const openAIKey=Deno.env.get("OPENAI_API_KEY")||"",openAIModel=Deno.env.get("OPENAI_MODEL")||"gpt-5.6-sol";
+      let primary:AssistantProvider|null=null;
+      if(cloudflareAccountId&&cloudflareToken)primary=new CloudflareWorkersAIAssistantProvider(cloudflareAccountId,cloudflareToken,cloudflareModel);
+      else if(openAIKey)primary=new OpenAIResponsesAssistantProvider(openAIKey,openAIModel);
+      const assistant=new ResilientAssistantProvider(primary);
       const [prioritySources,searchedSources]=await Promise.all([canonicalSources(admin,question),search.search({question,companyId,safeContext:safe||{},limit:6})]);
       let sources=mergeSources(prioritySources,searchedSources),result;
       if(isStockQuestion(question)){
@@ -68,9 +73,10 @@ Deno.serve(async req=>{
       }else result={...(await assistant.answer({question,sources,history,safeContext:safe||{},safetyIdentifier:await privacySafeIdentifier(user.id,companyId)})),isRoadmap:false};
       let unansweredId:string|null=null;if(result.answerLevel==="none"){const {data,error}=await userClient.rpc("record_unanswered_pilo_question",{target_company_id:companyId,question_text:question,safe_context:safe||{}});if(error)throw error;unansweredId=data;}
       const {error:userMessageError}=await admin.from("assistant_messages").insert({conversation_id:conversation.id,role:"user",content:question,safe_context:safe||{}});if(userMessageError)throw userMessageError;
-      const {data:assistantMessage,error:assistantMessageError}=await admin.from("assistant_messages").insert({conversation_id:conversation.id,role:"assistant",content:result.answer,answer_level:result.answerLevel,source_article_ids:sources.map(source=>source.id),safe_context:{provider:result.provider,model:result.provider==="openai_responses"?model:null,embedding_provider:embeddings.enabled?"configured":"disabled"}}).select("id").single();if(assistantMessageError)throw assistantMessageError;
+      const providerModel=result.provider==="cloudflare_workers_ai"?cloudflareModel:result.provider==="openai_responses"?openAIModel:null;
+      const {data:assistantMessage,error:assistantMessageError}=await admin.from("assistant_messages").insert({conversation_id:conversation.id,role:"assistant",content:result.answer,answer_level:result.answerLevel,source_article_ids:sources.map(source=>source.id),safe_context:{provider:result.provider,model:providerModel,embedding_provider:embeddings.enabled?"configured":"disabled"}}).select("id").single();if(assistantMessageError)throw assistantMessageError;
       await admin.from("assistant_conversations").update({updated_at:new Date().toISOString(),safe_context:safe||{}}).eq("id",conversation.id);
-      return reply(req,{answer:result.answer,answerLevel:result.answerLevel,sources:sources.map(source=>({id:source.id,slug:source.slug,title:source.title,availability:source.availability})),conversationId:conversation.id,messageId:assistantMessage.id,unansweredId,canCreateTicket:result.answerLevel==="none"||result.isRoadmap,isRoadmap:result.isRoadmap,aiEnabled:result.provider==="openai_responses"});
+      return reply(req,{answer:result.answer,answerLevel:result.answerLevel,sources:sources.map(source=>({id:source.id,slug:source.slug,title:source.title,availability:source.availability})),conversationId:conversation.id,messageId:assistantMessage.id,unansweredId,canCreateTicket:result.answerLevel==="none"||result.isRoadmap,isRoadmap:result.isRoadmap,aiEnabled:["cloudflare_workers_ai","openai_responses"].includes(result.provider)});
     }
     if(action==="attach-ticket-file"){
       const ticketId=uuid(body.ticketId),fileName=safeName(body.fileName),mimeType=clean(body.mimeType,160).toLowerCase(),size=Number(body.size||0),encoded=String(body.fileBase64||"");
