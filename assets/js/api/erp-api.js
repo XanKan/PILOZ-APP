@@ -21,6 +21,19 @@
     try{return JSON.stringify(value,(key,item)=>item===undefined?null:item);}
     catch(error){console.error('[PILOZ API] Sérialisation de la requête impossible',{name:error.name,message:error.message});const failure=new Error('Certaines informations du formulaire ne peuvent pas être enregistrées.');failure.code='invalid_request_body';throw failure;}
   }
+  function validUuid(value){return/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value||''));}
+  function currentUserId(){
+    const session=global.PilozRuntime?.session||{};
+    if(validUuid(session.user_id))return session.user_id;
+    const identity=global.PilozSessionIdentityFromToken?.(session.access_token)||{};
+    if(validUuid(identity.user_id)){
+      session.user_id=identity.user_id;
+      if(!session.email&&identity.email)session.email=identity.email;
+      try{localStorage.setItem('piloz_ses',JSON.stringify(session));}catch(error){}
+      return identity.user_id;
+    }
+    return'';
+  }
   const FISCAL_DOCUMENT_TYPES=new Set(['invoice','deposit_invoice','balance_invoice','credit_note','proforma_invoice']);
   const FISCAL_DOCUMENT_FIELDS=new Set(['document_type','number','client_id','status','issue_date','due_date','currency','payment_terms','payment_method','discount_rate','total_cost','total_excl_tax','total_tax','total_incl_tax','source_document_id','validated_at','finalized_at','finalized_by','locked_at','snapshot_id','fiscal_security_status']);
   function parsedRequestBody(body){if(body==null)return null;if(typeof body!=='string')return body;try{return JSON.parse(body);}catch{return null;}}
@@ -107,8 +120,9 @@
         if(global.confirm(`Vous êtes invité à rejoindre ${company}${role}. Accepter cette invitation ?`))await rpc('accept_company_invitation',{target_invitation_id:invitation.id});
       }
     }catch(error){if(!['PGRST202','42883'].includes(String(error?.code||'')))console.warn('[PILOZ Accès] Invitations non chargées',{code:error?.code||'',message:error?.message||String(error)});}
-    let rows=await request('/rest/v1/user_preferences?select=company_id&user_id=eq.'+encodeURIComponent(global.PilozRuntime.session.user_id));
-    if(!rows[0]?.company_id){await rpc('ensure_user_company',{company_name:'Mon entreprise'});rows=await request('/rest/v1/user_preferences?select=company_id&user_id=eq.'+encodeURIComponent(global.PilozRuntime.session.user_id));}
+    const userId=currentUserId(),preferencePath='/rest/v1/user_preferences?select=company_id'+(userId?'&user_id=eq.'+encodeURIComponent(userId):'&limit=1');
+    let rows=await request(preferencePath);
+    if(!rows[0]?.company_id){await rpc('ensure_user_company',{company_name:'Mon entreprise'});rows=await request(preferencePath);}
     if(!rows[0]?.company_id)throw new Error("Aucune entreprise n'est associée à ce compte.");return rows[0].company_id;
   }
   async function invoke(name,body,signal){

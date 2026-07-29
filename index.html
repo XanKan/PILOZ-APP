@@ -498,6 +498,26 @@ function normaliserUrlSb(u){
   if(m2) return m2[1];
   return u;
 }
+function isValidUuid(value){
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value||''));
+}
+function sessionIdentityFromToken(token){
+  try{
+    const part=String(token||'').split('.')[1];
+    if(!part)return{};
+    const normalized=part.replace(/-/g,'+').replace(/_/g,'/').padEnd(Math.ceil(part.length/4)*4,'=');
+    const payload=JSON.parse(decodeURIComponent(Array.from(atob(normalized),char=>'%'+char.charCodeAt(0).toString(16).padStart(2,'0')).join('')));
+    return {user_id:isValidUuid(payload.sub)?payload.sub:'',email:String(payload.email||'')};
+  }catch(error){return{};}
+}
+function hydrateSessionIdentity(session){
+  if(!session?.access_token)return session;
+  const identity=sessionIdentityFromToken(session.access_token);
+  if(!isValidUuid(session.user_id)&&identity.user_id)session.user_id=identity.user_id;
+  if(!session.email&&identity.email)session.email=identity.email;
+  return session;
+}
+window.PilozSessionIdentityFromToken=sessionIdentityFromToken;
 /* ⚙️ CONFIGURATION INTÉGRÉE — pour que TOUS les appareils soient pré-configurés,
    collez ici la clé « anon public » de votre projet Supabase (Settings → API).
    Elle commence par eyJ. Tant qu'elle n'est pas renseignée, la configuration manuelle reste possible. */
@@ -526,7 +546,7 @@ try{
       PENDING_RECOVERY = {
         access_token: hp.get('access_token') || '',
         refresh_token: hp.get('refresh_token') || '',
-        user_id: hp.get('user_id') || '',
+        user_id: hp.get('user_id') || sessionIdentityFromToken(hp.get('access_token')).user_id || '',
         email: hp.get('email') || ''
       };
       history.replaceState(null,'',location.pathname + location.search);
@@ -534,7 +554,7 @@ try{
       PENDING_OAUTH = {
         access_token: hp.get('access_token') || '',
         refresh_token: hp.get('refresh_token') || '',
-        user_id: hp.get('user_id') || '',
+        user_id: hp.get('user_id') || sessionIdentityFromToken(hp.get('access_token')).user_id || '',
         email: hp.get('email') || ''
       };
       history.replaceState(null,'',location.pathname + location.search.replace(/([?&])mode=(login|signup)(&|$)/,'$1').replace(/[?&]$/,''));
@@ -549,6 +569,7 @@ let SES = lsGet('piloz_ses') || null;         // {access_token, refresh_token, u
 window.PilozRuntime={get config(){return CFG;},get session(){return SES;},get state(){return S;},get setupStep(){return typeof phase1SetupStep==='number'?phase1SetupStep:0;},request:sb};
 if(PENDING_RECOVERY){ SES = {...(SES||{}), ...PENDING_RECOVERY}; authRecovery = true; authMode = 'login'; lsSet('piloz_ses', SES); }
 if(PENDING_OAUTH){ SES = {...(SES||{}), ...PENDING_OAUTH}; window.PilozOAuthSessionPending = true; lsSet('piloz_ses', SES); }
+if(SES){hydrateSessionIdentity(SES);lsSet('piloz_ses',SES);}
 if(PENDING_HASH_ERROR){ authStatusMessage = PENDING_HASH_ERROR; authStatusKind = 'error'; }
 let syncEtat = 'local';                      // local | ok | pending | offline
 function setSync(s){ syncEtat = s; const f=document.getElementById('syncfoot'); if(f) f.innerHTML = piedSync(); }
@@ -577,17 +598,31 @@ async function rafraichir(){
     lsSet('piloz_ses', SES); return true;
   }catch(e){ return false; }
 }
+let legacyCloudStateAvailable=true;
+async function legacyCloudStateMissing(response){
+  if(response.status===404)return true;
+  if(![400,406].includes(response.status))return false;
+  try{
+    const body=await response.clone().text();
+    return /PGRST20[45]|public\.etat|table[^\n]*etat|schema cache/i.test(body);
+  }catch(error){return false;}
+}
 async function cloudCharger(){
+  if(!legacyCloudStateAvailable)return null;
   const r = await sb('/rest/v1/etat?select=data', {method:'GET'});
+  if(await legacyCloudStateMissing(r)){legacyCloudStateAvailable=false;return null;}
   if(!r.ok) throw new Error('lecture');
   const rows = await r.json();
   return rows.length ? rows[0].data : null;
 }
 async function cloudSauver(){
+  if(!legacyCloudStateAvailable)return false;
   const r = await sb('/rest/v1/etat', {method:'POST',
     headers:{'Prefer':'resolution=merge-duplicates'},
     body: JSON.stringify({user_id: SES.user_id, data: S, updated_at: new Date().toISOString()})});
+  if(await legacyCloudStateMissing(r)){legacyCloudStateAvailable=false;return false;}
   if(!r.ok) throw new Error('écriture');
+  return true;
 }
 
 async function deconnecter(){
@@ -2942,7 +2977,7 @@ async function boActif(uid, actif){
 }
 </script>
 <script src="assets/js/phase1-foundation.js?v=20260728.2"></script>
-<script src="assets/js/api/erp-api.js?v=20260727.2"></script>
+<script src="assets/js/api/erp-api.js?v=20260729.1"></script>
 <script src="assets/js/utils/erp-calculations.js?v=20260721.10"></script>
 <script src="assets/js/domain/fiscal-domain.js?v=20260726.2"></script>
 <script src="assets/js/domain/electronic-invoice.js?v=20260722.1"></script>
