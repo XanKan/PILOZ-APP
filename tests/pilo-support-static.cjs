@@ -64,6 +64,7 @@ assert.ok(clientSearchFunction.includes("refreshClientSearchResults()") && !clie
 assert.ok(app.includes("selector:'[data-document-line] .document-v2-designation',allow:true,event:'change'"), "La recherche et la sélection de l’article doivent rester une seule action fluide");
 assert.ok(app.includes("title:'Passer un devis en facture',duration:180") && app.includes("button[onclick*=\"piloz-training-demo-quote\"]"), "La formation Facture doit partir d’un devis existant");
 assert.ok(app.includes(".document-viewer-primary-actions details > summary") && app.includes("button[onclick*=\"convert(\\'invoice\\')\"]"), "La formation doit faire pratiquer la conversion du devis en facture");
+assert.ok(app.includes("direct.closest?.('details')") && app.includes("disclosure.open=true"), "Le menu Convertir en doit rester ouvert lorsque la formation encadre le bouton Facture");
 assert.ok(app.includes("permet aussi de créer une facture seule") && app.includes("reprenant le client, les lignes, les prix et la TVA du devis"), "La création autonome doit rester mentionnée sans remplacer le parcours devis vers facture");
 assert.ok(app.includes("TRAINING_INVOICE_QUOTE_ID='piloz-training-demo-quote'") && app.includes("ensureTrainingFixtures(lesson)"), "Le parcours de conversion doit rester disponible même sur un compte sans devis");
 assert.ok(app.includes("removeTrainingFixtures()"), "Les documents fictifs doivent être retirés de la mémoire à la fermeture de la formation");
