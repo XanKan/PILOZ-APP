@@ -26,10 +26,14 @@ assert.ok(app.includes("TRAINING_EXERCISES"), "Chaque capsule doit proposer de v
 assert.ok(app.includes("saveTrainingProgress"), "La progression des formations doit être conservée");
 assert.ok(app.includes("help/training"), "La route Formation doit être rendue par le centre d’aide");
 assert.ok(app.includes("trainingSimulator"), "La formation doit utiliser un simulateur Piloz guidé");
-assert.ok(app.includes("Mode entraînement · aucune modification ne sera enregistrée"), "La formation doit signaler qu'elle n'enregistre aucune modification réelle");
+assert.ok(app.includes("aucune modification enregistrée"), "La formation doit signaler qu'elle n'enregistre aucune modification réelle");
 assert.ok(app.includes("TRAINING_LIVE_SCREENS"), "Chaque capsule doit être reliée à un véritable écran Piloz");
 assert.ok(app.includes("launchTraining"), "La formation doit ouvrir directement le véritable module Piloz");
 assert.ok(app.includes("trainingActive"), "Le guidage doit rester actif sur le véritable écran Piloz");
+assert.ok(app.includes("{text:'Ventes',allow:true}"), "Le clic Ventes doit réellement ouvrir son sous-menu pendant la formation");
+assert.ok(app.includes("TRAINING_DEMO_COMPANIES"), "La formation doit utiliser des entreprises fictives");
+assert.ok(app.includes("trainingAnonymizeScreen"), "Les données réelles doivent être anonymisées sur chaque écran de formation");
+assert.ok(app.includes("aucune donnée client réelle affichée"), "Le mode formation doit annoncer clairement les données fictives");
 assert.ok(!app.includes("piloz_training_frame"), "La formation ne doit plus redémarrer Piloz dans une iframe");
 assert.ok(!app.includes('id="piloz-training-live-frame"'), "Aucune iframe de formation ne doit pouvoir rester bloquée au chargement");
 assert.ok(app.includes("piloz-live-training-target"), "La zone réelle à cliquer doit être mise en évidence");
