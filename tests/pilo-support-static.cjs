@@ -20,6 +20,13 @@ const reliability = read("supabase/migrations/202607290113_help_support_reliabil
 const guidedAnswers = read("supabase/migrations/202607290114_pilo_guided_answers.sql");
 const academy = read("supabase/migrations/202607290115_help_academy_documentation.sql");
 
+assert.ok(app.includes("trainingAdvanceTimer:0"), "La formation doit disposer d'un minuteur d'enchainement automatique");
+assert.ok(app.includes("function scheduleTrainingAdvance(delay=900)"), "Une action reussie doit programmer automatiquement l'etape suivante");
+assert.ok(app.includes("scheduleTrainingAdvance(isLast?1200:900)"), "La confirmation de reussite doit avancer sans clic obligatoire");
+assert.ok(app.includes("Passage automatique à l’étape suivante…"), "L'utilisateur doit etre informe de l'enchainement automatique");
+assert.ok(app.includes("function continueTraining(){clearTimeout(ui.trainingAdvanceTimer)"), "Un clic manuel ne doit pas doubler l'avancement automatique");
+assert.ok(app.includes("function closeTraining(){clearTimeout(ui.trainingFramePoll);clearTimeout(ui.trainingFieldTimer);clearTimeout(ui.trainingAdvanceTimer)"), "Quitter la formation doit annuler l'enchainement automatique");
+
 for (const label of ["Documentation", "Formation", "Pilo", "Mes tickets", "Contacter le support"]) {
   assert.ok(app.includes(label), `Entrée d'aide absente : ${label}`);
 }
