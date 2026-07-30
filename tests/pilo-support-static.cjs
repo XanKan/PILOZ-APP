@@ -39,6 +39,9 @@ assert.ok(app.includes("selector:'[data-client-search]'"), "La formation Devis d
 assert.ok(app.includes("minLength:2,idleMs:450"), "La recherche client doit attendre une saisie stable avant de valider l’étape");
 assert.ok(app.includes("element===document.activeElement"), "L’anonymisation ne doit jamais remplacer la saisie active de l’utilisateur");
 assert.ok(!app.includes("animation:pilozTrainingPulse"), "Le repère de formation ne doit plus clignoter pendant la saisie");
+assert.ok(app.includes("function resetTrainingViewport()") && app.includes("resetTrainingViewport();trainingAnonymizeScreen()"), "La formation doit repartir en haut de la vue avant d’afficher la première cible");
+assert.ok(helpCss.includes(".piloz-training-privacy-active #main{padding-top:112px!important"), "L’en-tête Académie ne doit pas masquer les actions situées en haut de page");
+assert.ok(helpCss.includes("scroll-margin-top:128px!important") && helpCss.includes("scroll-margin-bottom:260px!important"), "Les cibles doivent rester visibles entre l’en-tête et le coach");
 assert.ok(documentEditor.includes("function refreshClientSearchResults()"), "La recherche client doit rafraîchir uniquement sa liste de résultats");
 assert.ok(documentEditor.includes("data-training-demo-client") && documentEditor.includes("Client fictif"), "La formation doit proposer un résultat client fictif même sur un compte vide");
 assert.ok(app.includes("[data-piloz-training-safe]"), "Les données fictives du parcours doivent rester stables pendant la saisie");
