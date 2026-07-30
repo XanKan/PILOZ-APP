@@ -39,6 +39,11 @@ assert.ok(app.includes("aucune modification enregistrée"), "La formation doit s
 assert.ok(app.includes("TRAINING_LIVE_SCREENS"), "Chaque capsule doit être reliée à un véritable écran Piloz");
 assert.ok(app.includes("launchTraining"), "La formation doit ouvrir directement le véritable module Piloz");
 assert.ok(app.includes("trainingActive"), "Le guidage doit rester actif sur le véritable écran Piloz");
+assert.ok(app.includes("function ensureTrainingFallback(lesson,stepIndex)"), "Un environnement sûr doit prendre le relais lorsqu'une donnée ou permission manque");
+assert.ok(app.includes("attempt===3") && app.includes("ensureTrainingFallback(lesson,ui.trainingStep)"), "Une formation ne doit jamais rester bloquée en chargement");
+assert.ok(app.includes('data-training-fixture-target=') && app.includes('data-training-event="input"') && app.includes('data-training-event="change"'), "Le mode de secours doit rester réellement interactif");
+assert.ok(app.includes("removeTrainingFallback();const {lesson}=currentTraining()"), "Chaque nouvelle étape doit reconstruire une zone d'exercice cohérente");
+assert.ok(helpCss.includes(".piloz-training-fallback{position:fixed") && helpCss.includes(".training-fixture-task"), "Le mode de secours doit utiliser un véritable écran de formation plein format");
 assert.ok(app.includes("text:'Ventes',selector:'.modern-primary-item[aria-label=\"Ventes\"]',allow:true"), "Le clic Ventes doit réellement ouvrir son sous-menu pendant la formation");
 assert.ok(app.includes("selector:'.company-subnav-item[onclick*=\"/tax\"]',allow:true"), "La formation Fiscalité doit cibler et autoriser la vraie navigation");
 assert.ok(app.includes("selector:'.company-subnav-item[onclick*=\"/bank\"]',allow:true"), "La formation Banque doit cibler et autoriser la vraie navigation");
@@ -57,6 +62,8 @@ assert.ok(app.includes("[data-piloz-training-safe]"), "Les données fictives du 
 const clientSearchFunction = documentEditor.match(/function searchClient\(value\)\{([^}]+)\}/)?.[1] || "";
 assert.ok(clientSearchFunction.includes("refreshClientSearchResults()") && !clientSearchFunction.includes("renderEditor"), "La saisie client ne doit pas reconstruire tout l’éditeur");
 assert.ok(app.includes("selector:'[data-training-demo-item]'"), "La formation Devis doit demander la sélection d’un article fictif");
+assert.ok(app.includes("button[onclick*=\"newDocument(\\'invoice\\')\"]") && app.includes("title:'Créer et finaliser une facture',duration:420"), "La formation Facture doit couvrir le cycle complet dans le véritable éditeur");
+assert.ok((app.match(/selector:'\[data-finalize-document\]'/g)||[]).length>=2, "Les formations Devis et Facture doivent aller jusqu'à la validation protégée");
 assert.ok(app.includes("saisir une ligne manuellement") && app.includes("sélectionner un article déjà créé") && app.includes("créer un nouvel article"), "Le coach doit expliquer les trois modes de saisie d’un article");
 assert.ok(app.includes("selector:'[data-line-name=\"0\"]',allow:true") && app.indexOf("selector:'[data-line-name=\"0\"]',allow:true")<app.indexOf("selector:'[data-training-demo-item]',allow:true"), "La recherche d’article doit être ouverte avant de demander la sélection d’un résultat");
 assert.ok(documentEditor.includes("TRAINING_DEMO_ITEMS") && documentEditor.includes("data-training-demo-item"), "La formation doit proposer un catalogue fictif indépendant des données réelles");
@@ -78,6 +85,7 @@ assert.ok(app.includes("piloz-live-training-target"), "La zone réelle à clique
 assert.ok(app.includes("event.stopImmediatePropagation()"), "Les actions métier dangereuses doivent être bloquées pendant la formation");
 assert.ok(app.includes("closeTraining"), "L'utilisateur doit pouvoir quitter la formation à tout moment");
 assert.ok(!app.includes('class="training-sim-app"'), "L'ancien faux écran Piloz ne doit plus être rendu");
+assert.ok(!app.includes("Vous commencerez par créer un devis, puis vous choisirez"), "L'introduction d'une capsule ne doit jamais reprendre le texte d'une autre formation");
 for (const route of ["sales/quotes", "sales/invoices", "crm/pipeline", "library/prospects", "sales/due-dates"]) {
   assert.ok(app.includes(`route:'${route}'`), `Parcours de formation absent pour ${route}`);
 }
