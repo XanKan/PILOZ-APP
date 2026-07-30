@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0-compliance.65 — 30 juillet 2026
+
+- Remplace le faux logiciel de formation par les véritables écrans Piloz en plein écran.
+- Guide les actions directement dans Devis, Factures, Pipeline, Paiements, Comptabilité et Facturation électronique.
+- Met en évidence la zone réelle à utiliser, conserve la progression et autorise les ouvertures de fiches nécessaires au parcours.
+- Intercepte les validations, envois, suppressions et autres écritures afin qu’aucune donnée métier ne soit modifiée pendant l’entraînement.
+
 ## 0.9.0-compliance.64 — 29 juillet 2026
 
 - Transforme les 18 capsules de l’Académie Piloz en simulations guidées qui demandent une action réelle à l’apprenant.

@@ -26,7 +26,17 @@ assert.ok(app.includes("TRAINING_EXERCISES"), "Chaque capsule doit proposer de v
 assert.ok(app.includes("saveTrainingProgress"), "La progression des formations doit être conservée");
 assert.ok(app.includes("help/training"), "La route Formation doit être rendue par le centre d’aide");
 assert.ok(app.includes("trainingSimulator"), "La formation doit utiliser un simulateur Piloz guidé");
-assert.ok(app.includes("Données de démonstration"), "Le simulateur doit signaler qu'il ne modifie aucune donnée réelle");
+assert.ok(app.includes("Mode entraînement · aucune modification ne sera enregistrée"), "La formation doit signaler qu'elle n'enregistre aucune modification réelle");
+assert.ok(app.includes("TRAINING_LIVE_SCREENS"), "Chaque capsule doit être reliée à un véritable écran Piloz");
+assert.ok(app.includes("piloz_training_frame"), "La formation doit ouvrir l'application réelle dans un espace isolé");
+assert.ok(app.includes("trainingFrameLoaded"), "Le guidage doit s'installer dans le véritable écran Piloz");
+assert.ok(app.includes("piloz-live-training-target"), "La zone réelle à cliquer doit être mise en évidence");
+assert.ok(app.includes("event.stopImmediatePropagation()"), "Les actions métier dangereuses doivent être bloquées pendant la formation");
+assert.ok(app.includes("closeTraining"), "L'utilisateur doit pouvoir quitter la formation à tout moment");
+assert.ok(!app.includes('class="training-sim-app"'), "L'ancien faux écran Piloz ne doit plus être rendu");
+for (const route of ["sales/quotes", "sales/invoices", "crm/pipeline", "library/prospects", "sales/due-dates"]) {
+  assert.ok(app.includes(`route:'${route}'`), `Parcours de formation absent pour ${route}`);
+}
 assert.ok(app.includes("loadedKey=`${trainingStorageKey()}:${lesson.id}`"), "La progression doit être isolée par utilisateur, entreprise et capsule");
 assert.ok(app.includes("saved.step??(saved.completed?lesson.steps.length:0)"), "Une ancienne position vidéo ne doit pas valider une capsule interactive");
 for (const interaction of ["completeTrainingAction", "validateTrainingInput", "trainingSelect", "trainingChoice", "trainingToggle", "trainingDrop"]) {
