@@ -56,8 +56,11 @@ assert.ok(documentEditor.includes("blocked=!d.client_id&&!trainingClient"), "La 
 assert.ok(app.includes("[data-piloz-training-safe]"), "Les données fictives du parcours doivent rester stables pendant la saisie");
 const clientSearchFunction = documentEditor.match(/function searchClient\(value\)\{([^}]+)\}/)?.[1] || "";
 assert.ok(clientSearchFunction.includes("refreshClientSearchResults()") && !clientSearchFunction.includes("renderEditor"), "La saisie client ne doit pas reconstruire tout l’éditeur");
-assert.ok(app.includes("selector:'[data-line-name=\"0\"]'"), "La formation Devis doit guider la désignation réelle");
-assert.ok(app.includes("event:'input'"), "Les étapes de saisie doivent être validées par une interaction réelle");
+assert.ok(app.includes("selector:'[data-training-demo-item]'"), "La formation Devis doit demander la sélection d’un article fictif");
+assert.ok(app.includes("saisir une ligne manuellement") && app.includes("sélectionner un article déjà créé") && app.includes("créer un nouvel article"), "Le coach doit expliquer les trois modes de saisie d’un article");
+assert.ok(documentEditor.includes("TRAINING_DEMO_ITEMS") && documentEditor.includes("data-training-demo-item"), "La formation doit proposer un catalogue fictif indépendant des données réelles");
+assert.ok(documentEditor.includes("function selectTrainingItem") && documentEditor.includes("training_demo:true"), "Un article fictif doit pouvoir remplir la ligne sans persistance réelle");
+assert.ok(app.includes("event:'change'") && app.includes("selector:'[data-training-demo-item]',allow:true"), "Les étapes de saisie doivent être validées par une interaction réelle");
 assert.ok(!app.includes("id:'electronique'"), "Le parcours Facturation électronique doit être retiré de la formation");
 assert.ok(app.includes("TRAINING_DEMO_COMPANIES"), "La formation doit utiliser des entreprises fictives");
 assert.ok(app.includes("trainingAnonymizeScreen"), "Les données réelles doivent être anonymisées sur chaque écran de formation");
