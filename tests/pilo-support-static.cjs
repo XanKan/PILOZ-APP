@@ -138,4 +138,8 @@ for (const forbidden of ["Piloz est certifié NF525", "Piloz est une plateforme 
   assert.ok(!knowledge.includes(forbidden), `Allégation interdite détectée : ${forbidden}`);
 }
 
+assert.ok(app.includes('class="training-live-modal" role="dialog"'), "La formation doit utiliser une grande fenetre modale");
+assert.ok(helpCss.includes(".training-live-modal{position:fixed"), "La modale de formation doit couvrir le grand espace utile");
+assert.ok(app.includes("ui.helpSecondaryOpen=false"), "Le sous-menu Aide doit se fermer au clic exterieur");
+
 console.log(JSON.stringify({ ok: true, navigation: 5, trainingCourses: 5, safeContext: 11, privateAttachments: true, feedbackComments: true }));
