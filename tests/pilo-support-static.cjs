@@ -58,6 +58,7 @@ const clientSearchFunction = documentEditor.match(/function searchClient\(value\
 assert.ok(clientSearchFunction.includes("refreshClientSearchResults()") && !clientSearchFunction.includes("renderEditor"), "La saisie client ne doit pas reconstruire tout l’éditeur");
 assert.ok(app.includes("selector:'[data-training-demo-item]'"), "La formation Devis doit demander la sélection d’un article fictif");
 assert.ok(app.includes("saisir une ligne manuellement") && app.includes("sélectionner un article déjà créé") && app.includes("créer un nouvel article"), "Le coach doit expliquer les trois modes de saisie d’un article");
+assert.ok(app.includes("selector:'[data-line-name=\"0\"]',allow:true") && app.indexOf("selector:'[data-line-name=\"0\"]',allow:true")<app.indexOf("selector:'[data-training-demo-item]',allow:true"), "La recherche d’article doit être ouverte avant de demander la sélection d’un résultat");
 assert.ok(documentEditor.includes("TRAINING_DEMO_ITEMS") && documentEditor.includes("data-training-demo-item"), "La formation doit proposer un catalogue fictif indépendant des données réelles");
 assert.ok(documentEditor.includes("function selectTrainingItem") && documentEditor.includes("training_demo:true"), "Un article fictif doit pouvoir remplir la ligne sans persistance réelle");
 assert.ok(app.includes("event:'change'") && app.includes("selector:'[data-training-demo-item]',allow:true"), "Les étapes de saisie doivent être validées par une interaction réelle");
@@ -65,7 +66,10 @@ assert.ok(!app.includes("id:'electronique'"), "Le parcours Facturation électron
 assert.ok(app.includes("TRAINING_DEMO_COMPANIES"), "La formation doit utiliser des entreprises fictives");
 assert.ok(app.includes("trainingAnonymizeScreen"), "Les données réelles doivent être anonymisées sur chaque écran de formation");
 assert.ok(app.includes("trainingNormalizeAmountNodes"), "Les montants fictifs doivent rester alignés et être remplacés comme une valeur unique");
-assert.ok(helpCss.includes("training-live-window-frame"), "La vraie interface Piloz doit être cadrée comme une fenêtre pédagogique");
+assert.ok(app.includes('class="training-step-dialog" role="dialog" aria-modal="true"'), "Chaque exercice doit commencer dans une vraie fenêtre modale");
+assert.ok(app.includes("function beginTrainingStep()"), "La modale doit demander explicitement de commencer l’étape avant d’activer la cible");
+assert.ok(app.includes("ui.trainingStep=0") && app.includes("screen=trainingLiveConfig(lesson,0)"), "Une formation relancée doit toujours repartir par la création du devis");
+assert.ok(helpCss.includes(".training-step-dialog-backdrop{position:absolute") && helpCss.includes(".training-live-modal-stage .training-live-window-frame{display:none}"), "L’ancien simple cadre doit être remplacé par une vraie modale centrée");
 assert.ok(helpCss.includes(".piloz-training-privacy-active .rail-company-name{display:none"), "Le nom de l’entreprise doit être masqué pendant une formation");
 assert.ok(app.includes("aucune donnée client réelle affichée"), "Le mode formation doit annoncer clairement les données fictives");
 assert.ok(!app.includes("piloz_training_frame"), "La formation ne doit plus redémarrer Piloz dans une iframe");
