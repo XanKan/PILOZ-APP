@@ -28,8 +28,10 @@ assert.ok(app.includes("help/training"), "La route Formation doit être rendue p
 assert.ok(app.includes("trainingSimulator"), "La formation doit utiliser un simulateur Piloz guidé");
 assert.ok(app.includes("Mode entraînement · aucune modification ne sera enregistrée"), "La formation doit signaler qu'elle n'enregistre aucune modification réelle");
 assert.ok(app.includes("TRAINING_LIVE_SCREENS"), "Chaque capsule doit être reliée à un véritable écran Piloz");
-assert.ok(app.includes("piloz_training_frame"), "La formation doit ouvrir l'application réelle dans un espace isolé");
-assert.ok(app.includes("trainingFrameLoaded"), "Le guidage doit s'installer dans le véritable écran Piloz");
+assert.ok(app.includes("launchTraining"), "La formation doit ouvrir directement le véritable module Piloz");
+assert.ok(app.includes("trainingActive"), "Le guidage doit rester actif sur le véritable écran Piloz");
+assert.ok(!app.includes("piloz_training_frame"), "La formation ne doit plus redémarrer Piloz dans une iframe");
+assert.ok(!app.includes('id="piloz-training-live-frame"'), "Aucune iframe de formation ne doit pouvoir rester bloquée au chargement");
 assert.ok(app.includes("piloz-live-training-target"), "La zone réelle à cliquer doit être mise en évidence");
 assert.ok(app.includes("event.stopImmediatePropagation()"), "Les actions métier dangereuses doivent être bloquées pendant la formation");
 assert.ok(app.includes("closeTraining"), "L'utilisateur doit pouvoir quitter la formation à tout moment");

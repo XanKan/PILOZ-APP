@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0-compliance.66 — 30 juillet 2026
+
+- Supprime le redémarrage complet de Piloz dans une iframe, responsable du chargement infini de la formation.
+- Ouvre désormais le véritable module dans la session déjà connectée puis affiche le coach directement par-dessus.
+- Conserve la protection contre les écritures réelles, le repérage des zones et la progression par utilisateur.
+
 ## 0.9.0-compliance.65 — 30 juillet 2026
 
 - Remplace le faux logiciel de formation par les véritables écrans Piloz en plein écran.
