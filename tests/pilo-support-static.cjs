@@ -22,8 +22,8 @@ const academy = read("supabase/migrations/202607290115_help_academy_documentatio
 
 assert.ok(app.includes("trainingAdvanceTimer:0"), "La formation doit disposer d'un minuteur d'enchainement automatique");
 assert.ok(app.includes("function scheduleTrainingAdvance(delay=900)"), "Une action reussie doit programmer automatiquement l'etape suivante");
-assert.ok(app.includes("scheduleTrainingAdvance(isLast?1200:900)"), "La confirmation de reussite doit avancer sans clic obligatoire");
-assert.ok(app.includes("Passage automatique à l’étape suivante…"), "L'utilisateur doit etre informe de l'enchainement automatique");
+assert.ok(app.includes("scheduleTrainingAdvance(isLast?850:320)"), "La confirmation de reussite doit avancer rapidement sans clic obligatoire");
+assert.ok(app.includes("La prochaine consigne arrive automatiquement"), "L'utilisateur doit etre informe de l'enchainement automatique sans bouton suivant");
 assert.ok(app.includes("function continueTraining(){clearTimeout(ui.trainingAdvanceTimer)"), "Un clic manuel ne doit pas doubler l'avancement automatique");
 assert.ok(app.includes("function closeTraining(){clearTimeout(ui.trainingFramePoll);clearTimeout(ui.trainingFieldTimer);clearTimeout(ui.trainingAdvanceTimer)"), "Quitter la formation doit annuler l'enchainement automatique");
 
@@ -73,10 +73,11 @@ assert.ok(!app.includes("id:'electronique'"), "Le parcours Facturation électron
 assert.ok(app.includes("TRAINING_DEMO_COMPANIES"), "La formation doit utiliser des entreprises fictives");
 assert.ok(app.includes("trainingAnonymizeScreen"), "Les données réelles doivent être anonymisées sur chaque écran de formation");
 assert.ok(app.includes("trainingNormalizeAmountNodes"), "Les montants fictifs doivent rester alignés et être remplacés comme une valeur unique");
-assert.ok(app.includes('class="training-step-dialog" role="dialog" aria-modal="true"'), "Chaque exercice doit commencer dans une vraie fenêtre modale");
-assert.ok(app.includes("function beginTrainingStep()"), "La modale doit demander explicitement de commencer l’étape avant d’activer la cible");
+assert.ok(!app.includes('class="training-step-dialog" role="dialog" aria-modal="true"'), "Aucune grande fenêtre intermédiaire ne doit masquer l’écran de formation");
+assert.ok(!app.includes("function beginTrainingStep()") && !app.includes("Commencer cette étape"), "La consigne doit être active immédiatement, sans validation manuelle");
 assert.ok(app.includes("ui.trainingStep=0") && app.includes("screen=trainingLiveConfig(lesson,0)"), "Une formation relancée doit toujours repartir par la création du devis");
-assert.ok(helpCss.includes(".training-step-dialog-backdrop{position:absolute") && helpCss.includes(".training-live-modal-stage .training-live-window-frame{display:none}"), "L’ancien simple cadre doit être remplacé par une vraie modale centrée");
+assert.ok(app.includes('class="training-live-coach" id="training-live-coach"') && !app.includes('id="training-live-coach" hidden'), "La consigne doit rester visible en bas dès l’ouverture");
+assert.ok(!app.includes('id="training-live-success"') && app.includes("scheduleTrainingAdvance(isLast?850:320)"), "Une action réussie doit avancer automatiquement sans bouton Étape suivante");
 assert.ok(helpCss.includes(".piloz-training-privacy-active .rail-company-name{display:none"), "Le nom de l’entreprise doit être masqué pendant une formation");
 assert.ok(app.includes("aucune donnée client réelle affichée"), "Le mode formation doit annoncer clairement les données fictives");
 assert.ok(!app.includes("piloz_training_frame"), "La formation ne doit plus redémarrer Piloz dans une iframe");
