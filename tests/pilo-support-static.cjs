@@ -44,8 +44,10 @@ assert.ok(app.includes("attempt<80") && app.includes("L’écran Piloz est encor
 assert.ok(app.includes("text:'Ventes',selector:'.modern-primary-item[aria-label=\"Ventes\"]',allow:true"), "Le clic Ventes doit réellement ouvrir son sous-menu pendant la formation");
 assert.ok(app.includes("selector:'.company-subnav-item[onclick*=\"/tax\"]',allow:true"), "La formation Fiscalité doit cibler et autoriser la vraie navigation");
 assert.ok(app.includes("selector:'.company-subnav-item[onclick*=\"/bank\"]',allow:true"), "La formation Banque doit cibler et autoriser la vraie navigation");
-assert.ok(app.includes("selector:'[data-training-client-search]',allow:true,event:'input',expected:'Atelier Horizon'"), "La formation doit demander la recherche dans le vrai champ Client facturé");
-assert.ok(app.includes("selector:'[data-training-demo-client]'"), "La formation Devis doit ensuite valider la sélection réelle du client fictif");
+assert.ok(app.includes("selector:'[data-training-client-search]',allow:true,event:'piloz-training-client-selected'"), "La formation doit valider le client uniquement après sa sélection dans la liste normale");
+assert.ok(!documentEditor.includes('data-training-expected="Atelier Horizon"'), "La formation ne doit pas exiger le nom complet avant d’autoriser la sélection du client");
+assert.ok(app.includes("trainingClientChoice&&targetEvent==='piloz-training-client-selected'"), "Le guide doit autoriser le clic sur le client proposé sans clignotement ni verrouillage");
+assert.ok(app.includes("doc.addEventListener('piloz-training-client-selected',completeField,true)"), "La sélection du client doit faire avancer automatiquement la formation");
 assert.ok(app.includes("element===document.activeElement"), "L’anonymisation ne doit jamais remplacer la saisie active de l’utilisateur");
 assert.ok(!app.includes("animation:pilozTrainingPulse"), "Le repère de formation ne doit plus clignoter pendant la saisie");
 assert.ok(app.includes("function resetTrainingViewport()") && app.includes("resetTrainingViewport();trainingAnonymizeScreen()"), "La formation doit repartir en haut de la vue avant d’afficher la première cible");
@@ -54,6 +56,7 @@ assert.ok(helpCss.includes("scroll-margin-top:128px!important") && helpCss.inclu
 assert.ok(documentEditor.includes("function refreshClientSearchResults()"), "La recherche client doit rafraîchir uniquement sa liste de résultats");
 assert.ok(documentEditor.includes("data-training-demo-client") && documentEditor.includes("data-training-client-search") && documentEditor.includes("Atelier Horizon"), "La formation doit proposer Atelier Horizon dans la recherche client normale même sur un compte vide");
 assert.ok(documentEditor.includes("function selectTrainingClient()") && documentEditor.includes("trainingClientSelected=true"), "Le client fictif doit pouvoir être réellement sélectionné dans la simulation");
+assert.ok(documentEditor.includes("new CustomEvent('piloz-training-client-selected',{bubbles:true})"), "Le vrai sélecteur doit confirmer la sélection au guide de formation");
 assert.ok(documentEditor.includes("blocked=!d.client_id&&!trainingClient"), "La sélection fictive doit rendre la dernière action de formation cliquable");
 assert.ok(app.includes("[data-piloz-training-safe]"), "Les données fictives du parcours doivent rester stables pendant la saisie");
 const clientSearchFunction = documentEditor.match(/function searchClient\(value\)\{([^}]+)\}/)?.[1] || "";
