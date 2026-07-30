@@ -67,8 +67,9 @@ assert.ok(app.includes(".document-viewer-primary-actions details > summary") && 
 assert.ok(app.includes("permet aussi de créer une facture seule") && app.includes("reprenant le client, les lignes, les prix et la TVA du devis"), "La création autonome doit rester mentionnée sans remplacer le parcours devis vers facture");
 assert.ok(app.includes("TRAINING_INVOICE_QUOTE_ID='piloz-training-demo-quote'") && app.includes("ensureTrainingFixtures(lesson)"), "Le parcours de conversion doit rester disponible même sur un compte sans devis");
 assert.ok(app.includes("removeTrainingFixtures()"), "Les documents fictifs doivent être retirés de la mémoire à la fermeture de la formation");
-assert.ok(app.includes("TRAINING_PAYMENT_INVOICE_ID='piloz-training-payment-invoice'") && app.includes("openPayment(\\'partial\\')"), "Le parcours Règlement doit ouvrir la saisie depuis le panneau droit d'une facture finalisée");
-assert.ok(app.includes("#document-viewer-payment-form input[name=\"amount\"]") && app.includes("#document-viewer-payment-form select[name=\"payment_method\"]"), "Le parcours Règlement doit faire renseigner le montant et le mode de paiement réels");
+assert.ok(app.includes("TRAINING_PAYMENT_INVOICE_ID='piloz-training-payment-invoice'") && app.includes("route:'sales/due-dates'") && app.includes("openDuePayment(\\'piloz-training-payment-invoice\\')"), "Le parcours Règlement doit démarrer dans Échéances clients et encadrer la saisie du règlement");
+assert.ok(app.includes("#due-payment-form input[name=\"amount\"]") && app.includes("#due-payment-form select[name=\"payment_method\"]") && app.includes("#due-payment-submit"), "Le parcours Règlement doit utiliser la vraie fenêtre de saisie des échéances clients");
+assert.ok(!app.includes("if(['facture','paiement','premiere','suivante'].includes(lesson.id))"), "Le parcours Règlement ne doit jamais forcer la visionneuse de devis ou de factures");
 assert.ok(app.includes("TRAINING_PROGRESS_FINAL_ID='piloz-training-progress-final'") && app.includes("openNextSituation"), "Le parcours Situation suivante doit partir d'une situation finalisée");
 assert.ok(app.includes(".document-v2-situation-toggle input[type=\"checkbox\"]") && app.includes("input[aria-label=\"Avancement total\"]"), "Le parcours Situation doit utiliser les contrôles réels du brouillon");
 assert.ok(app.includes("tr[data-scope-value=\"service\"] input[data-field=\"account_code\"]") && app.includes("setAccountingTab(\\'vat\\')"), "Le parcours Comptabilité doit utiliser le compte Service et l'onglet TVA réels");
@@ -97,7 +98,7 @@ assert.ok(app.includes("event.stopImmediatePropagation()"), "Les actions métier
 assert.ok(app.includes("closeTraining"), "L'utilisateur doit pouvoir quitter la formation à tout moment");
 assert.ok(!app.includes('class="training-sim-app"'), "L'ancien faux écran Piloz ne doit plus être rendu");
 assert.ok(!app.includes("Vous commencerez par créer un devis, puis vous choisirez"), "L'introduction d'une capsule ne doit jamais reprendre le texte d'une autre formation");
-for (const route of ["sales/quotes", "sales/invoices", "crm/pipeline", "library/prospects", "accounting/exports"]) {
+for (const route of ["sales/quotes", "sales/invoices", "sales/due-dates", "crm/pipeline", "library/prospects", "accounting/exports"]) {
   assert.ok(app.includes(`route:'${route}'`), `Parcours de formation absent pour ${route}`);
 }
 assert.ok(app.includes("loadedKey=`${trainingStorageKey()}:${lesson.id}`"), "La progression doit être isolée par utilisateur, entreprise et capsule");
