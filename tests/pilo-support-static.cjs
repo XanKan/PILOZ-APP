@@ -5,6 +5,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
 const app = read("assets/js/modules/erp/erp-help-support.js");
+const helpCss = read("assets/css/piloz-help-support.css");
 const access = read("assets/js/modules/erp/erp-access-control.js");
 const html = read("index.html");
 const pilo = read("supabase/functions/pilo/index.ts");
@@ -30,9 +31,18 @@ assert.ok(app.includes("aucune modification enregistrée"), "La formation doit s
 assert.ok(app.includes("TRAINING_LIVE_SCREENS"), "Chaque capsule doit être reliée à un véritable écran Piloz");
 assert.ok(app.includes("launchTraining"), "La formation doit ouvrir directement le véritable module Piloz");
 assert.ok(app.includes("trainingActive"), "Le guidage doit rester actif sur le véritable écran Piloz");
-assert.ok(app.includes("{text:'Ventes',allow:true}"), "Le clic Ventes doit réellement ouvrir son sous-menu pendant la formation");
+assert.ok(app.includes("text:'Ventes',selector:'.modern-primary-item[aria-label=\"Ventes\"]',allow:true"), "Le clic Ventes doit réellement ouvrir son sous-menu pendant la formation");
+assert.ok(app.includes("selector:'.company-subnav-item[onclick*=\"/tax\"]',allow:true"), "La formation Fiscalité doit cibler et autoriser la vraie navigation");
+assert.ok(app.includes("selector:'.company-subnav-item[onclick*=\"/bank\"]',allow:true"), "La formation Banque doit cibler et autoriser la vraie navigation");
+assert.ok(app.includes("selector:'[data-client-search]'"), "La formation Devis doit guider la recherche réelle d’un client");
+assert.ok(app.includes("selector:'[data-line-name=\"0\"]'"), "La formation Devis doit guider la désignation réelle");
+assert.ok(app.includes("event:'input'"), "Les étapes de saisie doivent être validées par une interaction réelle");
+assert.ok(!app.includes("id:'electronique'"), "Le parcours Facturation électronique doit être retiré de la formation");
 assert.ok(app.includes("TRAINING_DEMO_COMPANIES"), "La formation doit utiliser des entreprises fictives");
 assert.ok(app.includes("trainingAnonymizeScreen"), "Les données réelles doivent être anonymisées sur chaque écran de formation");
+assert.ok(app.includes("trainingNormalizeAmountNodes"), "Les montants fictifs doivent rester alignés et être remplacés comme une valeur unique");
+assert.ok(helpCss.includes("training-live-window-frame"), "La vraie interface Piloz doit être cadrée comme une fenêtre pédagogique");
+assert.ok(helpCss.includes(".piloz-training-privacy-active .rail-company-name{display:none"), "Le nom de l’entreprise doit être masqué pendant une formation");
 assert.ok(app.includes("aucune donnée client réelle affichée"), "Le mode formation doit annoncer clairement les données fictives");
 assert.ok(!app.includes("piloz_training_frame"), "La formation ne doit plus redémarrer Piloz dans une iframe");
 assert.ok(!app.includes('id="piloz-training-live-frame"'), "Aucune iframe de formation ne doit pouvoir rester bloquée au chargement");
@@ -128,4 +138,4 @@ for (const forbidden of ["Piloz est certifié NF525", "Piloz est une plateforme 
   assert.ok(!knowledge.includes(forbidden), `Allégation interdite détectée : ${forbidden}`);
 }
 
-console.log(JSON.stringify({ ok: true, navigation: 5, trainingCourses: 6, safeContext: 11, privateAttachments: true, feedbackComments: true }));
+console.log(JSON.stringify({ ok: true, navigation: 5, trainingCourses: 5, safeContext: 11, privateAttachments: true, feedbackComments: true }));
