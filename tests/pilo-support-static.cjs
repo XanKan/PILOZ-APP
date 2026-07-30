@@ -65,8 +65,14 @@ assert.ok(app.includes("selector:'[data-document-line] .document-v2-designation'
 assert.ok(app.includes("title:'Passer un devis en facture',duration:180") && app.includes("button[onclick*=\"piloz-training-demo-quote\"]"), "La formation Facture doit partir d’un devis existant");
 assert.ok(app.includes(".document-viewer-primary-actions details > summary") && app.includes("button[onclick*=\"convert(\\'invoice\\')\"]"), "La formation doit faire pratiquer la conversion du devis en facture");
 assert.ok(app.includes("permet aussi de créer une facture seule") && app.includes("reprenant le client, les lignes, les prix et la TVA du devis"), "La création autonome doit rester mentionnée sans remplacer le parcours devis vers facture");
-assert.ok(app.includes("TRAINING_INVOICE_QUOTE_ID='piloz-training-demo-quote'") && app.includes("ensureTrainingInvoiceQuoteFixture(lesson)"), "Le parcours de conversion doit rester disponible même sur un compte sans devis");
-assert.ok(app.includes("removeTrainingInvoiceQuoteFixture()"), "Le devis fictif doit être retiré de la mémoire à la fermeture de la formation");
+assert.ok(app.includes("TRAINING_INVOICE_QUOTE_ID='piloz-training-demo-quote'") && app.includes("ensureTrainingFixtures(lesson)"), "Le parcours de conversion doit rester disponible même sur un compte sans devis");
+assert.ok(app.includes("removeTrainingFixtures()"), "Les documents fictifs doivent être retirés de la mémoire à la fermeture de la formation");
+assert.ok(app.includes("TRAINING_PAYMENT_INVOICE_ID='piloz-training-payment-invoice'") && app.includes("openPayment(\\'partial\\')"), "Le parcours Règlement doit ouvrir la saisie depuis le panneau droit d'une facture finalisée");
+assert.ok(app.includes("#document-viewer-payment-form input[name=\"amount\"]") && app.includes("#document-viewer-payment-form select[name=\"payment_method\"]"), "Le parcours Règlement doit faire renseigner le montant et le mode de paiement réels");
+assert.ok(app.includes("TRAINING_PROGRESS_FINAL_ID='piloz-training-progress-final'") && app.includes("openNextSituation"), "Le parcours Situation suivante doit partir d'une situation finalisée");
+assert.ok(app.includes(".document-v2-situation-toggle input[type=\"checkbox\"]") && app.includes("input[aria-label=\"Avancement total\"]"), "Le parcours Situation doit utiliser les contrôles réels du brouillon");
+assert.ok(app.includes("tr[data-scope-value=\"service\"] input[data-field=\"account_code\"]") && app.includes("setAccountingTab(\\'vat\\')"), "Le parcours Comptabilité doit utiliser le compte Service et l'onglet TVA réels");
+assert.ok(app.includes("data-training-export-balance") && app.includes("411ATELIERHORIZON") && app.includes("data-training-export-validate"), "L'export de formation doit présenter une écriture fictive équilibrée");
 assert.ok((app.match(/selector:'\[data-finalize-document\]'/g)||[]).length>=1, "La formation Devis doit aller jusqu'à la validation protégée");
 assert.ok(app.includes("saisir une ligne manuellement") && app.includes("sélectionner un article déjà créé") && app.includes("créer un nouvel article"), "Le coach doit expliquer les trois modes de saisie d’un article");
 assert.ok(!app.includes("selector:'[data-training-demo-item]'"), "Le guide ne doit pas bloquer le clic sur un résultat avec une étape intermédiaire");
@@ -91,7 +97,7 @@ assert.ok(app.includes("event.stopImmediatePropagation()"), "Les actions métier
 assert.ok(app.includes("closeTraining"), "L'utilisateur doit pouvoir quitter la formation à tout moment");
 assert.ok(!app.includes('class="training-sim-app"'), "L'ancien faux écran Piloz ne doit plus être rendu");
 assert.ok(!app.includes("Vous commencerez par créer un devis, puis vous choisirez"), "L'introduction d'une capsule ne doit jamais reprendre le texte d'une autre formation");
-for (const route of ["sales/quotes", "sales/invoices", "crm/pipeline", "library/prospects", "sales/due-dates"]) {
+for (const route of ["sales/quotes", "sales/invoices", "crm/pipeline", "library/prospects", "accounting/exports"]) {
   assert.ok(app.includes(`route:'${route}'`), `Parcours de formation absent pour ${route}`);
 }
 assert.ok(app.includes("loadedKey=`${trainingStorageKey()}:${lesson.id}`"), "La progression doit être isolée par utilisateur, entreprise et capsule");
