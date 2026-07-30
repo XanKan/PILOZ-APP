@@ -42,8 +42,8 @@ assert.ok(app.includes("trainingActive"), "Le guidage doit rester actif sur le v
 assert.ok(app.includes("text:'Ventes',selector:'.modern-primary-item[aria-label=\"Ventes\"]',allow:true"), "Le clic Ventes doit réellement ouvrir son sous-menu pendant la formation");
 assert.ok(app.includes("selector:'.company-subnav-item[onclick*=\"/tax\"]',allow:true"), "La formation Fiscalité doit cibler et autoriser la vraie navigation");
 assert.ok(app.includes("selector:'.company-subnav-item[onclick*=\"/bank\"]',allow:true"), "La formation Banque doit cibler et autoriser la vraie navigation");
-assert.ok(app.includes("selector:'[data-client-search]'"), "La formation Devis doit guider la recherche réelle d’un client");
-assert.ok(app.includes("minLength:2,idleMs:450"), "La recherche client doit attendre une saisie stable avant de valider l’étape");
+assert.ok(app.includes("selector:'[data-training-demo-client]'"), "La formation Devis doit valider la sélection réelle du client fictif");
+assert.ok(!app.includes("selector:'[data-client-search]',allow:true,event:'input'"), "La saisie du nom ne doit pas valider l’étape avant le clic sur le client");
 assert.ok(app.includes("element===document.activeElement"), "L’anonymisation ne doit jamais remplacer la saisie active de l’utilisateur");
 assert.ok(!app.includes("animation:pilozTrainingPulse"), "Le repère de formation ne doit plus clignoter pendant la saisie");
 assert.ok(app.includes("function resetTrainingViewport()") && app.includes("resetTrainingViewport();trainingAnonymizeScreen()"), "La formation doit repartir en haut de la vue avant d’afficher la première cible");
@@ -51,6 +51,8 @@ assert.ok(helpCss.includes(".piloz-training-privacy-active #main{padding-top:112
 assert.ok(helpCss.includes("scroll-margin-top:128px!important") && helpCss.includes("scroll-margin-bottom:260px!important"), "Les cibles doivent rester visibles entre l’en-tête et le coach");
 assert.ok(documentEditor.includes("function refreshClientSearchResults()"), "La recherche client doit rafraîchir uniquement sa liste de résultats");
 assert.ok(documentEditor.includes("data-training-demo-client") && documentEditor.includes("Client fictif"), "La formation doit proposer un résultat client fictif même sur un compte vide");
+assert.ok(documentEditor.includes("function selectTrainingClient()") && documentEditor.includes("trainingClientSelected=true"), "Le client fictif doit pouvoir être réellement sélectionné dans la simulation");
+assert.ok(documentEditor.includes("blocked=!d.client_id&&!trainingClient"), "La sélection fictive doit rendre la dernière action de formation cliquable");
 assert.ok(app.includes("[data-piloz-training-safe]"), "Les données fictives du parcours doivent rester stables pendant la saisie");
 const clientSearchFunction = documentEditor.match(/function searchClient\(value\)\{([^}]+)\}/)?.[1] || "";
 assert.ok(clientSearchFunction.includes("refreshClientSearchResults()") && !clientSearchFunction.includes("renderEditor"), "La saisie client ne doit pas reconstruire tout l’éditeur");
