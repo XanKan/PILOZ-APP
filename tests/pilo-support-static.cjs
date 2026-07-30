@@ -62,8 +62,12 @@ assert.ok(app.includes("[data-piloz-training-safe]"), "Les données fictives du 
 const clientSearchFunction = documentEditor.match(/function searchClient\(value\)\{([^}]+)\}/)?.[1] || "";
 assert.ok(clientSearchFunction.includes("refreshClientSearchResults()") && !clientSearchFunction.includes("renderEditor"), "La saisie client ne doit pas reconstruire tout l’éditeur");
 assert.ok(app.includes("selector:'[data-document-line] .document-v2-designation',allow:true,event:'change'"), "La recherche et la sélection de l’article doivent rester une seule action fluide");
-assert.ok(app.includes("button[onclick*=\"newDocument(\\'invoice\\')\"]") && app.includes("title:'Créer et finaliser une facture',duration:420"), "La formation Facture doit couvrir le cycle complet dans le véritable éditeur");
-assert.ok((app.match(/selector:'\[data-finalize-document\]'/g)||[]).length>=2, "Les formations Devis et Facture doivent aller jusqu'à la validation protégée");
+assert.ok(app.includes("title:'Passer un devis en facture',duration:180") && app.includes("button[onclick*=\"piloz-training-demo-quote\"]"), "La formation Facture doit partir d’un devis existant");
+assert.ok(app.includes(".document-viewer-primary-actions details > summary") && app.includes("button[onclick*=\"convert(\\'invoice\\')\"]"), "La formation doit faire pratiquer la conversion du devis en facture");
+assert.ok(app.includes("permet aussi de créer une facture seule") && app.includes("reprenant le client, les lignes, les prix et la TVA du devis"), "La création autonome doit rester mentionnée sans remplacer le parcours devis vers facture");
+assert.ok(app.includes("TRAINING_INVOICE_QUOTE_ID='piloz-training-demo-quote'") && app.includes("ensureTrainingInvoiceQuoteFixture(lesson)"), "Le parcours de conversion doit rester disponible même sur un compte sans devis");
+assert.ok(app.includes("removeTrainingInvoiceQuoteFixture()"), "Le devis fictif doit être retiré de la mémoire à la fermeture de la formation");
+assert.ok((app.match(/selector:'\[data-finalize-document\]'/g)||[]).length>=1, "La formation Devis doit aller jusqu'à la validation protégée");
 assert.ok(app.includes("saisir une ligne manuellement") && app.includes("sélectionner un article déjà créé") && app.includes("créer un nouvel article"), "Le coach doit expliquer les trois modes de saisie d’un article");
 assert.ok(!app.includes("selector:'[data-training-demo-item]'"), "Le guide ne doit pas bloquer le clic sur un résultat avec une étape intermédiaire");
 assert.ok(documentEditor.includes("TRAINING_DEMO_ITEMS") && documentEditor.includes("data-training-demo-item"), "La formation doit proposer un catalogue fictif indépendant des données réelles");
