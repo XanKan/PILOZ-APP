@@ -191,4 +191,8 @@ assert.ok(app.includes('class="training-live-modal" role="dialog"'), "La formati
 assert.ok(helpCss.includes(".training-live-modal{position:fixed"), "La modale de formation doit couvrir le grand espace utile");
 assert.ok(app.includes("ui.helpSecondaryOpen=false"), "Le sous-menu Aide doit se fermer au clic exterieur");
 
+assert.ok(app.includes("TRAINING_DEPOSIT_FINAL_ID='piloz-training-deposit-final'") && app.includes("TRAINING_DEDUCTION_DRAFT_ID='piloz-training-deduction-draft'"), "Le parcours Acomptes doit utiliser un acompte finalise et une situation brouillon fictifs");
+assert.ok(app.includes("selector:'.document-v2-deduction-edit',allow:true") && app.includes("#document-deposit-deduction-form input[name=\"mode\"][value=\"prorata\"]") && app.includes("#document-deposit-deduction-form button[type=\"submit\"]"), "Le parcours Acomptes doit piloter les vrais controles de deduction");
+assert.ok(app.includes("if(lesson.id==='retenues')trainingOpenDraft(TRAINING_DEDUCTION_DRAFT_ID)") && app.includes("lesson.id==='retenues'&&next===3") && app.includes("applyDepositDeduction"), "La formation Acomptes doit ouvrir le vrai brouillon puis appliquer le choix avant le controle du total");
+
 console.log(JSON.stringify({ ok: true, navigation: 5, trainingCourses: 5, safeContext: 11, privateAttachments: true, feedbackComments: true }));
