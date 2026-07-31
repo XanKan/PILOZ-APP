@@ -15,6 +15,9 @@ assert(onboarding.includes("/rest/v1/company_document_settings?on_conflict=compa
 assert(settings.includes("field('Titulaire du compte','bank_account_holder'")&&settings.includes("field('BIC','bic'")&&settings.includes("docs.iban?maskIban(docs.iban)"),'La page Banque et règlements doit lire la même source.');
 assert(editor.includes('function bankDetailsBlock')&&editor.includes('settings.bank_account_holder')&&editor.includes('settings.iban')&&editor.includes('settings.bic'),'Les modèles doivent reprendre automatiquement la source bancaire partagée.');
 assert(editor.includes("methods.includes('bank_transfer')"),'Les coordonnées doivent être affichées lorsque le virement est proposé.');
-assert(index.includes('professional-onboarding.js?v=20260731.1'),'Le cache du module d’onboarding doit être invalidé.');
+assert(onboarding.includes("const bankingFieldKeys=['accountHolder','bankName','iban','bic','mandateReference']")&&onboarding.includes('bank.remindLater=!bankingHasDetails(bank)'),'Toute coordonnée bancaire saisie doit décocher le report.');
+assert(onboarding.includes("startsWith('banking.')")&&onboarding.includes('syncBankingReminder()'),'La case visible doit être synchronisée sans recharger le formulaire.');
+assert(onboarding.includes('if(bankingHasDetails(bank)){bank.remindLater=false;checkbox.checked=false;}'),'Le report ne doit pas pouvoir rester coché si des coordonnées existent.');
+assert(index.includes('professional-onboarding.js?v=20260731.2'),'Le cache du module d’onboarding doit être invalidé.');
 
 console.log('PASS onboarding banking static');
