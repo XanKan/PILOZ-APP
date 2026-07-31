@@ -31,9 +31,9 @@ const checks={
   popup_validates_source_and_origin:electronicUi.includes('event.source!==popup')&&electronicUi.includes('event.origin!==expectedOrigin')&&electronicUi.includes("window.open('about:blank'")&&!electronicUi.includes('location.assign(result.url)'),
   popup_survives_opener_isolation:electronicUi.includes("BroadcastChannel('piloz-superpdp-oauth')")&&electronicUi.includes("window.name==='piloz-superpdp-authorization'"),
   directory_is_automated:electronicUi.includes('status=await ensureDirectory(status)')&&electronicUi.includes("action:'activate_directory'"),
-  onboarding_has_supplier_reception_step:onboarding.includes('Étape 7 — Réception des factures fournisseurs')&&onboarding.includes('phase1SetupStep/7')&&onboarding.includes('electronicInvoicingDeferred'),
-  onboarding_uses_shared_oauth_flow:onboarding.includes('PilozElectronicInvoicing.startProduction')&&onboarding.includes('PilozElectronicInvoicing.productionStatus'),
-  documented_setup:docs.includes('authorization_code')&&docs.includes('SUPERPDP_PRODUCTION_CLIENT_SECRET')&&docs.includes('SUPERPDP_WORKER_SECRET')&&docs.includes('étape 7 de l’onboarding')
+  onboarding_does_not_force_electronic_invoicing:!onboarding.includes('Étape 7 — Réception des factures fournisseurs')&&!onboarding.includes('PilozElectronicInvoicing.startProduction')&&!onboarding.includes('electronicInvoicingDeferred'),
+  onboarding_offers_training_instead:onboarding.includes('Étape 7 — Découvrir Piloz avec la formation guidée')&&onboarding.includes('Ouvrir la formation')&&onboarding.includes('Passer pour le moment'),
+  documented_setup:docs.includes('authorization_code')&&docs.includes('SUPERPDP_PRODUCTION_CLIENT_SECRET')&&docs.includes('SUPERPDP_WORKER_SECRET')&&docs.includes('Paramètres > Extensions')
 };
 
 const failed=Object.entries(checks).filter(([,ok])=>!ok).map(([name])=>name);

@@ -18,6 +18,6 @@ assert(editor.includes("methods.includes('bank_transfer')"),'Les coordonnées do
 assert(onboarding.includes("const bankingFieldKeys=['accountHolder','bankName','iban','bic','mandateReference']")&&onboarding.includes('bank.remindLater=!bankingHasDetails(bank)'),'Toute coordonnée bancaire saisie doit décocher le report.');
 assert(onboarding.includes("startsWith('banking.')")&&onboarding.includes('syncBankingReminder()'),'La case visible doit être synchronisée sans recharger le formulaire.');
 assert(onboarding.includes('if(bankingHasDetails(bank)){bank.remindLater=false;checkbox.checked=false;}'),'Le report ne doit pas pouvoir rester coché si des coordonnées existent.');
-assert(index.includes('professional-onboarding.js?v=20260731.2'),'Le cache du module d’onboarding doit être invalidé.');
+assert(index.includes('professional-onboarding.js?v=20260731.3'),'Le cache du module d’onboarding doit être invalidé.');
 
 console.log('PASS onboarding banking static');

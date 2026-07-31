@@ -1,6 +1,6 @@
 # Activation de SUPER PDP en production
 
-Piloz utilise le flux OAuth 2.0 `authorization_code` recommandé par SUPER PDP pour les ERP. Chaque entreprise cliente autorise séparément Piloz depuis l’onboarding ou les extensions. Les jetons sont chiffrés côté serveur et ne sont jamais renvoyés au navigateur.
+Piloz utilise le flux OAuth 2.0 `authorization_code` recommandé par SUPER PDP pour les ERP. Chaque entreprise cliente autorise séparément Piloz depuis les extensions. Les jetons sont chiffrés côté serveur et ne sont jamais renvoyés au navigateur.
 
 Le fonctionnement quotidien reste dans Piloz : envois, réceptions, statuts, litiges et journaux. Lors de la première activation seulement, une fenêtre sécurisée SUPER PDP peut apparaître pour l’autorisation et les contrôles KYC/KYB obligatoires. Elle se ferme automatiquement et ne remplace jamais l’interface Piloz.
 
@@ -58,7 +58,7 @@ Le bouton de transmission manuelle reste utile pour un diagnostic, mais le fonct
 Dans Piloz :
 
 1. compléter le SIREN et les informations légales de l’entreprise ;
-2. à l’étape 7 de l’onboarding, cliquer sur `Activer la facturation électronique` ;
+2. ouvrir `Paramètres > Extensions`, puis la configuration de la facturation électronique ;
 3. terminer dans la fenêtre sécurisée les contrôles d’identité ou d’autorité demandés ;
 4. revenir automatiquement dans Piloz.
 
