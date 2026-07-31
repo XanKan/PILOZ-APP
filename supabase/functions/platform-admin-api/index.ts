@@ -89,6 +89,65 @@ Deno.serve(async req=>{
    const {data,error}=await client.rpc("platform_admin_create_company",{target_owner_user_id:userId,target_company:companyValues,target_subscription:subscriptionValues,target_reason:text(payload.reason,500)});if(error)throw error;
    return response(req,{company:data,ownerUserId:userId,invitationSent:!ownerUserId,message:!ownerUserId?"Invitation envoyée. Si elle n’apparaît pas dans quelques minutes, vérifiez les courriers indésirables (spams).":"Entreprise créée."},201);
   }
+  if(action==="demo_accounts.create"){
+   requirePermission("companies.write");requirePermission("users.write");requirePermission("subscriptions.write");
+   const firstName=text(payload.firstName,100),lastName=text(payload.lastName,100),ownerEmail=email(payload.email),reason=text(payload.reason,500)||`Création d'un compte de démonstration pour ${ownerEmail}`;
+   if(!firstName||!lastName)throw Object.assign(new Error("Le prénom et le nom sont obligatoires."),{status:400});
+   const service=privileged();let createdCompanyId:string|null=null,createdUserId:string|null=null;
+   try{
+    const {data:existing}=await service.auth.admin.listUsers({page:1,perPage:1000});
+    if(existing?.users.some(candidate=>candidate.email?.toLowerCase()===ownerEmail))throw Object.assign(new Error("Un compte existe déjà avec cette adresse e-mail."),{status:409});
+    const {data:plans,error:planError}=await service.from("subscription_plan_versions").select("id,plan_key,name,availability,recommended,price_monthly_cents").is("effective_to",null).order("recommended",{ascending:false}).order("price_monthly_cents",{ascending:true}).limit(50);
+    const plan=plans?.find(candidate=>candidate.availability==="available")||null;
+    if(planError)throw planError;if(!plan)throw Object.assign(new Error("Aucun plan actif n'est disponible pour l'essai."),{status:409});
+    const {data:invitation,error:inviteError}=await service.auth.admin.inviteUserByEmail(ownerEmail,{data:{first_name:firstName,last_name:lastName,demo_account:true},redirectTo:"https://app.piloz.fr/?mode=login"});
+    if(inviteError||!invitation.user)throw Object.assign(new Error("L'invitation du compte de démonstration n'a pas pu être envoyée."),{status:inviteError?.status||400});
+    createdUserId=invitation.user.id;
+    const demoName=`Horizon Conseil — Démo ${firstName} ${lastName}`.slice(0,180);
+    const {data:company,error:companyError}=await client.rpc("platform_admin_create_company",{target_owner_user_id:createdUserId,target_company:{owner_first_name:firstName,owner_last_name:lastName,owner_email:ownerEmail,provisioning_name:demoName,provisioning_pending:false,legal_name:"Horizon Conseil (démonstration)",trade_name:"Horizon Conseil",company_type:"company",legal_form:"Société de démonstration",address_line1:"18 avenue des Ateliers",postal_code:"85000",city:"La Roche-sur-Yon",country:"France",country_code:"FR",email:"contact@horizon-conseil.example",phone:"+33100000000",currency:"EUR",language:"fr",admin_tags:["demo","seeded"],internal_admin_notes:"Compte de démonstration Piloz — données entièrement fictives."},target_subscription:{plan_version_id:plan.id,billing_interval:"monthly",status:"trialing",trial_days:14,max_users:null},target_reason:reason});
+    if(companyError)throw companyError;createdCompanyId=company.id;
+    const now=new Date(),tomorrow=new Date(now.getTime()+86_400_000),nextWeek=new Date(now.getTime()+7*86_400_000);
+    const {error:settingsError}=await service.from("company_settings").update({legal_name:"Horizon Conseil (démonstration)",trade_name:"Horizon Conseil",address_line1:"18 avenue des Ateliers",postal_code:"85000",city:"La Roche-sur-Yon",country:"France",country_code:"FR",email:"contact@horizon-conseil.example",phone_e164:"+33100000000",currency:"EUR",language:"fr",onboarding_step:7,onboarding_completed_at:now.toISOString()}).eq("company_id",createdCompanyId);
+    if(settingsError)throw settingsError;
+    const {error:preferencesError}=await service.from("user_preferences").update({onboarding_completed:true}).eq("user_id",createdUserId);
+    if(preferencesError)throw preferencesError;
+    const {data:clients,error:clientsError}=await service.from("clients").insert([
+     {company_id:createdCompanyId,kind:"company",legal_name:"Nova Bâtiment",email:"contact@nova-batiment.example",phone_e164:"+33100000001",address_line_1:"12 rue du Chantier",postal_code:"75012",city:"Paris",country_code:"FR",payment_terms:"30 jours",created_by:createdUserId},
+     {company_id:createdCompanyId,kind:"company",legal_name:"Atelier Horizon",email:"bonjour@atelier-horizon.example",phone_e164:"+33100000002",address_line_1:"4 place des Artisans",postal_code:"44000",city:"Nantes",country_code:"FR",payment_terms:"À réception",created_by:createdUserId},
+     {company_id:createdCompanyId,kind:"person",first_name:"Camille",last_name:"Martin",email:"camille.martin@example.com",phone_e164:"+33100000003",postal_code:"69002",city:"Lyon",country_code:"FR",created_by:createdUserId}
+    ]).select("id,legal_name,first_name,last_name");
+    if(clientsError)throw clientsError;
+    const {error:itemsError}=await service.from("catalog_items").insert([
+     {company_id:createdCompanyId,item_type:"service",reference:"DEMO-SRV-001",name:"Audit organisationnel",short_description:"Diagnostic et recommandations",unit:"forfait",purchase_price:350,sale_price:750,tax_rate:20,stock_managed:false,created_by:createdUserId},
+     {company_id:createdCompanyId,item_type:"subscription",reference:"DEMO-ABO-001",name:"Accompagnement mensuel",short_description:"Suivi et pilotage mensuels",unit:"mois",purchase_price:250,sale_price:590,tax_rate:20,stock_managed:false,created_by:createdUserId},
+     {company_id:createdCompanyId,item_type:"product",reference:"DEMO-ART-001",name:"Kit de démarrage",short_description:"Matériel de démonstration",unit:"unité",purchase_price:420,sale_price:690,tax_rate:20,stock_managed:false,created_by:createdUserId}
+    ]);
+    if(itemsError)throw itemsError;
+    const nova=clients?.find(item=>item.legal_name==="Nova Bâtiment"),atelier=clients?.find(item=>item.legal_name==="Atelier Horizon");
+    const {error:activitiesError}=await service.from("activities").insert([
+     {company_id:createdCompanyId,client_id:nova?.id||null,activity_type:"call",subject:"Appeler Nova Bâtiment",description:"Préparer la proposition commerciale (donnée fictive).",scheduled_at:tomorrow.toISOString(),assigned_user_id:createdUserId,created_by:createdUserId,metadata:{demo:true}},
+     {company_id:createdCompanyId,client_id:atelier?.id||null,activity_type:"meeting",subject:"Rendez-vous Atelier Horizon",description:"Présentation de la solution (donnée fictive).",scheduled_at:nextWeek.toISOString(),assigned_user_id:createdUserId,created_by:createdUserId,metadata:{demo:true}},
+     {company_id:createdCompanyId,client_id:atelier?.id||null,activity_type:"email",subject:"Envoyer le compte rendu",description:"Activité terminée de démonstration.",scheduled_at:now.toISOString(),completed_at:now.toISOString(),assigned_user_id:createdUserId,created_by:createdUserId,metadata:{demo:true}}
+    ]);
+    if(activitiesError)throw activitiesError;
+    await audit("demo_account.create","company",createdCompanyId,createdCompanyId,null,{email:ownerEmail,trial_days:14,plan_key:plan.plan_key,seeded:true},reason);
+    return response(req,{company,ownerUserId:createdUserId,invitationSent:true,trialDays:14,message:"Compte de démonstration créé. L'invitation sécurisée a été envoyée ; le destinataire choisira son mot de passe."},201);
+   }catch(error){
+    if(createdCompanyId)await service.from("companies").delete().eq("id",createdCompanyId);
+    if(createdUserId)await service.auth.admin.deleteUser(createdUserId);
+    throw error;
+   }
+  }
+  if(action==="demo_accounts.list"){
+   requirePermission("companies.read");const service=privileged();
+    const {data,error}=await service.from("companies").select("id,name,owner_user_id,platform_status,created_at,admin_tags,company_settings(email,trade_name),subscriptions(plan_key,status,trial_started_at,trial_ends_at)").contains("admin_tags",["demo"]).order("created_at",{ascending:false}).limit(200);
+    if(error)throw error;
+    const items=await Promise.all((data||[]).map(async item=>{
+     const {data:owner}=await service.auth.admin.getUserById(item.owner_user_id);
+     return {...item,owner_email:owner.user?.email||null};
+    }));
+    return response(req,{items});
+  }
   if(action==="companies.update"){
    requirePermission("companies.write");const {data,error}=await client.rpc("platform_admin_update_company",{target_company_id:uuid(payload.companyId),target_changes:record(payload.changes),target_reason:text(payload.reason,500)});if(error)throw error;return response(req,{company:data});
   }
