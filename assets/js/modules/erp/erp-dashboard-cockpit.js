@@ -443,7 +443,7 @@
   }
   function renderHeader(payload){
     const first=String(payload.first_name||'').trim(),title=first?`Bonjour 👋 ${first}`:'Bonjour 👋';
-    return`<header class="cockpit-header"><div class="cockpit-hero"><div class="cockpit-welcome"><span>${esc(todayLabel())}</span><h1>${esc(title)}</h1><p>Voici les éléments qui méritent votre attention aujourd’hui.</p><div class="cockpit-hero-meta"><span class="cockpit-scope-badge">${icon('users')}${esc(scopeLabel(payload.summary))}</span><span>${esc(refreshLabel(payload))}</span><span>${esc(periodLabel(payload.summary))}</span></div></div>${quickActions(payload.summary)}</div><div class="cockpit-filterbar"><div class="cockpit-filterbar-main cockpit-period">${periodShortcuts()}<label class="cockpit-select-field"><span>Autre période</span><select aria-label="Choisir une période" onchange="PilozDashboardCockpit.setPeriod(this.value)">${periods.map(([key,label])=>`<option value="${key}" ${ui.period===key?'selected':''}>${esc(label)}</option>`).join('')}</select></label><label class="cockpit-select-field"><span>Comparaison</span><select aria-label="Choisir une comparaison" onchange="PilozDashboardCockpit.setComparison(this.value)">${comparisons.map(([key,label])=>`<option value="${key}" ${ui.comparison===key?'selected':''}>${esc(label)}</option>`).join('')}</select></label></div>${ui.period==='custom'?`<div class="cockpit-custom-dates"><label>Du<input type="date" value="${esc(ui.customStart)}" max="${esc(ui.customEnd||'')}" onchange="PilozDashboardCockpit.setCustomDate('start',this.value)"></label><label>Au<input type="date" value="${esc(ui.customEnd)}" min="${esc(ui.customStart||'')}" onchange="PilozDashboardCockpit.setCustomDate('end',this.value)"></label></div>`:''}<div class="cockpit-filterbar-actions"><span class="cockpit-comparison-help">${esc(comparisonHelp(payload.summary))}</span><button class="cockpit-icon-button" onclick="PilozDashboardCockpit.refresh()" aria-label="Actualiser le tableau de bord" title="Actualiser">${icon('refresh')}</button><button class="cockpit-customize-button" onclick="PilozDashboardCockpit.startCustomize()">${icon('sliders')}<span>Personnaliser</span></button></div></div></header>`;
+    return`<header class="cockpit-header"><div class="cockpit-hero"><span class="cockpit-hero-decoration" aria-hidden="true"></span><div class="cockpit-welcome"><span>${esc(todayLabel())}</span><h1>${esc(title)}</h1><p>Voici les éléments qui méritent votre attention aujourd’hui.</p><div class="cockpit-hero-meta"><span class="cockpit-scope-badge">${icon('users')}${esc(scopeLabel(payload.summary))}</span><span>${esc(refreshLabel(payload))}</span><span>${esc(periodLabel(payload.summary))}</span></div></div>${quickActions(payload.summary)}</div><div class="cockpit-filterbar"><div class="cockpit-filterbar-main cockpit-period">${periodShortcuts()}<label class="cockpit-select-field"><span>Autre période</span><select aria-label="Choisir une période" onchange="PilozDashboardCockpit.setPeriod(this.value)">${periods.map(([key,label])=>`<option value="${key}" ${ui.period===key?'selected':''}>${esc(label)}</option>`).join('')}</select></label><label class="cockpit-select-field"><span>Comparaison</span><select aria-label="Choisir une comparaison" onchange="PilozDashboardCockpit.setComparison(this.value)">${comparisons.map(([key,label])=>`<option value="${key}" ${ui.comparison===key?'selected':''}>${esc(label)}</option>`).join('')}</select></label></div>${ui.period==='custom'?`<div class="cockpit-custom-dates"><label>Du<input type="date" value="${esc(ui.customStart)}" max="${esc(ui.customEnd||'')}" onchange="PilozDashboardCockpit.setCustomDate('start',this.value)"></label><label>Au<input type="date" value="${esc(ui.customEnd)}" min="${esc(ui.customStart||'')}" onchange="PilozDashboardCockpit.setCustomDate('end',this.value)"></label></div>`:''}<div class="cockpit-filterbar-actions"><span class="cockpit-comparison-help">${esc(comparisonHelp(payload.summary))}</span><button class="cockpit-icon-button" onclick="PilozDashboardCockpit.refresh()" aria-label="Actualiser le tableau de bord" title="Actualiser">${icon('refresh')}</button><button class="cockpit-customize-button" onclick="PilozDashboardCockpit.startCustomize()">${icon('sliders')}<span>Personnaliser</span></button></div></div></header>`;
   }
   function isNewCompany(payload,state){return number(payload.summary?.invoice_count)===0&&number(payload.summary?.quote_count)===0&&number(payload.activity?.today)===0&&number(payload.activity?.upcoming)===0&&number(payload.crm?.open_opportunities)===0&&(state.data.clients||[]).length===0;}
   function onboardingDismissed(){return ui.preferences?.period_config?.getting_started_dismissed===true;}
@@ -630,6 +630,18 @@
   }
   function refresh(){return invalidate();}
   function renderRoute(routeName,state){if(routeName==='dashboard'){render(state);return true;}return legacyRenderRoute.call(modern,routeName,state);}
+
+  function closeQuickActions(event){
+    const menus=document.querySelectorAll('.cockpit-quick-actions details[open]');
+    if(!menus.length)return;
+    if(event.type==='keydown'&&event.key!=='Escape')return;
+    menus.forEach(menu=>{
+      if(event.type==='keydown'||!menu.contains(event.target))menu.open=false;
+    });
+  }
+
+  document.addEventListener('click',closeQuickActions);
+  document.addEventListener('keydown',closeQuickActions);
 
   modern.renderRoute=renderRoute;
   global.PilozDashboardCockpit={
