@@ -1,7 +1,8 @@
 (function activitiesWorkspace(global){
  'use strict';
- const crm=global.PilozCRM,api=()=>global.PilozERP,app=()=>global.PilozApp;
- if(!crm||!api()||!app())return;
+ // Register the workspace even while a legacy module is still finishing its
+ // setup. Runtime dependencies are resolved only when an action is executed.
+ const crm=global.PilozCRM||(global.PilozCRM={}),api=()=>global.PilozERP,app=()=>global.PilozApp;
  const ui={view:'list',calendarMode:'week',quick:'today',search:'',status:'',typeId:'',owner:'',team:'',savedFilterId:'',page:1,pageSize:50,request:0,data:null,selected:new Set(),detail:null,connections:[],calendarDate:new Date(),busy:false,searchTimer:null};
  const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
  const attr=value=>esc(value).replace(/`/g,'&#96;');
@@ -107,4 +108,17 @@
  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.getElementById('activity-workspace-modal'))closeModal();});
  Object.assign(crm,{activitiesWorkspace:ui,loadActivitiesWorkspace:load,closeActivitiesModal:closeModal,setActivityWorkspaceView:setView,setActivityQuick:setQuick,searchActivities:search,setActivityType(value){ui.typeId=value;ui.page=1;load();},setActivityStatus(value){ui.status=value;ui.page=1;load();},setActivityOwner(value){ui.owner=value;ui.page=1;load();},activityPage(value){ui.page=Math.max(1,value);load();},selectActivity:select,selectAllActivities:selectAll,openActivityForm:openForm,openQuickActivity:openQuickCompatibility,openQuickCallWorkspace:openQuickCall,saveActivityWorkspace:save,openActivityDetail:openDetail,openCompleteActivityWorkspace:openComplete,completeActivityWorkspace:complete,openActivityReschedule:id=>transitionDialog(id,'reschedule'),openActivityCancel:id=>transitionDialog(id,'cancel'),runActivityTransition:transition,archiveActivityWorkspace:id=>transition(id,'archive',{}),duplicateActivityWorkspace:duplicate,uploadActivityAttachment:uploadAttachment,downloadActivityAttachment,openActivityTypes:openTypes,editActivityTypeWorkspace:editType,toggleActivityTypeWorkspace:toggleType,saveActivityTypeWorkspace:saveType,bulkActivityAction:bulk,openBulkReschedule:bulkReschedule,runBulkReschedule,openBulkActivityStatus:bulkStatus,runBulkActivityStatus,openBulkActivityAssign:bulkAssign,runBulkActivityAssign,openSaveActivityFilter:openSaveFilter,saveActivitySavedFilter:saveFilter,applyActivitySavedFilter:applySavedFilter,deleteActivitySavedFilter:deleteSavedFilter,dragActivityWorkspace(event,id){event.dataTransfer.setData('text/activity-id',id);event.dataTransfer.effectAllowed='move';},dropActivityOnDate:dragDrop,setActivityCalendarMode(value){ui.calendarMode=value;load();},moveActivityCalendar:changeCalendar,todayActivityCalendar(){ui.calendarDate=new Date();load();},openActivityForEntity:openForEntity});
  crm.reloadActivities=load;
+ const modern=global.PilozModern;
+ if(modern&&!modern.__activitiesWorkspaceRouteInstalled){
+  const previousRenderRoute=modern.renderRoute?.bind(modern);
+  modern.renderRoute=function activitiesWorkspaceRoute(routeName,runtimeState){
+   const current=route();
+   if(current==='crm/activities'||current==='activities'||routeName==='activities'){
+    load();
+    return true;
+   }
+   return previousRenderRoute?.(routeName,runtimeState)||false;
+  };
+  modern.__activitiesWorkspaceRouteInstalled=true;
+ }
 })(window);

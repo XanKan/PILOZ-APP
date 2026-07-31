@@ -11,6 +11,7 @@ const script=read('assets/js/modules/erp/erp-activities-workspace.js');
 const css=read('assets/css/activities-workspace.css');
 const index=read('index.html');
 const crm=read('assets/js/modules/erp/erp-crm-rework.js');
+const erpApp=read('assets/js/modules/erp/erp-app.js');
 
 const checks=[];
 function check(name,condition){assert.ok(condition,name);checks.push(name);}
@@ -29,6 +30,10 @@ check('provisionnement nouvelles entreprises',has(migration,'companies_provision
 check('migration activités existantes',has(migration,'activities_validate_workspace')&&has(migration,'activity_type_id'));
 check('suppression physique bloquée',has(migration,'activities_prevent_physical_delete'));
 check('index métier',has(migration,'activities_workspace_range_idx')&&has(migration,'activities_workspace_owner_idx')&&has(migration,'activity_events_activity_idx'));
+
+check('route activities autonome',has(script,'__activitiesWorkspaceRouteInstalled')&&has(script,'function activitiesWorkspaceRoute'));
+check('module sans abandon silencieux',!has(script,'if(!crm||!api()||!app())return'));
+check('alias activities direct',has(erpApp,"activities:'activities'"));
 
 for(const rpc of ['get_activity_workspace_v3','get_activity_detail','save_activity_workspace','complete_activity_workspace','transition_activity_workspace','duplicate_activity_workspace','register_activity_attachment','save_activity_type','save_activity_saved_filter','delete_activity_saved_filter','dispatch_due_activity_reminders']){
   check(`RPC ${rpc}`,has(security,`function public.${rpc}`));
