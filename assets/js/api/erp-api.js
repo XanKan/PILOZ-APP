@@ -36,6 +36,22 @@
   }
   const FISCAL_DOCUMENT_TYPES=new Set(['invoice','deposit_invoice','balance_invoice','credit_note','proforma_invoice']);
   const FISCAL_DOCUMENT_FIELDS=new Set(['document_type','number','client_id','status','issue_date','due_date','currency','payment_terms','payment_method','discount_rate','total_cost','total_excl_tax','total_tax','total_incl_tax','source_document_id','validated_at','finalized_at','finalized_by','locked_at','snapshot_id','fiscal_security_status']);
+  const TRAINING_MUTATION_RPC=/^(create|update|upsert|save|set|delete|remove|archive|restore|record|finalize|validate|convert|duplicate|move|link|unlink|accept|reject|complete|cancel|reopen|schedule|send|ensure|invite|resend|reset|assign|apply|toggle|register|bootstrap|run_due_)/i;
+  const TRAINING_READ_RPC=/^(get|list|search|preview|resolve|check|has|can|current|is_|platform_admin_context|company_onboarding_status)/i;
+  const TRAINING_MUTATION_TOKEN=/(^|_)(create|update|upsert|save|set|delete|remove|archive|restore|record|finalize|validate|convert|duplicate|move|link|unlink|accept|reject|complete|cancel|reopen|schedule|send|ensure|invite|resend|reset|assign|apply|toggle|register|bootstrap|run)(_|$)/i;
+  const TRAINING_SAFE_INVOKES=new Set(['company-search','address-search']);
+  function trainingActive(){return global.PilozHelp?.isTrainingActive?.()===true;}
+  function trainingWriteError(){return Object.assign(new Error('Mode formation : cette action est simulée et aucune donnée réelle n’a été enregistrée.'),{code:'training_write_blocked'});}
+  function guardTrainingRequest(path,options={}){
+    if(!trainingActive())return;
+    const method=String(options.method||'GET').toUpperCase();
+    if(!['POST','PATCH','PUT','DELETE'].includes(method))return;
+    const rpcName=decodeURIComponent((String(path||'').match(/\/rest\/v1\/rpc\/([^?]+)/)||[])[1]||'');
+    if(String(path||'').startsWith('/storage/v1/object/sign/'))return;
+    if(rpcName&&TRAINING_READ_RPC.test(rpcName)&&!TRAINING_MUTATION_RPC.test(rpcName)&&!TRAINING_MUTATION_TOKEN.test(rpcName))return;
+    throw trainingWriteError();
+  }
+  function guardTrainingInvoke(name){if(trainingActive()&&!TRAINING_SAFE_INVOKES.has(String(name||'')))throw trainingWriteError();}
   function parsedRequestBody(body){if(body==null)return null;if(typeof body!=='string')return body;try{return JSON.parse(body);}catch{return null;}}
   function guardDirectFiscalWrite(path,options={}){
     const method=String(options.method||'GET').toUpperCase(),table=(String(path||'').match(/\/rest\/v1\/([^?]+)/)||[])[1];
@@ -103,6 +119,7 @@
   }
   async function request(path,options={}){
     const runtime=global.PilozRuntime;if(!runtime?.config||!runtime?.session) throw new Error('Authentification requise.');
+    guardTrainingRequest(path,options);
     guardDirectFiscalWrite(path,options);
     const response=await runtime.request(path,options);
     let data;
@@ -126,10 +143,12 @@
     if(!rows[0]?.company_id)throw new Error("Aucune entreprise n'est associée à ce compte.");return rows[0].company_id;
   }
   async function invoke(name,body,signal){
+    guardTrainingInvoke(name);
     const runtime=global.PilozRuntime,response=await fetch(runtime.config.url.replace(/\/$/,'')+'/functions/v1/'+name,{method:'POST',signal,headers:{apikey:runtime.config.key,Authorization:'Bearer '+runtime.session.access_token,'Content-Type':'application/json'},body:serializeBody(body)});
     const data=await readBody(response,'/functions/v1/'+name);if(!response.ok){const failure=new Error(translateError(data?.error||data?.message||'Service indisponible.',response.status));failure.status=response.status;failure.code=data?.code||'';failure.detail=typeof data?.detail==='string'?data.detail:'';technicalLog('Edge Function refusée',response,name,failure);throw failure;}global.PilozTabSync?.notifyMutation?.({path:'/functions/v1/'+name,method:'POST'});return data;
   }
   async function invokeBlob(name,body,signal){
+    guardTrainingInvoke(name);
     const runtime=global.PilozRuntime,response=await fetch(runtime.config.url.replace(/\/$/,'')+'/functions/v1/'+name,{method:'POST',signal,headers:{apikey:runtime.config.key,Authorization:'Bearer '+runtime.session.access_token,'Content-Type':'application/json'},body:serializeBody(body)});
     if(!response.ok){const data=await readBody(response,'/functions/v1/'+name),failure=new Error(translateError(data?.error||data?.message||'Service indisponible.',response.status));failure.status=response.status;failure.code=data?.code||'';failure.detail=typeof data?.detail==='string'?data.detail:'';technicalLog('Edge Function refusée',response,name,failure);throw failure;}
     const contentType=String(response.headers?.get?.('content-type')||'').split(';')[0].trim().toLowerCase();
@@ -153,7 +172,7 @@
   function update(table,id,data){return request(`/rest/v1/${table}?id=eq.${encodeURIComponent(id)}${restrictedReturns.has(table)?'&select=id':''}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:serializeBody(data)});}
   function remove(table,id){return request(`/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,{method:'DELETE',headers:{Prefer:'return=minimal'}});}
   function rpc(name,args={},options={}){return request(`/rest/v1/rpc/${name}`,{...options,method:'POST',body:serializeBody(args)});}
-  async function upload(bucket,path,file,upsert=true){const runtime=global.PilozRuntime,response=await fetch(`${runtime.config.url.replace(/\/$/,'')}/storage/v1/object/${bucket}/${path}`,{method:'POST',headers:{apikey:runtime.config.key,Authorization:`Bearer ${runtime.session.access_token}`,'Content-Type':file.type,'x-upsert':String(upsert)},body:file}),data=await readBody(response,`/storage/v1/object/${bucket}`);if(!response.ok){const failure=new Error(data?.message||data?.error||'Envoi impossible.');failure.status=response.status;technicalLog('Envoi de fichier refusé',response,bucket,failure);throw failure;}global.PilozTabSync?.notifyMutation?.({path:`/storage/v1/object/${bucket}`,method:'POST'});return data;}
+  async function upload(bucket,path,file,upsert=true){if(trainingActive())throw trainingWriteError();const runtime=global.PilozRuntime,response=await fetch(`${runtime.config.url.replace(/\/$/,'')}/storage/v1/object/${bucket}/${path}`,{method:'POST',headers:{apikey:runtime.config.key,Authorization:`Bearer ${runtime.session.access_token}`,'Content-Type':file.type,'x-upsert':String(upsert)},body:file}),data=await readBody(response,`/storage/v1/object/${bucket}`);if(!response.ok){const failure=new Error(data?.message||data?.error||'Envoi impossible.');failure.status=response.status;technicalLog('Envoi de fichier refusé',response,bucket,failure);throw failure;}global.PilozTabSync?.notifyMutation?.({path:`/storage/v1/object/${bucket}`,method:'POST'});return data;}
   async function signedUrl(bucket,path,expiresIn=3600){
     const data=await request(`/storage/v1/object/sign/${bucket}/${path}`,{method:'POST',body:serializeBody({expiresIn})});
     const raw=data?.signedURL||data?.signedUrl||data?.url||'';

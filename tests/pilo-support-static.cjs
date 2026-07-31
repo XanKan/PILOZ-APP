@@ -8,6 +8,8 @@ const app = read("assets/js/modules/erp/erp-help-support.js");
 const helpCss = read("assets/css/piloz-help-support.css");
 const documentEditor = read("assets/js/modules/erp/erp-document-editor-v2.js");
 const access = read("assets/js/modules/erp/erp-access-control.js");
+const erpApi = read("assets/js/api/erp-api.js");
+const crmRework = read("assets/js/modules/erp/erp-crm-rework.js");
 const html = read("index.html");
 const pilo = read("supabase/functions/pilo/index.ts");
 const providers = read("supabase/functions/_shared/pilo-providers.ts");
@@ -199,5 +201,13 @@ assert.ok(app.includes("selector:'#crm-opportunity-stage',allow:true,event:'chan
 assert.ok(app.includes("selector:'#crm-opportunity-form input[name=\"next_action\"]',allow:true,event:'input',minLength:3"), "La formation Pipeline doit autoriser la saisie de la prochaine action");
 assert.ok(app.includes("selector:'#crm-opportunity-form input[name=\"next_action_at\"]',allow:true,event:'change'"), "La formation Pipeline doit autoriser la date de prochaine action");
 assert.ok(app.includes("['Planifier la date','Choisissez la date et l’heure auxquelles cette action doit être réalisée.']"), "La prochaine action et sa date doivent être deux étapes distinctes");
+
+assert.ok(app.includes("selector:'#crm-opportunity-form input[name=\"name\"]',allow:true,event:'input',minLength:3"), "La formation Pipeline doit demander le nom de l'opportunite");
+assert.ok(app.includes("selector:'#crm-party-button',allow:true") && app.includes("selector:'#crm-party-results [data-party-id=\"piloz-training-demo-client\"]',allow:true"), "La formation Pipeline doit guider la selection du client fictif");
+assert.ok(app.includes("selector:'#crm-opportunity-form input[name=\"estimated_amount\"]',allow:true,event:'input',minLength:1"), "La formation Pipeline doit demander le montant estime");
+assert.ok(app.includes("selector:'#crm-modal-layer footer button.primary'"), "La formation Pipeline doit aller jusqu'au bouton Creer");
+assert.ok(app.includes("function trainingMutationAction") && app.includes("if(!trainingMutationAction(action))return") && app.includes("event.stopImmediatePropagation()"), "La formation doit neutraliser les actions metier dangereuses avant leurs gestionnaires");
+assert.ok(erpApi.includes("TRAINING_MUTATION_RPC") && erpApi.includes("guardTrainingRequest(path,options)") && erpApi.includes("guardTrainingInvoke(name)"), "La couche API doit refuser les ecritures pendant une formation");
+assert.ok(crmRework.includes("global.PilozHelp?.isTrainingActive?.()&&trainingRows.length") && crmRework.includes('data-party-id="${esc(row.id)}"'), "Le selecteur CRM de formation doit rester local et fictif");
 
 console.log(JSON.stringify({ ok: true, navigation: 5, trainingCourses: 5, safeContext: 11, privateAttachments: true, feedbackComments: true }));
