@@ -43,6 +43,13 @@ otp_expiry = 3600
 subject = "Vous êtes invité(e) à rejoindre PILOZ"
 content_path = "./supabase/templates/invite.html"
 
+# Modèle versionné de récupération du mot de passe. Le bouton renvoie vers
+# l'application publiée, qui reconnaît le jeton `recovery` et affiche le
+# formulaire sécurisé de choix du nouveau mot de passe.
+[auth.email.template.recovery]
+subject = "Réinitialisez votre mot de passe PILOZ"
+content_path = "./supabase/templates/recovery.html"
+
 # Le stockage vectoriel n'est pas utilisé par Piloz et nécessite un plan
 # Supabase payant. Le désactiver évite qu'un push de configuration tente de
 # l'activer par défaut.

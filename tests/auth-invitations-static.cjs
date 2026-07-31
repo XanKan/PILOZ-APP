@@ -9,6 +9,7 @@ const platformAdmin = read('supabase/functions/platform-admin-api/index.ts');
 const companyAccess = read('supabase/functions/company-access/index.ts');
 const accessUi = read('assets/js/modules/erp/erp-access-control.js');
 const inviteTemplate = read('supabase/templates/invite.html');
+const recoveryTemplate = read('supabase/templates/recovery.html');
 
 const checks = {
   invite_opens_password_creation: app.includes("['recovery','invite'].includes(hp.get('type'))"),
@@ -23,6 +24,11 @@ const checks = {
   invite_subject_is_french: config.includes('subject = "Vous êtes invité(e) à rejoindre PILOZ"'),
   invite_template_uses_confirmation_url: (inviteTemplate.match(/\{\{ \.ConfirmationURL \}\}/g)||[]).length >= 2,
   invite_template_is_branded: inviteTemplate.includes('PILOZ') && inviteTemplate.includes('Accepter l’invitation'),
+  recovery_template_is_versioned: config.includes('[auth.email.template.recovery]') && config.includes('content_path = "./supabase/templates/recovery.html"'),
+  recovery_subject_is_french: config.includes('subject = "Réinitialisez votre mot de passe PILOZ"'),
+  recovery_template_uses_confirmation_url: (recoveryTemplate.match(/\{\{ \.ConfirmationURL \}\}/g)||[]).length >= 2,
+  recovery_template_is_branded: recoveryTemplate.includes('PILOZ') && recoveryTemplate.includes('Réinitialiser mon mot de passe'),
+  recovery_template_has_security_notice: recoveryTemplate.includes('votre mot de passe ne sera pas modifié') && recoveryTemplate.includes('ne transférez jamais ce lien'),
   spam_delivery_guidance_is_visible: accessUi.includes('courriers indésirables (spams)') && companyAccess.includes('courriers indésirables (spams)')
 };
 
