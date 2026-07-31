@@ -24,5 +24,12 @@ Publie les articles officiels Pilo relatifs aux activités et à leur sécurité
 
 ## Déploiement
 
-Les migrations doivent être appliquées dans l’ordre numérique par le processus Supabase de production. Tant qu’elles ne sont pas appliquées, l’interface ne doit pas être considérée active en production. Après déploiement, exécuter les contrôles post-déploiement et vérifier la version `202607310120`.
+### `202607310121_activities_enterprise_scale.sql`
 
+- préférences d’affichage persistantes par utilisateur ;
+- pagination serveur jusqu’à 200 lignes par page, tri serveur et compteurs agrégés en une seule lecture ;
+- recherche serveur des clients, prospects, contacts, opportunités, documents et fournisseurs ;
+- transitions groupées côté serveur, limitées à 500 activités, avec bilan des éléments modifiés, ignorés ou en erreur ;
+- index dédiés aux volumes importants sans suppression ni réécriture des données existantes.
+
+Les migrations doivent être appliquées dans l’ordre numérique par le processus Supabase de production. Tant qu’elles ne sont pas appliquées, l’interface ne doit pas être considérée active en production. Après déploiement, exécuter les contrôles post-déploiement et vérifier la version `202607310121`.

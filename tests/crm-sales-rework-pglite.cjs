@@ -98,6 +98,16 @@ async function expectError(promise,label){const error=await promise.then(()=>nul
     assert(await rpc(db,'select public.delete_activity_saved_filter($1) value',[savedFilter.id])===true,'suppression du filtre personnel impossible');
     const transitioned=await rpc(db,"select to_jsonb(public.transition_activity_workspace($1,'status','{\"status\":\"in_progress\"}'::jsonb)) value",[workspaceCreated.id]);
     assert(transitioned.status==='in_progress','transition de statut activité invalide');
+    const savedPreferences=await rpc(db,"select to_jsonb(public.save_activity_workspace_preferences($1::jsonb)) value",[JSON.stringify({default_view:'team',page_size:100,density:'compact',show_metrics:false,visible_columns:['subject','owner','date','status'],sort_key:'subject',sort_direction:'desc'})]);
+    assert(savedPreferences.page_size===100&&savedPreferences.density==='compact'&&savedPreferences.show_metrics===false,'activity workspace preferences were not persisted');
+    const workspaceV4=await rpc(db,"select public.get_activity_workspace_v4('list','all',null,null,null,null,null,null,null,false,1,100,'subject','desc') value");
+    assert(Array.isArray(workspaceV4.rows)&&workspaceV4.page_size===100&&workspaceV4.preferences.default_view==='team','activity workspace v4 is incomplete');
+    assert(Number(workspaceV4.counts.today)>=0&&Number(workspaceV4.counts.unassigned)>=0,'activity workspace v4 counters are missing');
+    const relationSearch=await rpc(db,"select coalesce(jsonb_agg(to_jsonb(candidate)),'[]'::jsonb) value from public.search_activity_relations('all','Atlas',20) candidate");
+    assert(relationSearch.some(row=>row.entity_id===target.id)&&relationSearch.some(row=>row.entity_id===opportunity.id),'server-side activity relation search is incomplete');
+    const workspaceCopy=await rpc(db,'select to_jsonb(public.duplicate_activity_workspace($1)) value',[workspaceCreated.id]);
+    const bulkResult=await rpc(db,"select public.bulk_transition_activities_workspace(array[$1::uuid,$2::uuid],'status','{\"status\":\"scheduled\"}'::jsonb) value",[workspaceCreated.id,workspaceCopy.id]);
+    assert(Number(bulkResult.changed)===2&&bulkResult.failed.length===0,'bulk activity transition failed');
     const reports=await rpc(db,"select public.get_crm_reports(date_trunc('month',current_date)::date,current_date,null,null) value");
     assert(reports.permissions.export===true&&reports.metrics.pipeline_count>=1&&reports.quotes.created>=3,`agrégats commerciaux serveur invalides: ${JSON.stringify(reports)}`);
     assert(reports.comparison?.start&&reports.comparison?.end,'comparaison de période absente');
@@ -108,6 +118,9 @@ async function expectError(promise,label){const error=await promise.then(()=>nul
     const isolated=await rpc(db,"select public.get_crm_party_picker('Atlas',25,null) value");
     assert(isolated.rows.length===0,'fuite inter-entreprise du sélecteur tiers');
 
+    const isolatedActivities=await rpc(db,"select public.get_activity_workspace_v4('list','all',null,null,null,null,null,null,null,true,1,100,'activity_at','asc') value");
+    assert(!isolatedActivities.rows.some(row=>row.id===workspaceCreated.id),'activity workspace tenant isolation failed');
+
     await setIdentity(db,reader);
     await expectError(rpc(db,"select to_jsonb(public.create_crm_party('{\"relationship_type\":\"prospect\",\"kind\":\"company\",\"legal_name\":\"Interdit\"}'::jsonb)) value"),'écriture lecteur seule');
     const before=(await rpc(db,"select public.get_crm_pipeline_workspace(null,null,'{}'::jsonb,1,75) value")).opportunities.find(row=>row.id===opportunity.id).name;
@@ -115,6 +128,11 @@ async function expectError(promise,label){const error=await promise.then(()=>nul
     const after=(await rpc(db,"select public.get_crm_pipeline_workspace(null,null,'{}'::jsonb,1,75) value")).opportunities.find(row=>row.id===opportunity.id).name;
     assert(before===after,'RLS lecteur seule contournable en accès direct');
 
-    process.stdout.write(JSON.stringify({ok:true,stages:stages.length,party_picker:true,quick_create:true,primary_contact:true,inpi_details:true,opportunity:true,document_amount:true,conversion:true,activities:true,activity_workspace_v3:true,saved_filters:true,confidentiality:true,reports:true,comparison:true,forecast:true,tenant_isolation:true,read_only:true})+'\n');
+    const readerActivities=await rpc(db,"select public.get_activity_workspace_v4('list','all',null,null,null,null,null,null,null,true,1,100,'activity_at','asc') value");
+    assert(!readerActivities.rows.some(row=>row.id===workspaceCreated.id),'private activity leaked to read-only user');
+    const forbiddenBulk=await rpc(db,"select public.bulk_transition_activities_workspace(array[$1::uuid],'status','{\"status\":\"completed\"}'::jsonb) value",[workspaceCreated.id]);
+    assert(Number(forbiddenBulk.changed)===0&&Number(forbiddenBulk.skipped)===1,'read-only user changed an activity through bulk action');
+
+    process.stdout.write(JSON.stringify({ok:true,stages:stages.length,party_picker:true,quick_create:true,primary_contact:true,inpi_details:true,opportunity:true,document_amount:true,conversion:true,activities:true,activity_workspace_v3:true,activity_workspace_v4:true,workspace_preferences:true,relation_search:true,bulk_actions:true,saved_filters:true,confidentiality:true,reports:true,comparison:true,forecast:true,tenant_isolation:true,read_only:true})+'\n');
   }finally{await db.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

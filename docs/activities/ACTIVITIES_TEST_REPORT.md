@@ -2,7 +2,7 @@
 
 Date de recette : 31 juillet 2026  
 Version applicative : `0.9.0-compliance.71`  
-Version de schéma attendue : `202607310120`
+Version de schéma attendue : `202607310121`
 
 ## Résultat
 
@@ -10,7 +10,7 @@ Le module Activités et ses migrations additives ont passé la recette automatis
 
 | Périmètre | Résultat |
 | --- | --- |
-| Contrôles statiques Activités | 76/76 réussis |
+| Contrôles statiques Activités | 85/85 réussis |
 | Parcours commercial navigateur | 108/108 réussis |
 | Cycle documentaire PostgreSQL isolé | Réussi |
 | CRM, activités, filtres et confidentialité PostgreSQL isolé | Réussi |
@@ -19,7 +19,7 @@ Le module Activités et ses migrations additives ont passé la recette automatis
 | Support Pilo et documentation officielle PostgreSQL isolé | Réussi |
 | Administration de plateforme et isolation PostgreSQL isolé | Réussi |
 | Archives fiscales et détection d'altération | Réussi |
-| Volumétrie tableau de bord | 10 001 clients, 50 000 factures, 100 000 paiements et 50 000 activités traités |
+| Volumétrie CRM | 100 000 prospects, 50 000 opportunités et 500 000 activités traités en 23,9 secondes |
 
 ## Couverture du module
 
@@ -40,6 +40,7 @@ Le module Activités et ses migrations additives ont passé la recette automatis
 node --check assets/js/modules/erp/erp-activities-workspace.js
 node tests/activities-workspace-static.cjs
 node tests/crm-sales-rework-pglite.cjs
+node tests/crm-performance-pglite.cjs
 node tests/run-html-tests.cjs tests/commercial-workspace.html
 node scripts/verify-release.mjs
 ```
