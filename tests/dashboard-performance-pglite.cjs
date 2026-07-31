@@ -18,11 +18,11 @@ const client='99999999-9999-4999-8999-999999999999';
       insert into public.company_settings(company_id,legal_name,currency,siret,email,address_line1,postal_code,city,country_code,onboarding_completed_at)
         values('${company}','Entreprise performance','EUR','12345678900033','performance@piloz.test','3 rue Test','75003','Paris','FR',now())
         on conflict(company_id) do update set legal_name=excluded.legal_name;
-      insert into public.clients(id,company_id,kind,legal_name,active,created_by)
-        values('${client}','${company}','company','Client performance',true,'${user}');
+      insert into public.clients(id,company_id,kind,legal_name,active,created_by,created_at)
+        values('${client}','${company}','company','Client performance',true,'${user}',timestamptz '2026-07-15 10:00:00+02');
       set session_replication_role=replica;
       insert into public.clients(id,company_id,kind,legal_name,active,created_by,created_at)
-      select gen_random_uuid(),'${company}'::uuid,'company','Client charge '||value,true,'${user}'::uuid,clock_timestamp()
+      select gen_random_uuid(),'${company}'::uuid,'company','Client charge '||value,true,'${user}'::uuid,timestamptz '2026-07-15 10:00:00+02'
       from generate_series(1,10000) value;
       insert into public.catalog_items(id,company_id,item_type,reference,name,unit,stock_managed,active,created_by)
       select gen_random_uuid(),'${company}'::uuid,'service','SERVICE-'||value,'Service charge '||value,'heure',false,true,'${user}'::uuid
@@ -57,7 +57,7 @@ const client='99999999-9999-4999-8999-999999999999';
     `);
     await setIdentity(db,user);
     const started=performance.now();
-    const cockpit=(await db.query("select public.get_dashboard_cockpit('current_month',null,null,'previous') value")).rows[0].value;
+    const cockpit=(await db.query("select public.get_dashboard_cockpit('custom','2026-07-01','2026-07-31','previous') value")).rows[0].value;
     const elapsed=Math.round(performance.now()-started);
     if(Number(cockpit.summary.invoice_count)!==50000)throw new Error(`invoice count ${cockpit.summary.invoice_count}`);
     if(Number(cockpit.summary.revenue_ht)!==5000000)throw new Error(`revenue ${cockpit.summary.revenue_ht}`);
