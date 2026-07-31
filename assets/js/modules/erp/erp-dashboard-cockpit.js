@@ -49,6 +49,12 @@
     return`<svg class="cockpit-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[name]||paths.chart}</svg>`;
   };
   const metricIcons={revenue_ht:'chart',collected:'wallet',outstanding:'clock',gross_margin:'margin',quote_count:'document',accepted_quote_count:'check',conversion_rate:'target',pipeline_weighted:'pipeline',average_invoice_ht:'receipt',overdue_count:'warning',new_clients:'users',purchases_ht:'cart',stock_value:'box',gross_result:'margin'};
+  const metricTones={
+    revenue_ht:'ocean',collected:'emerald',outstanding:'amber',gross_margin:'violet',
+    quote_count:'sky',accepted_quote_count:'emerald',conversion_rate:'violet',pipeline_weighted:'ocean',
+    average_invoice_ht:'indigo',overdue_count:'coral',new_clients:'sky',purchases_ht:'amber',
+    stock_value:'indigo',gross_result:'violet'
+  };
 
   const periods=[
     ['today','Aujourd’hui'],['current_week','Cette semaine'],['last_7_days','7 derniers jours'],
@@ -231,8 +237,25 @@
     const changes={revenue_ht:summary.revenue_change_percent,collected:summary.collected_change_percent};
     return`<section class="cockpit-kpis" aria-label="Indicateurs principaux">${visibleMetrics(payload).map(key=>{
       const definition=metricDefinitions[key],raw=metricRaw(key,payload),empty=raw===null||raw===undefined||number(raw)===0;
-      return`<button type="button" class="cockpit-kpi ${empty?'is-zero':''}" onclick="PilozDashboardCockpit.navigate('${definition.route}')" title="${esc(definition.definition)}"><span class="cockpit-kpi-top"><i>${icon(metricIcons[key])}</i><em>Ouvrir</em></span><span class="cockpit-kpi-label">${esc(definition.label)}</span><strong>${metricValue(key,payload)}</strong><div>${variation(changes[key])}<small>${esc(metricContext(key,payload))}</small></div></button>`;
+      return`<button type="button" class="cockpit-kpi tone-${metricTones[key]||'ocean'} ${empty?'is-zero':''}" data-metric="${esc(key)}" onclick="PilozDashboardCockpit.navigate('${definition.route}')" title="${esc(definition.definition)}"><span class="cockpit-kpi-top"><i>${icon(metricIcons[key])}</i><em>Ouvrir</em></span><span class="cockpit-kpi-label">${esc(definition.label)}</span><strong>${metricValue(key,payload)}</strong><div>${variation(changes[key])}<small>${esc(metricContext(key,payload))}</small></div></button>`;
     }).join('')}</section>`;
+  }
+  function pulseMetrics(payload){
+    const selected=new Set(visibleMetrics(payload));
+    const summary=payload.summary||{};
+    const permitted=key=>!['gross_margin','gross_result'].includes(key)||summary.permissions?.margin;
+    const available=key=>key!=='purchases_ht'||payload.purchases?.enabled!==false;
+    return['quote_count','accepted_quote_count','conversion_rate','average_invoice_ht','overdue_count','new_clients','gross_margin','purchases_ht']
+      .filter(key=>!selected.has(key)&&permitted(key)&&available(key))
+      .slice(0,6);
+  }
+  function renderPulse(payload){
+    const metrics=pulseMetrics(payload);
+    if(!metrics.length)return'';
+    return`<section class="cockpit-pulse" aria-labelledby="cockpit-pulse-title"><header><div><span>Vue express</span><h2 id="cockpit-pulse-title">Les autres chiffres de la période</h2></div><small>${esc(refreshLabel(payload))}</small></header><div class="cockpit-pulse-grid">${metrics.map(key=>{
+      const definition=metricDefinitions[key];
+      return`<button type="button" class="cockpit-pulse-card tone-${metricTones[key]||'ocean'}" onclick="PilozDashboardCockpit.navigate('${definition.route}')" title="${esc(definition.definition)}"><i>${icon(metricIcons[key])}</i><span><small>${esc(definition.label)}</small><strong>${metricValue(key,payload)}</strong><em>${esc(metricContext(key,payload))}</em></span></button>`;
+    }).join('')}</div></section>`;
   }
   function pointPath(points,key,width,height,min,max){
     if(!points.length)return'';
@@ -425,7 +448,7 @@
     const payload=ui.data;
     const density=(activePreference()?.period_config?.density||'comfortable');
     const showOnboarding=isNewCompany(payload,state)&&!onboardingDismissed();
-    main.innerHTML=`<main class="cockpit-shell density-${esc(density)}">${renderHeader(payload)}${ui.error?`<div class="cockpit-local-error" role="status">Certaines données n’ont pas pu être actualisées. <button onclick="PilozDashboardCockpit.refresh()">Réessayer</button></div>`:''}${ui.edit?renderCustomizer(payload):''}${showOnboarding?renderOnboarding():`${renderKpis(payload)}<section class="cockpit-analytics">${renderChart(payload)}${renderForecast(payload.forecast,payload.summary.currency)}</section>${renderPriority(payload.priority_actions,payload.summary.currency,payload.summary.permissions?.write)}${renderSecondary(payload)}`}${renderOnboardingConfirm()}</main>`;
+    main.innerHTML=`<main class="cockpit-shell density-${esc(density)}">${renderHeader(payload)}${ui.error?`<div class="cockpit-local-error" role="status">Certaines données n’ont pas pu être actualisées. <button onclick="PilozDashboardCockpit.refresh()">Réessayer</button></div>`:''}${ui.edit?renderCustomizer(payload):''}${showOnboarding?renderOnboarding():`${renderKpis(payload)}${renderPulse(payload)}<section class="cockpit-analytics">${renderChart(payload)}${renderForecast(payload.forecast,payload.summary.currency)}</section>${renderPriority(payload.priority_actions,payload.summary.currency,payload.summary.permissions?.write)}${renderSecondary(payload)}`}${renderOnboardingConfirm()}</main>`;
   }
 
   function setPeriod(value){

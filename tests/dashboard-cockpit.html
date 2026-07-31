@@ -52,6 +52,8 @@ window.PilozCommercialWorkspace={openClient:id=>calls.push({name:'openClient',id
   check('comparaisons expliquées sans jargon N-1',main.textContent.includes('Juste avant (ex. juillet → juin)')&&main.textContent.includes('Mêmes dates l’année dernière')&&!main.textContent.includes('N-1'));
   check('dates de comparaison exactes affichées',main.textContent.includes('Référence utilisée : du 1 juin 2026 au 30 juin 2026'));
   check('quatre indicateurs maximum',document.querySelectorAll('.cockpit-kpi').length===4);
+  check('indicateurs principaux différenciés par métier',new Set([...document.querySelectorAll('.cockpit-kpi')].flatMap(node=>[...node.classList].filter(name=>name.startsWith('tone-')))).size>=3);
+  check('six statistiques complémentaires réelles',document.querySelectorAll('.cockpit-pulse-card').length===6&&main.textContent.includes('Devis émis')&&main.textContent.includes('Factures en retard')&&main.textContent.includes('Nouveaux clients'));
   check('valeurs financières serveur affichées',main.textContent.includes('42 000')&&main.textContent.includes('31 200')&&main.textContent.includes('8 450'));
   check('aucun undefined ou null visible',!main.textContent.includes('undefined')&&!main.textContent.includes('null'));
   check('graphique analytique et alternative accessible',document.querySelectorAll('.cockpit-chart-line').length===2&&!!document.querySelector('.cockpit-chart-table table'));
