@@ -87,7 +87,7 @@ Deno.serve(async req=>{
    const ownerUserId=payload.ownerUserId?uuid(payload.ownerUserId):null;let userId=ownerUserId;
    if(!userId){const {data,error}=await privileged().auth.admin.inviteUserByEmail(ownerEmail,{data:{first_name:firstName,last_name:lastName},redirectTo:"https://app.piloz.fr/?mode=login"});if(error||!data.user)throw Object.assign(new Error(error?.message?.toLowerCase().includes("already")?"Ce propriétaire existe déjà. Ajoutez-le depuis sa fiche utilisateur.":"L’invitation du propriétaire a échoué."),{status:error?.status||400});userId=data.user.id;}
    const {data,error}=await client.rpc("platform_admin_create_company",{target_owner_user_id:userId,target_company:companyValues,target_subscription:subscriptionValues,target_reason:text(payload.reason,500)});if(error)throw error;
-   return response(req,{company:data,ownerUserId:userId,invitationSent:!ownerUserId},201);
+   return response(req,{company:data,ownerUserId:userId,invitationSent:!ownerUserId,message:!ownerUserId?"Invitation envoyée. Si elle n’apparaît pas dans quelques minutes, vérifiez les courriers indésirables (spams).":"Entreprise créée."},201);
   }
   if(action==="companies.update"){
    requirePermission("companies.write");const {data,error}=await client.rpc("platform_admin_update_company",{target_company_id:uuid(payload.companyId),target_changes:record(payload.changes),target_reason:text(payload.reason,500)});if(error)throw error;return response(req,{company:data});
@@ -108,7 +108,7 @@ Deno.serve(async req=>{
    const reason=text(payload.reason,500)||"Invitation par un administrateur Piloz";
    const {error:memberError}=await client.rpc("platform_admin_manage_company_user",{target_company_id:companyId,target_user_id:invitation.user.id,target_role:role,target_operation:"attach",target_reason:reason});if(memberError)throw memberError;
    await client.rpc("platform_admin_record_auth_action",{target_user_id:invitation.user.id,target_company_id:companyId,target_action:"user.invite",target_reason:reason,target_new_state:{email:targetEmail,role}});
-   return response(req,{userId:invitation.user.id,invitationSent:true},201);
+   return response(req,{userId:invitation.user.id,invitationSent:true,message:"Invitation envoyée. Si elle n’apparaît pas dans quelques minutes, vérifiez les courriers indésirables (spams)."},201);
   }
   if(action==="users.manage"){
    requirePermission("users.write");const {data,error}=await client.rpc("platform_admin_manage_company_user",{target_company_id:uuid(payload.companyId),target_user_id:uuid(payload.userId),target_role:text(payload.role,20)||"member",target_operation:text(payload.operation,30),target_reason:text(payload.reason,500)});if(error)throw error;return response(req,{membership:data});
@@ -324,7 +324,7 @@ Deno.serve(async req=>{
   if(action==="admins.invite"){
    requirePermission("admin.write");const targetEmail=email(payload.email),firstName=text(payload.firstName,100),lastName=text(payload.lastName,100),role=text(payload.role,40),reason=text(payload.reason,500);
    const {data:invitation,error:inviteError}=await privileged().auth.admin.inviteUserByEmail(targetEmail,{data:{first_name:firstName,last_name:lastName},redirectTo:"https://admin.piloz.fr"});if(inviteError||!invitation.user)throw Object.assign(new Error("L’invitation administrateur n’a pas pu être créée."),{status:inviteError?.status||400});
-   const {data,error}=await client.rpc("platform_admin_add_administrator",{target_user_id:invitation.user.id,target_email:targetEmail,target_role:role,target_first_name:firstName,target_last_name:lastName,target_reason:reason});if(error)throw error;return response(req,{admin:data,invitationSent:true},201);
+   const {data,error}=await client.rpc("platform_admin_add_administrator",{target_user_id:invitation.user.id,target_email:targetEmail,target_role:role,target_first_name:firstName,target_last_name:lastName,target_reason:reason});if(error)throw error;return response(req,{admin:data,invitationSent:true,message:"Invitation envoyée. Si elle n’apparaît pas dans quelques minutes, vérifiez les courriers indésirables (spams)."},201);
   }
   if(action==="notifications.list"){
    requirePermission("notifications.read");const {data,error}=await client.from("platform_notifications").select("id,event_type,severity,title,message,company_id,action_url,read_by,created_at,expires_at").or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`).order("created_at",{ascending:false}).limit(50);if(error)throw error;return response(req,{items:data||[]});

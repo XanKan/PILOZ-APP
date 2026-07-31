@@ -37,6 +37,12 @@ max_frequency = "1m0s"
 otp_length = 8
 otp_expiry = 3600
 
+# Modèle versionné de l'invitation Supabase Auth. Le même contenu est utilisé
+# pour les invitations envoyées depuis l'application et le back-office.
+[auth.email.template.invite]
+subject = "Vous êtes invité(e) à rejoindre PILOZ"
+content_path = "./supabase/templates/invite.html"
+
 # Le stockage vectoriel n'est pas utilisé par Piloz et nécessite un plan
 # Supabase payant. Le désactiver évite qu'un push de configuration tente de
 # l'activer par défaut.

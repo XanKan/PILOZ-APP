@@ -61,7 +61,7 @@ Deno.serve(async req=>{
       if(insertError)throw insertError;
       if(!existingUser&&invitedUserId){await admin.from("company_members").upsert({company_id:companyId,user_id:invitedUserId,role:"member",role_id:roleId,primary_team_id:teamId,platform_status:"pending"},{onConflict:"company_id,user_id"});}
       await audit("invitation.created","company_invitation",invitation.id,null,{email:targetEmail,role_id:roleId,team_id:teamId,status,delivery_status:deliveryStatus});
-      return reply(req,{invitation,invitationSent,existingUser:Boolean(existingUser),message:invitationSent?"Invitation envoyée.":existingUser?"Invitation créée. L’utilisateur existant la rejoindra lors de sa prochaine connexion.":"Invitation créée, mais l’envoi automatique a échoué.",deliveryError},201);
+      return reply(req,{invitation,invitationSent,existingUser:Boolean(existingUser),message:invitationSent?"Invitation envoyée. Si elle n’apparaît pas dans quelques minutes, vérifiez les courriers indésirables (spams).":existingUser?"Invitation créée. L’utilisateur existant la rejoindra lors de sa prochaine connexion.":"Invitation créée, mais l’envoi automatique a échoué.",deliveryError},201);
     }
     if(action==="resend"){
       const invitationId=uuid(payload.invitationId) as string,{data:invitation}=await admin.from("company_invitations").select("*").eq("id",invitationId).eq("company_id",companyId).maybeSingle();
@@ -71,7 +71,7 @@ Deno.serve(async req=>{
       else errorText="Le compte existe déjà : l’invitation sera proposée à sa prochaine connexion.";
       const next={status:sent?"sent":"pending",delivery_status:sent?"sent":"not_configured",delivery_error:errorText,send_count:Number(invitation.send_count||0)+(sent?1:0),last_sent_at:sent?new Date().toISOString():invitation.last_sent_at,expires_at:new Date(Date.now()+7*86400000).toISOString(),invited_user_id:invitation.invited_user_id,updated_at:new Date().toISOString()};
       await admin.from("company_invitations").update(next).eq("id",invitationId);await audit("invitation.resent","company_invitation",invitationId,{status:invitation.status},{status:next.status,delivery_status:next.delivery_status});
-      return reply(req,{sent,message:sent?"Invitation renvoyée.":errorText});
+      return reply(req,{sent,message:sent?"Invitation renvoyée. Si elle n’apparaît pas dans quelques minutes, vérifiez les courriers indésirables (spams).":errorText});
     }
     if(action==="revoke_invitation"){
       const invitationId=uuid(payload.invitationId) as string,{data:before}=await admin.from("company_invitations").select("status").eq("id",invitationId).eq("company_id",companyId).maybeSingle();if(!before)throw new Error("Invitation introuvable.");
