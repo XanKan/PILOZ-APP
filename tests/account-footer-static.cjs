@@ -25,5 +25,7 @@ assert.match(app, /PilozRefreshAccountFooter\?\.\(\)/, 'Le pied doit être rafra
 assert.match(css, /\.rail-account-card/);
 assert.match(css, /\.rail-logout-button:hover/);
 assert.match(css, /\.rail-help-button/);
+assert.match(css, /\.rail-account-actions\{[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/, 'Les actions Aide et D\u00e9connexion doivent occuper chacune la moiti\u00e9 de la largeur.');
+assert.match(css, /\.rail-help-button,\.rail-logout-button\{[^}]*width:100%/, 'Les deux boutons du pied doivent remplir leur demi-colonne.');
 
 console.log('Account footer static checks: OK');

@@ -192,6 +192,10 @@ for (const forbidden of ["Piloz est certifié NF525", "Piloz est une plateforme 
 assert.ok(app.includes('class="training-live-modal" role="dialog"'), "La formation doit utiliser une grande fenetre modale");
 assert.ok(helpCss.includes(".training-live-modal{position:fixed"), "La modale de formation doit couvrir le grand espace utile");
 assert.ok(app.includes("ui.helpSecondaryOpen=false"), "Le sous-menu Aide doit se fermer au clic exterieur");
+assert.ok(app.includes("const type=/\\btype\\s*=/.test(extra)?'':'type=\"button\"'"), "Les boutons de formulaire support ne doivent pas conserver un type button concurrent du type submit");
+assert.ok(app.includes("if(hash().startsWith('help/')){app()?.render?.();return;}"), "Le bouton Aide doit rester cliquable depuis une page Aide d\u00e9j\u00e0 ouverte");
+assert.ok(app.includes("function createSupportTicket(draft)") && app.includes("missingSupportRpcSignature") && app.includes("PGRST202"), "La cr\u00e9ation de ticket doit prendre en charge les signatures Supabase enrichie et compatible");
+assert.ok(adminApi.includes('from("support_tickets")'), "Le back-office doit lire le m\u00eame registre de tickets que l\u2019application cliente");
 
 assert.ok(app.includes("TRAINING_DEPOSIT_FINAL_ID='piloz-training-deposit-final'") && app.includes("TRAINING_DEDUCTION_DRAFT_ID='piloz-training-deduction-draft'"), "Le parcours Acomptes doit utiliser un acompte finalise et une situation brouillon fictifs");
 assert.ok(app.includes("selector:'.document-v2-deduction-edit',allow:true") && app.includes("#document-deposit-deduction-form input[name=\"mode\"][value=\"prorata\"]") && app.includes("#document-deposit-deduction-form button[type=\"submit\"]"), "Le parcours Acomptes doit piloter les vrais controles de deduction");

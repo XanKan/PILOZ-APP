@@ -82,7 +82,12 @@
  const notify=(message,kind='info')=>{global.toast?.(message);const live=document.getElementById('piloz-help-live');if(live){live.textContent=message;live.dataset.kind=kind;}};
  const safeContext=()=>({route:hash(),module:hash().split('/')[0]||'dashboard',submodule:hash().split('/')[1]||null,object_type:null,object_status:null,available_actions:[],role:state().access?.role_name||state().member?.role||null,permissions:(state().permissions||[]).map(item=>typeof item==='string'?item:item.permission_key).filter(Boolean).slice(0,80),language:'fr',app_version:document.documentElement.dataset.appVersion||null,technical_id:null});
  const header=(title,description,actions='')=>`<header class="help-page-header"><div><span class="help-eyebrow">Aide et support</span><h1>${esc(title)}</h1><p>${esc(description)}</p></div><div class="help-header-actions">${actions}</div></header><div id="piloz-help-live" class="sr-only" aria-live="polite"></div>`;
- const button=(label,handler,kind='secondary',attrs='')=>`<button type="button" class="help-btn ${kind}" onclick="${handler}" ${attrs}>${esc(label)}</button>`;
+ const button=(label,handler,kind='secondary',attrs='')=>{
+  const extra=String(attrs||'').trim();
+  const type=/\btype\s*=/.test(extra)?'':'type="button"';
+  const action=handler?`onclick="${handler}"`:'';
+  return`<button ${type} class="help-btn ${kind}" ${action} ${extra}>${esc(label)}</button>`;
+ };
  const empty=(title,text,action='')=>`<div class="help-empty"><span class="help-empty-icon">?</span><h2>${esc(title)}</h2><p>${esc(text)}</p>${action}</div>`;
  function safeMarkdown(value){
   const source=esc(value||'').replace(/\r/g,'');
@@ -335,11 +340,23 @@ function nextTrainingLesson(){const {course,lesson}=currentTraining(),lessonInde
   return`<div class="help-modal-backdrop" onclick="if(event.target===this)PilozHelp.closeTicket()"><section class="help-modal"><header><div><span>Étape ${ui.ticketStep} sur 4</span><h2>Créer un ticket support</h2></div><button onclick="PilozHelp.closeTicket()" aria-label="Fermer">×</button></header><form onsubmit="event.preventDefault();PilozHelp.ticketNext()">${body}<footer>${ui.ticketStep>1?button('Retour','PilozHelp.ticketPrevious()'):'<span></span>'}${button(ui.ticketStep===4?(ui.busy?'Envoi…':'Envoyer au support'):'Continuer','', 'primary',`type="submit" ${ui.busy?'disabled':''}`)}</footer></form></section></div>`;
  }
  function openTicket(seed={}){ui.ticketDraft={...blankTicket(),module:hash().split('/')[0]||'',...seed,attachments:seed.attachments||[]};ui.ticketModal=true;ui.ticketStep=1;renderPiloSurfaces();}
+ const missingSupportRpcSignature=error=>['PGRST202','42883'].includes(String(error?.code||''))||/could not find the function|schema cache|function .* does not exist/i.test(String(error?.message||''));
+ async function createSupportTicket(draft){
+  const targetCompanyId=companyId();
+  if(!targetCompanyId)throw new Error('L\u2019entreprise active n\u2019est pas disponible. Rechargez la page puis r\u00e9essayez.');
+  const base={target_company_id:targetCompanyId,target_subject:draft.subject,target_description:draft.description,target_category:draft.category,target_module:draft.module||null,target_type:draft.type,target_priority:draft.priority,target_context:safeContext(),target_source:draft.source||'app'};
+  try{return await api().rpc('create_support_ticket',{...base,target_details:{impact:draft.impact,frequency:draft.frequency,started_on:draft.startedOn,blocking:draft.blocking,expected_behavior:draft.expected,observed_behavior:draft.observed,reproduction_steps:draft.reproduction},target_assistant_conversation_id:draft.assistantConversationId||null});}
+  catch(error){
+   if(!missingSupportRpcSignature(error))throw error;
+   console.warn('[PILOZ Support] Signature enrichie indisponible, utilisation de la signature compatible.',{code:String(error?.code||''),status:Number(error?.status||0)});
+   return api().rpc('create_support_ticket',base);
+  }
+ }
  async function submitTicket(){
   if(ui.busy)return;ui.busy=true;renderPiloSurfaces();
   try{
    const draft=ui.ticketDraft;
-   const result=await api().rpc('create_support_ticket',{target_company_id:companyId(),target_subject:draft.subject,target_description:draft.description,target_category:draft.category,target_module:draft.module||null,target_type:draft.type,target_priority:draft.priority,target_context:safeContext(),target_source:draft.source||'app',target_details:{impact:draft.impact,frequency:draft.frequency,started_on:draft.startedOn,blocking:draft.blocking,expected_behavior:draft.expected,observed_behavior:draft.observed,reproduction_steps:draft.reproduction},target_assistant_conversation_id:draft.assistantConversationId||null});
+   const result=await createSupportTicket(draft);
    const failed=[];
    for(const file of draft.attachments){try{await api().invoke('pilo',{action:'attach-ticket-file',companyId:companyId(),ticketId:result.id,fileName:file.name,mimeType:file.type,size:file.size,fileBase64:await fileBase64(file)});}catch(error){failed.push(`${file.name}: ${error.message}`);}}
    ui.ticketModal=false;ui.ticketId=result.id;ui.ticketsLoaded=false;await loadTickets(true);app().go('help/tickets');
@@ -365,7 +382,7 @@ function nextTrainingLesson(){const {course,lesson}=currentTraining(),lessonInde
  const baseNavigation=global.PilozModern?.renderNavigation?.bind(global.PilozModern),baseRoute=global.PilozModern?.renderRoute?.bind(global.PilozModern);
  if(global.PilozModern){global.PilozModern.renderNavigation=function(node,currentState,current){baseNavigation?.(node,currentState,current);renderHelpNavigation(node);};global.PilozModern.renderRoute=function(route,currentState){if(renderRoute(route,currentState))return true;return baseRoute?.(route,currentState)??false;};}
  global.PilozHelp={
-  isTrainingActive(){return ui.trainingActive===true;},openArea(){ui.helpSecondaryOpen=true;app().go('help/documentation');},select(path){this.closeSecondary();app().go(path);},openInNewTab(path){const url=new URL(location.href);url.hash=path;global.open(url.href,'_blank','noopener,noreferrer');},closeSecondary(){ui.helpSecondaryOpen=false;document.getElementById('app')?.classList.remove('modern-subnav-open');document.querySelector('.help-secondary-panel')?.remove();},
+  isTrainingActive(){return ui.trainingActive===true;},openArea(){ui.helpSecondaryOpen=true;if(hash().startsWith('help/')){app()?.render?.();return;}app()?.go?.('help/documentation');},select(path){this.closeSecondary();app().go(path);},openInNewTab(path){const url=new URL(location.href);url.hash=path;global.open(url.href,'_blank','noopener,noreferrer');},closeSecondary(){ui.helpSecondaryOpen=false;document.getElementById('app')?.classList.remove('modern-subnav-open');document.querySelector('.help-secondary-panel')?.remove();},
   openArticle(slug){app().go(`help/documentation/${encodeURIComponent(slug)}`);},retryDocumentation(){ui.docsLoaded=false;ui.docsError='';renderCurrent();},retryTickets(){ui.ticketsLoaded=false;ui.ticketsError='';renderCurrent();},searchDocs(value){ui.docQuery=value;renderCurrent();},setDocCategory(value){ui.docCategory=value;renderCurrent();},articleFeedback,createTicketFromArticle,openFeedback,closeFeedback(){ui.feedback=null;renderFeedback();},submitFeedback,
   openTraining(courseId,lessonId){ui.trainingCourse=courseId;ui.trainingLesson=lessonId;ui.trainingLoadedLesson='';ui.trainingFeedback='';app().go('help/training');},selectTraining(courseId,lessonId){ui.trainingCourse=courseId;ui.trainingLesson=lessonId;ui.trainingLoadedLesson='';ui.trainingFeedback='';renderCurrent();},launchTraining,trainingFrameLoaded,closeTraining,completeTrainingAction,continueTraining,trainingMiss,trainingHint,trainingInput,validateTrainingInput,trainingSelect,trainingChoice,trainingToggle,trainingPick,trainingDrag,trainingDrop,restartTraining,nextTrainingLesson,askPilo,piloFeedback,openTicketFromPilo,togglePilo(){ui.piloOpen=!ui.piloOpen;renderFloating();},
   openTicket,closeTicket(){ui.ticketModal=false;renderPiloSurfaces();},setTicketField(key,value){ui.ticketDraft[key]=value;},setTicketAttachments(files){const accepted=[];for(const file of Array.from(files||[])){if(file.size>10485760){notify(`${file.name} dépasse 10 Mo.`,'error');continue;}accepted.push(file);}ui.ticketDraft.attachments=[...ui.ticketDraft.attachments,...accepted].slice(0,10);renderPiloSurfaces();},removeTicketAttachment(index){ui.ticketDraft.attachments.splice(index,1);renderPiloSurfaces();},ticketPrevious(){ui.ticketStep=Math.max(1,ui.ticketStep-1);renderPiloSurfaces();},ticketNext(){if(ui.ticketStep===1){if(ui.ticketDraft.subject.trim().length<4||ui.ticketDraft.description.trim().length<10){notify('Le titre et la description doivent être complétés.','error');return;}ui.ticketStep=2;}else if(ui.ticketStep===2)ui.ticketStep=3;else if(ui.ticketStep===3)ui.ticketStep=4;else{submitTicket();return;}renderPiloSurfaces();},

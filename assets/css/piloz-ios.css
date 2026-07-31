@@ -56,9 +56,9 @@ body[data-theme="dark"]{
 }
 .rail-account-card{display:grid;gap:9px;min-width:0}
 .rail-company-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff;font-size:.78rem;font-weight:760;letter-spacing:.01em}
-.rail-account-actions{display:flex;align-items:center;gap:8px}
+.rail-account-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:center;gap:8px}
 .rail-help-button,.rail-logout-button{
-  width:38px;height:38px;padding:0;border:1px solid rgba(255,255,255,.12);border-radius:12px;
+  width:100%;height:38px;padding:0;border:1px solid rgba(255,255,255,.12);border-radius:12px;
   background:rgba(255,255,255,.06);color:rgba(241,249,250,.88);display:grid;place-items:center;
   cursor:pointer;transition:background .16s ease,border-color .16s ease,transform .16s ease,box-shadow .16s ease;
 }
