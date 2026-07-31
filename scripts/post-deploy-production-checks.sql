@@ -2,7 +2,18 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607310124' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607310125' ok
+  union all
+  select 'outbound_einvoice_trigger_removed',count(*)::text,count(*)=0
+  from pg_trigger
+  where tgrelid='public.documents'::regclass
+    and tgname='documents_queue_superpdp_after_finalization'
+    and not tgisinternal
+  union all
+  select 'outbound_einvoice_jobs_inactive',count(*)::text,count(*)=0
+  from public.superpdp_jobs
+  where job_type='send_document'
+    and status in('pending','retry_scheduled','processing')
   union all
   select 'company_access_system_roles',count(*)::text,count(*)=0
   from public.companies company
@@ -496,7 +507,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607310124',
+  'schema_version','202607310125',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;
