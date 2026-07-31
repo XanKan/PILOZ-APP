@@ -1,0 +1,34 @@
+begin;
+
+with source(category_slug,slug,title,summary,content) as (values
+('crm-suivi-commercial','planifier-une-activite-commerciale','Planifier une activité commerciale','Créer une action datée, l’assigner et la relier au bon dossier.',E'## Quand utiliser une activité\n\nCréez une activité pour chaque prochaine action concrète : appel, e-mail, rendez-vous, démonstration, relance de devis ou de paiement, tâche interne ou visite.\n\n## Créer l’activité\n\nOuvrez **Suivi commercial > Activités**, puis **Nouvelle activité**. Choisissez le type, saisissez un titre orienté action, la date de début, la durée, le responsable, la priorité et la confidentialité.\n\n## Relier le contexte\n\nAssociez si nécessaire le client ou prospect, le contact, l’opportunité, le devis, la facture, l’avoir ou le fournisseur. Ces liens évitent toute ressaisie et font apparaître l’activité dans l’historique du dossier.\n\n## Organiser le suivi\n\nAjoutez un rappel, une checklist et des participants. Un responsable différent reçoit une notification dans Piloz.\n\n## Résultat attendu\n\nL’activité apparaît dans la liste, l’agenda et les vues du dossier selon vos droits.'),
+('crm-suivi-commercial','terminer-activite-et-planifier-suite','Terminer une activité et planifier la suite','Clôturer une action sans casser la continuité commerciale.',E'## Terminer proprement\n\nOuvrez l’activité puis cliquez sur **Terminer**. Renseignez le résultat, le temps réellement passé et un compte rendu utile à l’équipe.\n\n## Prochaine action\n\nSi le suivi continue, activez la création de la prochaine activité. Choisissez son type, son titre, sa date et son responsable. Piloz relie automatiquement les deux actions.\n\n## Pourquoi cette méthode\n\nUne activité terminée reste dans l’historique. La nouvelle action alimente immédiatement les relances à venir et évite les dossiers sans prochaine étape.'),
+('crm-suivi-commercial','utiliser-vues-activites-agenda-equipe','Utiliser les vues Activités, Agenda et Équipe','Choisir la bonne vue selon le travail à réaliser.',E'## Liste\n\nLa liste offre les filtres, la pagination et les actions groupées. Utilisez-la pour rechercher, réassigner, reporter ou archiver plusieurs activités.\n\n## Agenda\n\nBasculez en Jour, Semaine ou Mois. Déplacez une activité par glisser-déposer pour la replanifier ; Piloz enregistre la nouvelle date avant de mettre à jour l’écran.\n\n## Chronologie\n\nCette vue restitue les actions et comptes rendus dans l’ordre du temps.\n\n## Mes activités et Équipe\n\nMes activités limite la vue à vos actions. Équipe affiche uniquement le périmètre autorisé par votre rôle.'),
+('crm-suivi-commercial','confidentialite-et-droits-des-activites','Confidentialité et droits des activités','Comprendre qui peut consulter ou modifier une activité.',E'## Niveaux de confidentialité\n\n**Standard** suit la portée du rôle. **Entreprise** est visible aux membres autorisés de l’entreprise. **Équipe** reste limitée à l’équipe concernée. **Privée** est réservée à son auteur, son responsable et ses participants internes autorisés.\n\n## Portées de droits\n\nUn rôle peut agir sur ses propres activités, celles de son équipe ou celles de l’entreprise. L’interface ne remplace jamais les contrôles serveur : les règles Supabase vérifient chaque lecture et chaque écriture.\n\n## Bonnes pratiques\n\nN’utilisez Privée que pour un besoin réel. Ne placez jamais de secret, mot de passe ou donnée bancaire dans une description ou une pièce jointe.'),
+('crm-suivi-commercial','synchroniser-activites-avec-agenda','Synchroniser une activité avec un agenda','Créer un événement externe uniquement lorsqu’un agenda réel est connecté.',E'## Prérequis\n\nConnectez Google Agenda ou Outlook Calendar dans **Paramètres > Extensions**. La connexion doit être active et configurée en synchronisation bidirectionnelle.\n\n## Fonctionnement\n\nLorsqu’une activité datée est enregistrée, Piloz peut demander au connecteur de créer ou mettre à jour l’événement. L’identifiant externe, le statut et les erreurs sont journalisés.\n\n## En cas d’échec\n\nL’activité Piloz reste enregistrée. Consultez le détail de synchronisation, reconnectez le compte si nécessaire puis relancez l’action. Piloz ne simule jamais une synchronisation réussie.'),
+('crm-suivi-commercial','pieces-jointes-et-historique-activites','Pièces jointes et historique des activités','Conserver les documents utiles et la piste d’audit.',E'## Pièces jointes\n\nDepuis le détail d’une activité modifiable, ajoutez un fichier. Il est stocké dans un chemin isolé par entreprise et activité. Seules les personnes pouvant voir l’activité peuvent obtenir un lien de téléchargement temporaire.\n\n## Historique\n\nCréation, modification, changement de statut, report, annulation, archivage et synchronisation produisent des événements horodatés. Les événements ne sont pas modifiables par le navigateur.\n\n## Suppression\n\nUne activité métier n’est jamais supprimée physiquement. Utilisez Annuler ou Archiver afin de préserver la traçabilité.')
+), prepared as (
+  select category.id category_id,source.* from source
+  join public.knowledge_categories category on category.slug=source.category_slug
+), upserted as (
+  insert into public.knowledge_articles(category_id,slug,title,summary,content,status,visibility,availability,current_version,published_at,last_reviewed_at)
+  select category_id,slug,title,summary,content,'published','authenticated','available',1,now(),now() from prepared
+  on conflict(slug) do update set category_id=excluded.category_id,title=excluded.title,summary=excluded.summary,content=excluded.content,status='published',visibility='authenticated',availability='available',last_reviewed_at=now(),updated_at=now()
+  returning id,slug,title,summary,content,current_version,availability,visibility
+)
+insert into public.knowledge_article_versions(article_id,version_number,title,summary,content,availability,visibility,change_summary)
+select id,current_version,title,summary,content,availability,visibility,'Documentation officielle du module Activités'
+from upserted
+on conflict(article_id,version_number) do update set title=excluded.title,summary=excluded.summary,content=excluded.content,availability=excluded.availability,visibility=excluded.visibility,change_summary=excluded.change_summary;
+
+insert into public.knowledge_article_chunks(article_id,article_version,chunk_index,heading,content)
+select article.id,article.current_version,0,article.title,article.content
+from public.knowledge_articles article
+where article.slug in(
+  'planifier-une-activite-commerciale','terminer-activite-et-planifier-suite',
+  'utiliser-vues-activites-agenda-equipe','confidentialite-et-droits-des-activites',
+  'synchroniser-activites-avec-agenda','pieces-jointes-et-historique-activites'
+)
+on conflict(article_id,article_version,chunk_index) do update set heading=excluded.heading,content=excluded.content;
+
+commit;
