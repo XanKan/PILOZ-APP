@@ -26,6 +26,10 @@ function assert(value,message){if(!value)throw new Error(message);}
   assert(created.request_details.impact==='Facturation bloquée'&&!('unexpected_secret' in created.request_details),'détails de demande non nettoyés');
   assert(created.safe_context.route==='sales/invoices'&&!('token' in created.safe_context),'contexte assistant non nettoyé');
   assert(created.assistant_conversation_id===conversation.id,'conversation Pilo non liée');
+  const shortTicket=(await db.query(`select to_jsonb(public.create_support_ticket(
+   target_company_id=>$1,target_subject=>'TEST',target_description=>'TEST',target_category=>'usage',target_module=>'help',target_type=>'support',target_priority=>'normal'
+  )) ticket`,[companyA])).rows[0].ticket;
+  assert(shortTicket.subject==='TEST'&&shortTicket.description==='TEST','un ticket visiblement complété avec quatre caractères doit être accepté');
   const visibleMessages=(await db.query('select author_kind,visibility from public.support_ticket_messages where ticket_id=$1',[created.id])).rows;
   assert(visibleMessages.length===1&&visibleMessages[0].visibility==='client','message client initial absent');
   await db.exec('reset role');

@@ -21,6 +21,7 @@ const restrictions = read("supabase/migrations/202607290112_knowledge_access_ind
 const reliability = read("supabase/migrations/202607290113_help_support_reliability.sql");
 const guidedAnswers = read("supabase/migrations/202607290114_pilo_guided_answers.sql");
 const academy = read("supabase/migrations/202607290115_help_academy_documentation.sql");
+const visibleTicketValidation = read("supabase/migrations/202607310124_support_ticket_visible_validation.sql");
 
 assert.ok(app.includes("trainingAdvanceTimer:0"), "La formation doit disposer d'un minuteur d'enchainement automatique");
 assert.ok(app.includes("function scheduleTrainingAdvance(delay=900)"), "Une action reussie doit programmer automatiquement l'etape suivante");
@@ -141,6 +142,11 @@ assert.ok(pilo.includes("La gestion des stocks fait actuellement partie de la ro
 assert.ok(knowledge.includes("La gestion des stocks est-elle disponible dans Piloz ?"));
 assert.ok(knowledge.includes("Sa disponibilité sera annoncée officiellement lors de sa mise en production."));
 assert.ok(app.includes("Envoyer au support"), "Le tunnel de ticket doit finir par un envoi explicite");
+assert.ok(app.includes('name="subject" required minlength="4"'), "Le titre visible doit porter la validation réellement appliquée");
+assert.ok(app.includes('name="description" required minlength="4"'), "La description visible doit accepter quatre caractères comme le serveur");
+assert.ok(app.includes("PilozHelp.ticketNext(this)"), "Le tunnel doit relire directement le formulaire affiché");
+assert.ok(app.includes("ticketNext(form)"), "La validation doit recevoir le formulaire soumis");
+assert.ok(visibleTicketValidation.includes("length(trim(target_description))<4"), "Supabase doit accepter une description de quatre caractères");
 assert.ok(app.includes("target_details"), "Les informations de qualification doivent être persistées");
 assert.ok(app.includes("assistantConversationId"), "La conversation Pilo doit pouvoir être liée au ticket");
 assert.ok(app.includes("comment:comment||null"), "Le retour facultatif doit conserver son commentaire");
