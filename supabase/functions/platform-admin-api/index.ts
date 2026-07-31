@@ -131,7 +131,7 @@ Deno.serve(async req=>{
     ]);
     if(activitiesError)throw activitiesError;
     await audit("demo_account.create","company",createdCompanyId,createdCompanyId,null,{email:ownerEmail,trial_days:14,plan_key:plan.plan_key,seeded:true},reason);
-    return response(req,{company,ownerUserId:createdUserId,invitationSent:true,trialDays:14,message:"Compte de démonstration créé. L'invitation sécurisée a été envoyée ; le destinataire choisira son mot de passe."},201);
+    return response(req,{company,ownerUserId:createdUserId,invitationSent:true,trialDays:14,seedVersion:"2026-07-31",message:"Compte de démonstration créé. L'invitation sécurisée a été envoyée ; le destinataire choisira son mot de passe."},201);
    }catch(error){
     if(createdCompanyId)await service.from("companies").delete().eq("id",createdCompanyId);
     if(createdUserId)await service.auth.admin.deleteUser(createdUserId);
