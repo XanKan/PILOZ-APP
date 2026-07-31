@@ -37,6 +37,10 @@ assert.ok(!app.includes("['help/contact','Contacter le support']"), "La navigati
 assert.ok(app.includes("['help/tickets','Contacter le support']"), "La rubrique des tickets doit être renommée Contacter le support");
 assert.ok(app.includes("TRAINING_COURSES"), "Le catalogue de formation doit être disponible");
 assert.ok(app.includes("TRAINING_EXERCISES"), "Chaque capsule doit proposer de vraies actions interactives");
+assert.ok(app.includes("id:'equipe'") && app.includes("demoOnly:true"), "La formation Equipe doit rester une demonstration sans invitation reelle");
+assert.ok(app.includes("function trainingDemoCoachMarkup") && app.includes("continueTrainingDemo") && app.includes("previousTrainingDemo"), "La demonstration Equipe doit pouvoir etre parcourue sans saisir de donnees");
+assert.ok(app.includes("aucun e-mail n’est envoyé") && app.includes("Démonstration en lecture seule"), "La demonstration doit expliciter qu'aucune invitation n'est envoyee");
+assert.ok(helpCss.includes(".training-demo-only .training-live-modal-stage{pointer-events:auto}"), "La demonstration doit bloquer les interactions avec la liste reelle des utilisateurs");
 assert.ok(app.includes("saveTrainingProgress"), "La progression des formations doit être conservée");
 assert.ok(app.includes("help/training"), "La route Formation doit être rendue par le centre d’aide");
 assert.ok(app.includes("trainingSimulator"), "La formation doit utiliser un simulateur Piloz guidé");
