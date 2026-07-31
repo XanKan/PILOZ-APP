@@ -35,7 +35,7 @@ Deno.serve(async req=>{
  const isQuote=doc.document_type==='quote',isInvoice=['invoice','deposit_invoice','balance_invoice','credit_note'].includes(doc.document_type);
  if((!isQuote&&!isInvoice)||!doc.finalized_at||['draft','cancelled','archived'].includes(doc.status))return json({error:'Seul un devis ou une facture finalisée peut être envoyé.'},409);
 
- const to=emails(body.to),cc=emails(body.cc);
+ const to=emails(body.to),cc=emails(body.cc),replyTo=emails(body.replyTo).filter(address=>EMAIL.test(address)).slice(0,1);
  if(!to.length||to.length>20||cc.length>20||[...to,...cc].some(address=>!EMAIL.test(address)))return json({error:'Destinataire invalide'},400);
  const documentLabel=isQuote?'Devis':doc.document_type==='credit_note'?'Avoir':'Facture',subject=cleanText(body.subject||`${documentLabel} ${doc.number||''}`),html=cleanHtml(body.html||''),templateKey=cleanText(body.templateKey||(isQuote?'quote-send-default':'invoice-resend-default'),100)||(isQuote?'quote-send-default':'invoice-resend-default');
  if(!subject||!html)return json({error:'L’objet et le message sont obligatoires.'},400);
@@ -53,7 +53,7 @@ Deno.serve(async req=>{
  if(!bytes.length)return json({error:'Le PDF final est vide.',code:'empty_final_pdf'},409);
 
  const sent=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${resend}`,'Content-Type':'application/json'},body:JSON.stringify({
-   from:Deno.env.get('EMAIL_FROM')||'PILOZ <noreply@piloz.fr>',to,cc,subject,html,
+   from:Deno.env.get('EMAIL_FROM')||'PILOZ <noreply@piloz.fr>',to,cc,reply_to:replyTo[0]||undefined,subject,html,
    attachments:[{filename:`${documentLabel}-${cleanText(doc.number||doc.id,80).replace(/[^a-z0-9._-]+/gi,'-')}.pdf`,content:toBase64(bytes)}]
   })});
  let providerResult:Record<string,unknown>={};
@@ -66,7 +66,12 @@ Deno.serve(async req=>{
 
  const sentAt=new Date().toISOString(),providerMessageId=cleanText(providerResult?.id||'',200)||null;
  const {data:delivery,error:deliveryError}=await admin.from('document_email_deliveries').insert({company_id:doc.company_id,document_id:doc.id,client_id:doc.client_id,delivery_mode:'provider',delivery_status:'sent',recipient_to:to,recipient_cc:cc,subject,template_key:templateKey,message_preview:cleanText(html,1000),pdf_storage_path:doc.final_pdf_path,pdf_sha256:doc.final_pdf_sha256,provider:'resend',provider_message_id:providerMessageId,sent_at:sentAt,created_by:user.id}).select('id').single();
- if(deliveryError){console.error('[PILOZ Email] delivery history failed',{code:deliveryError.code,documentId:doc.id});return json({error:"L’e-mail a été accepté par le fournisseur mais son historique n’a pas pu être enregistré. Contactez le support avec le numéro de facture.",code:'delivery_history_failed'},500);}
+ if(deliveryError){
+  // Resend has already accepted the message. An HTTP error here would invite a
+  // second click and could send the exact same document twice.
+  console.error('[PILOZ Email] delivery history failed',{code:deliveryError.code,documentId:doc.id,providerMessageId});
+  return json({sent:true,historyRecorded:false,providerMessageId,warning:"L’e-mail a bien été envoyé, mais son historique n’a pas pu être enregistré."});
+ }
  await admin.from('activity_logs').insert({company_id:doc.company_id,actor_user_id:user.id,created_by:user.id,action:'document.emailed',entity_type:'document',entity_id:doc.id,new_data:{delivery_id:delivery.id,recipient_count:to.length+cc.length,provider:'resend'}});
  if(doc.client_id)await admin.from('client_activity_events').insert({company_id:doc.company_id,client_id:doc.client_id,event_type:isQuote?'quote.email_sent':'invoice.email_sent',summary:`${documentLabel} envoyé par e-mail`,entity_type:'document_email_delivery',entity_id:delivery.id,metadata:{document_id:doc.id,provider:'resend'},actor_user_id:user.id,created_by:user.id});
  return json({sent:true,deliveryId:delivery.id,providerMessageId});
