@@ -55,7 +55,7 @@ Deno.serve(async req=>{
    requirePermission("companies.read");const {data,error}=await client.rpc("platform_admin_dashboard");if(error)throw error;return response(req,{dashboard:data});
   }
   if(action==="companies.list"){
-   requirePermission("companies.read");const {data,error}=await client.rpc("platform_admin_list_companies",{
+   requirePermission("companies.read");const {data,error}=await client.rpc("platform_admin_list_companies_v2",{
     search_text:text(payload.search,160)||null,status_filter:text(payload.status,40)||null,plan_filter:text(payload.plan,40)||null,
     page_number:integer(payload.page,1,1,1_000_000),page_size:integer(payload.pageSize,25,1,100)
    });if(error)throw error;return response(req,{items:data||[],total:Number(data?.[0]?.total_count||0)});

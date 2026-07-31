@@ -130,6 +130,9 @@ async function bootstrap(db){
       throw new Error(`revenue: invalid contract metrics ${JSON.stringify(dashboard)}`);
     const companies=await db.query("select * from public.platform_admin_list_companies('contrôlée',null,null,1,25)");
     if(companies.rows.length!==1||companies.rows[0].company_id!==company)throw new Error('companies: secure search failed');
+    const activeCompanies=await db.query("select * from public.platform_admin_list_companies_v2(null,'active',null,1,25)");
+    if(activeCompanies.rows.length!==1||activeCompanies.rows[0].activation_status!=='active')
+      throw new Error(`companies: active owner visibility failed ${JSON.stringify(activeCompanies.rows)}`);
     const users=await db.query('select * from public.platform_admin_list_users(null,$1,1,25)',[company]);
     if(users.rows.length!==1||users.rows[0].account_status!=='active'||users.rows[0].email!=='client@piloz.fr')
       throw new Error(`users: real account status is invalid ${JSON.stringify(users.rows)}`);
@@ -157,10 +160,14 @@ async function bootstrap(db){
     ])).rows[0];
     if(!created.id)throw new Error('companies: secure creation failed');
     await db.exec('reset role');
+    await db.query('update auth.users set last_sign_in_at=null where id=$1',[secondOwner]);
     const pendingOnboarding=(await db.query('select s.legal_name,s.trade_name,s.siret,s.onboarding_completed_at,p.onboarding_completed from public.company_settings s join public.user_preferences p on p.company_id=s.company_id where s.company_id=$1',[created.id])).rows[0];
     if(pendingOnboarding.legal_name!==null||pendingOnboarding.trade_name!==null||pendingOnboarding.siret!==null||pendingOnboarding.onboarding_completed_at!==null||pendingOnboarding.onboarding_completed!==false)
       throw new Error(`companies: provisioning invented onboarding data ${JSON.stringify(pendingOnboarding)}`);
     await setIdentity(db,superAdmin,'aal2');
+    const pendingInvitations=await db.query("select * from public.platform_admin_list_companies_v2(null,'invitation_pending',null,1,25)");
+    if(pendingInvitations.rows.length!==1||pendingInvitations.rows[0].company_id!==created.id||pendingInvitations.rows[0].activation_status!=='invitation_pending')
+      throw new Error(`companies: pending invitation disappeared ${JSON.stringify(pendingInvitations.rows)}`);
     const createdSubscription=(await db.query('select plan_key,billing_interval,status,trial_ends_at from public.subscriptions where company_id=$1',[created.id])).rows[0];
     if(createdSubscription.plan_key!=='pro'||createdSubscription.billing_interval!=='annual'||createdSubscription.status!=='trialing')
       throw new Error(`companies: subscription provisioning failed ${JSON.stringify(createdSubscription)}`);

@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607310125' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607310126' ok
   union all
   select 'outbound_einvoice_trigger_removed',count(*)::text,count(*)=0
   from pg_trigger
@@ -507,7 +507,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607310125',
+  'schema_version','202607310126',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;
