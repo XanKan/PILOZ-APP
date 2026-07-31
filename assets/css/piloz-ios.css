@@ -520,3 +520,52 @@ input[type="radio"]{accent-color:var(--ios-teal-deep)}
   body{background:#fff!important}
   .erp-paper,.document-v2-paper{border-radius:0!important;box-shadow:none!important}
 }
+
+/* Composite fields already own their visual shell. Keep their nested input neutral
+   so they render as one control instead of a rounded field inside another. */
+:is(
+  .client-search,
+  .access-search,
+  .catalog-search,
+  .crm-activity-search,
+  .crm-picker-search,
+  .crm-input-suffix,
+  .document-viewer-search-row label,
+  .help-search-hero label>div,
+  .help-doc-intro label,
+  .erp-document-head,
+  .modern-client-filter>div:first-of-type,
+  .document-viewer-client-filter>div:first-of-type
+)>input:not([type="checkbox"]):not([type="radio"]),
+:is(
+  .client-search,
+  .access-search,
+  .catalog-search,
+  .crm-activity-search,
+  .crm-picker-search,
+  .crm-input-suffix,
+  .document-viewer-search-row label,
+  .help-search-hero label>div,
+  .help-doc-intro label,
+  .erp-document-head,
+  .modern-client-filter>div:first-of-type,
+  .document-viewer-client-filter>div:first-of-type
+)>input:not([type="checkbox"]):not([type="radio"]):is(:hover,:focus,:focus-visible){
+  min-height:0!important;
+  border:0!important;
+  border-radius:0!important;
+  outline:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+
+/* Inline progress editing intentionally keeps only its underline. */
+.document-v2-progress-total input,
+.document-v2-progress-total input:is(:hover,:focus,:focus-visible){
+  min-height:0!important;
+  border:0!important;
+  border-bottom:1px solid var(--border-strong)!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}

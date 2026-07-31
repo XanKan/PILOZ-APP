@@ -4,6 +4,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Tests espace Clients — Piloz</title>
 <link rel="stylesheet" href="../assets/css/clients-workspace.css">
+<link rel="stylesheet" href="../assets/css/piloz-ios.css">
 <body><main id="main"></main><div id="result" data-status="running">RUNNING</div>
 <script>
 window.__errors=[];addEventListener('error',event=>__errors.push(event.message));window.toast=()=>{};window.confirm=()=>true;
@@ -36,6 +37,9 @@ location.hash='sales/clients';
   PilozClients.renderRoute('sales/clients',state);await wait(40);
   check('liste financière réelle',main.textContent.includes('Atelier Dupont')&&main.textContent.includes('1 200,00')&&main.textContent.includes('800,00'));
   check('recherche et filtres',!!main.querySelector('.client-search input')&&main.textContent.includes('Tous les statuts')&&main.textContent.includes('Colonnes'));
+  const searchInput=main.querySelector('.client-search input'),primaryCell=main.querySelector('td.client-primary'),primaryInner=primaryCell?.querySelector('.client-primary-inner');
+  check('champ de recherche sans cellule imbriquée',getComputedStyle(searchInput).borderTopWidth==='0px'&&getComputedStyle(searchInput).boxShadow==='none'&&getComputedStyle(searchInput).backgroundColor==='rgba(0, 0, 0, 0)');
+  check('cellule client conserve la structure du tableau',getComputedStyle(primaryCell).display==='table-cell'&&getComputedStyle(primaryInner).display==='flex');
   check('sélection et export disponibles',!!main.querySelector('[aria-label^="Sélectionner"]')&&main.textContent.includes('Exporter CSV'));
   PilozClients.openClientCreator();const companyCreator=document.getElementById('client-create-form');check('création professionnelle demande le contact principal',!!companyCreator?.elements.contact_first_name&&!!companyCreator?.elements.contact_last_name&&!!companyCreator?.elements.email&&!!companyCreator?.elements.phone_e164);PilozClients.toggleCreatorKind('person');const createCompanyPanel=companyCreator?.querySelector('[data-create-company]'),createPersonPanel=companyCreator?.querySelector('[data-create-person]');check('création particulier masque et désactive les champs professionnels',createCompanyPanel?.hidden&&[...createCompanyPanel.querySelectorAll('input:not([type=search]),select,textarea')].every(node=>node.disabled)&&!createPersonPanel?.hidden&&[...createPersonPanel.querySelectorAll('input,select,textarea')].every(node=>!node.disabled));PilozClients.closeDrawer();
   location.hash=`sales/clients/${client}?tab=summary`;PilozClients.renderRoute(location.hash.slice(1),state);await wait(60);

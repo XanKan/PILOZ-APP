@@ -547,7 +547,7 @@
     if (key === "select")
       return `<td class="client-select" onclick="event.stopPropagation()"><input type="checkbox" aria-label="Sélectionner ${esc(clientName(row))}" ${ui.selected.has(row.id) ? "checked" : ""} onchange="PilozClients.toggleSelection('${row.id}',this.checked)"></td>`;
     if (key === "client")
-      return `<td class="client-primary" data-label="Client"><span class="client-avatar">${esc(clientName(row).slice(0, 2).toUpperCase())}</span><span><b>${esc(clientName(row))}</b><small>${esc(row.trade_name && row.trade_name !== row.legal_name ? row.trade_name : row.siret || row.siren || "")}</small></span></td>`;
+      return `<td class="client-primary" data-label="Client"><div class="client-primary-inner"><span class="client-avatar">${esc(clientName(row).slice(0, 2).toUpperCase())}</span><span><b>${esc(clientName(row))}</b><small>${esc(row.trade_name && row.trade_name !== row.legal_name ? row.trade_name : row.siret || row.siren || "")}</small></span></div></td>`;
     if (key === "type")
       return `<td data-label="Type">${row.kind === "person" ? "Particulier" : "Professionnel"}</td>`;
     if (key === "contact")
