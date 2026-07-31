@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Test visuel du centre d'activités PILOZ</title>
+  <link rel="stylesheet" href="../assets/css/activities-workspace.css">
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:#f3f7f8}#main{min-height:100vh}#result{position:fixed;z-index:200000;right:12px;bottom:12px;padding:7px 11px;border:1px solid #cfe1e4;border-radius:9px;background:#fff;color:#12324a;font-size:12px;box-shadow:0 8px 24px #0b273322}
+  </style>
+</head>
+<body>
+  <main id="main"></main>
+  <div id="result" data-status="running">Vérification…</div>
+  <script>
+    const ownerIds=['user-1','user-2','user-3','user-4'];
+    const typeRows=[
+      {id:'type-call',slug:'call',label:'Appel',color:'#13a897'},
+      {id:'type-email',slug:'email',label:'E-mail',color:'#307acb'},
+      {id:'type-meeting',slug:'meeting',label:'Rendez-vous',color:'#8658d8'},
+      {id:'type-task',slug:'task',label:'Tâche',color:'#e29835'},
+    ];
+    const now=Date.now();
+    const rows=Array.from({length:50},(_,index)=>{
+      const type=typeRows[index%typeRows.length],late=index%7===0,completed=index%9===0;
+      return {
+        id:`activity-${index+1}`,activity_type_id:type.id,activity_type:type.slug,
+        type_label:type.label,type_color:type.color,
+        subject:["Relancer la proposition commerciale","Préparer le rendez-vous client","Envoyer les pièces demandées","Faire le point sur le règlement"][index%4]+` #${String(index+1).padStart(4,'0')}`,
+        summary:'Contexte commercial et prochaine étape documentés pour toute l’équipe.',
+        entity_name:['Atelier Horizon','Nova Bâtiment','Maison Durand','Agence Rubis'][index%4],
+        contact_name:['Camille Martin','Alexandre Petit','Sophie Leroy','Thomas Bernard'][index%4],
+        assigned_user_id:ownerIds[index%ownerIds.length],created_by:ownerIds[index%ownerIds.length],
+        starts_at:new Date(now+(late?-1:index%8+1)*86400000+(index%10)*1800000).toISOString(),
+        duration_minutes:[15,30,45,60][index%4],priority:index%13===0?'urgent':index%5===0?'high':'normal',
+        status:completed?'completed':index%4===0?'in_progress':'scheduled'
+      };
+    });
+    const workspace={
+      total:125840,page:1,page_size:50,rows,types:typeRows,
+      saved_filters:[{id:'saved-1',name:'Grands comptes à relancer'},{id:'saved-2',name:'Rendez-vous de l’équipe'}],
+      permissions:{read:true,write:true,configure:true,view_team:true,view_all:true},
+      counts:{today:184,overdue:37,week:642,completed_week:518,calls:96,reminders:214,unassigned:12,archived:2380},
+      preferences:{default_view:'list',page_size:50,density:'compact',show_metrics:true,visible_columns:['type','subject','relation','owner','date','duration','priority','status'],sort_key:'activity_at',sort_direction:'asc'}
+    };
+    window.toast=()=>{};
+    window.PilozRuntime={session:{user_id:'user-1'}};
+    window.PilozApp={getState(){return {companyId:'company-demo',data:{members:ownerIds.map((id,index)=>({user_id:id,status:'active',display_name:['Quentin Jernot','Camille Martin','Alexandre Petit','Sophie Leroy'][index]})),preferences:[]}}}};
+    window.PilozERP={async query(){return []},async rpc(name){if(name==='get_activity_workspace_v4'||name==='get_activity_workspace_v3')return workspace;throw new Error(`RPC inattendue ${name}`)}};
+    window.PilozModern={renderRoute(){return false}};
+    location.hash='crm/activities';
+  </script>
+  <script src="../assets/js/modules/erp/erp-activities-workspace.js"></script>
+  <script>
+    PilozCRM.loadActivitiesWorkspace();
+    const started=Date.now();
+    const timer=setInterval(()=>{
+      if(!document.querySelector('.aw-table tbody tr')&&Date.now()-started<5000)return;
+      clearInterval(timer);
+      const checks=[];
+      try{
+        checks.push(['nouveau titre',document.querySelector('.aw-page-head h1')?.textContent==='Centre d’activités']);
+        checks.push(['4 indicateurs décisionnels',document.querySelectorAll('.aw-metric').length===4]);
+        checks.push(['cockpit à deux zones',!!document.querySelector('.aw-cockpit .aw-queue-rail')&&!!document.querySelector('.aw-cockpit .aw-workspace')]);
+        checks.push(['files de travail',document.querySelectorAll('.aw-quick button').length>=9]);
+        checks.push(['vues enregistrées',document.querySelectorAll('.aw-saved-views button').length===2]);
+        checks.push(['pagination grand volume',document.querySelector('.aw-pagination')?.textContent.includes('125 840')]);
+        checks.push(['50 lignes rendues',document.querySelectorAll('.aw-table tbody tr').length===50]);
+        checks.push(['actions rapides',document.querySelectorAll('.aw-complete-action').length>0]);
+        checks.push(['aucun débordement du document',document.documentElement.scrollWidth<=window.innerWidth+1]);
+      }catch(error){checks.push(['exécution',false,error.message])}
+      const failed=checks.filter(([,ok])=>!ok),result=document.getElementById('result');
+      result.dataset.status=failed.length?'failed':'passed';
+      result.textContent=failed.length?`Échec : ${failed.map(row=>row[0]).join(', ')}`:`${checks.length}/${checks.length} contrôles visuels Activités réussis`;
+    },50);
+  </script>
+</body>
+</html>

@@ -378,10 +378,10 @@
 
   function header() {
     const connected = ui.connections.length
-      ? `<span class="aw-connected" title="Synchronisation réelle configurée">● ${ui.connections.length} agenda${ui.connections.length > 1 ? "s" : ""} connecté${ui.connections.length > 1 ? "s" : ""}</span>`
+      ? `<span class="aw-connected" title="Synchronisation réelle configurée"><i></i>${ui.connections.length} agenda${ui.connections.length > 1 ? "s" : ""} connecté${ui.connections.length > 1 ? "s" : ""}</span>`
       : "";
     const total = Number(ui.data?.total) || 0;
-    return `<header class="aw-page-head"><div><p class="aw-kicker">SUIVI COMMERCIAL</p><div class="aw-title-line"><h1>Activités</h1><span>${total.toLocaleString("fr-FR")}</span></div><p>Le poste de travail de l’équipe pour planifier, prioriser et tracer chaque action.</p></div><div class="aw-head-actions">${connected}${button("Personnaliser", "PilozCRM.openActivityWorkspaceSettings()", "ghost")}${ui.data?.permissions?.configure ? button("Types d’activité", "PilozCRM.openActivityTypes()", "ghost") : ""}${ui.data?.permissions?.write ? button("Noter un appel", "PilozCRM.openQuickCallWorkspace()", "ghost") : ""}${ui.data?.permissions?.write ? button("Nouvelle activité", "PilozCRM.openActivityForm()", "primary") : ""}</div></header>`;
+    return `<header class="aw-page-head"><div class="aw-page-identity"><p class="aw-kicker">SUIVI COMMERCIAL</p><div class="aw-title-line"><h1>Centre d’activités</h1><span>${total.toLocaleString("fr-FR")}</span></div><p>Organisez les actions de l’équipe, traitez les urgences et gardez chaque relation commerciale à jour.</p></div><div class="aw-head-actions">${connected}<button type="button" class="aw-button aw-settings-button" onclick="PilozCRM.openActivityWorkspaceSettings()" aria-label="Personnaliser l’affichage" title="Personnaliser l’affichage">⚙</button>${ui.data?.permissions?.configure ? `<button type="button" class="aw-button ghost aw-secondary-action" onclick="PilozCRM.openActivityTypes()">Types d’activité</button>` : ""}${ui.data?.permissions?.write ? `<button type="button" class="aw-button ghost aw-secondary-action" onclick="PilozCRM.openQuickCallWorkspace()">☎ Noter un appel</button>` : ""}${ui.data?.permissions?.write ? `<button type="button" class="aw-button primary" onclick="PilozCRM.openActivityForm()"><span aria-hidden="true">＋</span> Nouvelle activité</button>` : ""}</div></header>`;
   }
   function metric(label, value, quick, tone = "") {
     return `<button type="button" class="aw-metric ${tone} ${ui.quick === quick ? "active" : ""}" onclick="PilozCRM.setActivityQuick('${quick}')"><span>${esc(label)}</span><strong>${(Number(value) || 0).toLocaleString("fr-FR")}</strong></button>`;
@@ -389,7 +389,15 @@
   function metrics() {
     const c = ui.data?.counts || {};
     if (!ui.showMetrics) return "";
-    return `<section class="aw-metrics" aria-label="Indicateurs">${metric("Aujourd’hui", c.today, "today")}${metric("En retard", c.overdue, "overdue", "danger")}${metric("Cette semaine", c.week, "week")}${metric("Terminées cette semaine", c.completed_week, "completed", "success")}${metric("Appels ouverts", c.calls, "all")}${metric("Relances à venir", c.reminders, "upcoming")}${metric("Non attribuées", c.unassigned, "unassigned", "warning")}</section>`;
+    const completed = Number(c.completed_week) || 0,
+      openWeek = Number(c.week) || 0,
+      rate = Math.round((completed / Math.max(1, completed + openWeek)) * 100);
+    return `<section class="aw-metrics" aria-label="Indicateurs d’activité">
+      <button type="button" class="aw-metric aw-metric-focus ${ui.quick === "today" ? "active" : ""}" onclick="PilozCRM.setActivityQuick('today')"><span><i class="aw-metric-icon">✓</i><em>À traiter aujourd’hui</em></span><strong>${(Number(c.today) || 0).toLocaleString("fr-FR")}</strong><small>actions planifiées</small></button>
+      <button type="button" class="aw-metric danger ${ui.quick === "overdue" ? "active" : ""}" onclick="PilozCRM.setActivityQuick('overdue')"><span><i class="aw-metric-dot"></i><em>En retard</em></span><strong>${(Number(c.overdue) || 0).toLocaleString("fr-FR")}</strong><small>à prioriser maintenant</small></button>
+      <button type="button" class="aw-metric warning ${ui.quick === "unassigned" ? "active" : ""}" onclick="PilozCRM.setActivityQuick('unassigned')"><span><i class="aw-metric-dot"></i><em>Non attribuées</em></span><strong>${(Number(c.unassigned) || 0).toLocaleString("fr-FR")}</strong><small>sans responsable</small></button>
+      <button type="button" class="aw-metric success ${ui.quick === "completed" ? "active" : ""}" onclick="PilozCRM.setActivityQuick('completed')"><span><i class="aw-metric-dot"></i><em>Avancement semaine</em></span><strong>${rate}<sup>%</sup></strong><small>${completed.toLocaleString("fr-FR")} action${completed > 1 ? "s" : ""} terminée${completed > 1 ? "s" : ""}</small><b class="aw-progress"><i style="width:${Math.min(100, rate)}%"></i></b></button>
+    </section>`;
   }
   function option(value, label, selected) {
     return `<option value="${attr(value)}" ${String(value) === String(selected) ? "selected" : ""}>${esc(label)}</option>`;
@@ -406,7 +414,7 @@
   function toolbar() {
     const types = ui.data?.types || [],
       filters = ui.data?.saved_filters || [];
-    return `<section class="aw-toolbar"><div class="aw-toolbar-top"><div class="aw-view-tabs" role="tablist">${[
+    return `<section class="aw-toolbar"><div class="aw-toolbar-top"><div><p class="aw-toolbar-label">AFFICHAGE</p><div class="aw-view-tabs" role="tablist">${[
       ["list", "Liste"],
       ["agenda", "Agenda"],
       ["timeline", "Chronologie"],
@@ -425,7 +433,7 @@
       )
       .join(
         "",
-      )}</div><div class="aw-toolbar-tools">${button(ui.advancedFilters ? "Masquer les filtres" : "Plus de filtres", "PilozCRM.toggleActivityAdvancedFilters()", "ghost")}${button("Colonnes et affichage", "PilozCRM.openActivityWorkspaceSettings()", "ghost")}</div></div><div class="aw-filters"><label class="aw-search"><span aria-hidden="true">⌕</span><input value="${attr(ui.search)}" placeholder="Sujet, client, contact, opportunité ou document…" aria-label="Rechercher" oninput="PilozCRM.searchActivities(this.value)"></label><select aria-label="Type" onchange="PilozCRM.setActivityType(this.value)">${option("", "Tous les types", ui.typeId)}${types.map((row) => option(row.id, row.label, ui.typeId)).join("")}</select><select aria-label="Statut" onchange="PilozCRM.setActivityStatus(this.value)">${option("", "Tous les statuts", ui.status)}${Object.entries(
+      )}</div></div><div class="aw-toolbar-tools"><span class="aw-result-count">${(Number(ui.data?.total) || 0).toLocaleString("fr-FR")} résultat${Number(ui.data?.total) > 1 ? "s" : ""}</span>${button(ui.advancedFilters ? "Filtres simples" : "Plus de filtres", "PilozCRM.toggleActivityAdvancedFilters()", "ghost")}${button(ui.density === "compact" ? "Vue compacte" : "Vue confortable", "PilozCRM.openActivityWorkspaceSettings()", "ghost")}</div></div><div class="aw-filters"><label class="aw-search"><span aria-hidden="true">⌕</span><input type="search" value="${attr(ui.search)}" placeholder="Rechercher une activité, un client, un document…" aria-label="Rechercher" oninput="PilozCRM.searchActivities(this.value)"><kbd>⌘ K</kbd></label><select aria-label="Type" onchange="PilozCRM.setActivityType(this.value)">${option("", "Tous les types", ui.typeId)}${types.map((row) => option(row.id, row.label, ui.typeId)).join("")}</select><select aria-label="Statut" onchange="PilozCRM.setActivityStatus(this.value)">${option("", "Tous les statuts", ui.status)}${Object.entries(
       statusLabels,
     )
       .map(([id, label]) => option(id, label, ui.status))
@@ -434,9 +442,9 @@
       )}</select><select aria-label="Responsable" onchange="PilozCRM.setActivityOwner(this.value)">${ownerOptions(ui.owner)}</select>${ui.advancedFilters ? `<select aria-label="Vue enregistrée" onchange="PilozCRM.applyActivitySavedFilter(this.value)">${option("", "Vues enregistrées", ui.savedFilterId)}${filters.map((row) => option(row.id, row.name, ui.savedFilterId)).join("")}</select>${button("Enregistrer la vue", "PilozCRM.openSaveActivityFilter()", "ghost")}${ui.savedFilterId ? button("Supprimer", "PilozCRM.deleteActivitySavedFilter()", "danger") : ""}` : ""}</div>${ui.selected.size ? `<div class="aw-bulk" role="toolbar" aria-label="Actions groupées"><b>${ui.selected.size.toLocaleString("fr-FR")} sélectionnée(s)</b>${button("Terminer", 'PilozCRM.bulkActivityAction("status",{status:"completed"})', "success")}${button("Changer le statut", "PilozCRM.openBulkActivityStatus()", "ghost")}${button("Attribuer", "PilozCRM.openBulkActivityAssign()", "ghost")}${button("Reporter", "PilozCRM.openBulkReschedule()", "ghost")}${button("Archiver", 'PilozCRM.bulkActivityAction("archive",{})', "danger")}</div>` : ""}</section>`;
   }
   function quickFilters() {
-    if (ui.view === "agenda") return calendarToolbar();
-    const c = ui.data?.counts || {};
-    return `<nav class="aw-quick" aria-label="Vues rapides">${[
+    const c = ui.data?.counts || {},
+      saved = (ui.data?.saved_filters || []).slice(0, 6);
+    return `<aside class="aw-queue-rail"><div class="aw-rail-title"><span>FILES DE TRAVAIL</span><button type="button" onclick="PilozCRM.openSaveActivityFilter()" aria-label="Enregistrer une nouvelle vue" title="Enregistrer une vue">＋</button></div><nav class="aw-quick" aria-label="Files de travail">${[
       ["today", "Aujourd’hui", c.today],
       ["overdue", "En retard", c.overdue],
       ["upcoming", "À venir", ""],
@@ -445,13 +453,13 @@
       ["completed", "Terminées", c.completed_week],
       ["cancelled", "Annulées", ""],
       ["archived", "Archivées", c.archived],
-      ["all", "Toutes", ""],
+      ["all", "Toutes les activités", ui.data?.total],
     ]
       .map(
         ([id, label, count]) =>
-          `<button class="${ui.quick === id ? "active" : ""}" onclick="PilozCRM.setActivityQuick('${id}')">${label}${count !== "" && count != null ? `<span>${Number(count).toLocaleString("fr-FR")}</span>` : ""}</button>`,
+          `<button class="${ui.quick === id ? "active" : ""}" onclick="PilozCRM.setActivityQuick('${id}')"><i class="aw-queue-icon ${id}"></i><span>${label}</span>${count !== "" && count != null ? `<b>${Number(count).toLocaleString("fr-FR")}</b>` : ""}</button>`,
       )
-      .join("")}</nav>`;
+      .join("")}</nav>${saved.length ? `<div class="aw-saved-views"><span>VUES ENREGISTRÉES</span>${saved.map((row) => `<button type="button" class="${ui.savedFilterId === row.id ? "active" : ""}" onclick="PilozCRM.applyActivitySavedFilter('${row.id}')"><i>◇</i><span>${esc(row.name)}</span></button>`).join("")}</div>` : ""}<div class="aw-rail-help"><b>Besoin d’aller vite ?</b><p>Sélectionnez plusieurs lignes pour les terminer, attribuer ou reporter en une seule fois.</p></div></aside>`;
   }
   function activityType(row) {
     return `<span class="aw-type" style="--aw-type:${attr(row.type_color || "#14b8a6")}"><i>${typeIcon(row.activity_type)}</i><span>${esc(row.type_label || row.activity_type || "Activité")}</span></span>`;
@@ -472,7 +480,7 @@
   function listView() {
     const rows = ui.data?.rows || [];
     if (!rows.length) return empty();
-    return `<section class="aw-table-wrap ${ui.density === "compact" ? "compact" : ""}"><table class="aw-table"><thead><tr><th class="aw-select-column"><input type="checkbox" aria-label="Sélectionner la page" onchange="PilozCRM.selectAllActivities(this.checked)"></th>${visible("type") ? "<th>Type</th>" : ""}${visible("subject") ? `<th>${sortableHeader("subject", "Activité")}</th>` : ""}${visible("relation") ? "<th>Relation</th>" : ""}${visible("owner") ? `<th>${sortableHeader("owner", "Responsable")}</th>` : ""}${visible("date") ? `<th>${sortableHeader("activity_at", "Date")}</th>` : ""}${visible("duration") ? "<th>Durée</th>" : ""}${visible("priority") ? `<th>${sortableHeader("priority", "Priorité")}</th>` : ""}${visible("status") ? `<th>${sortableHeader("status", "Statut")}</th>` : ""}<th class="aw-actions-column">Actions</th></tr></thead><tbody>${rows.map((row) => `<tr class="${isOverdue(row) ? "is-overdue" : ""}" ondblclick="PilozCRM.openActivityDetail('${row.id}')"><td class="aw-select-column"><input type="checkbox" aria-label="Sélectionner ${attr(row.subject)}" ${ui.selected.has(row.id) ? "checked" : ""} onchange="PilozCRM.selectActivity('${row.id}',this.checked)"></td>${visible("type") ? `<td>${activityType(row)}</td>` : ""}${visible("subject") ? `<td><button class="aw-title-link" onclick="PilozCRM.openActivityDetail('${row.id}')"><b>${esc(row.subject)}</b><small>${esc(row.summary || row.description || "")}</small></button></td>` : ""}${visible("relation") ? `<td><span class="aw-related">${esc(linkedLabel(row))}${row.contact_name ? `<small>${esc(row.contact_name)}</small>` : ""}</span></td>` : ""}${visible("owner") ? `<td>${esc(memberName(row.assigned_user_id))}</td>` : ""}${visible("date") ? `<td><b>${formatDate(activityDate(row))}</b><small>${row.all_day ? "Journée entière" : formatTime(activityDate(row))}</small></td>` : ""}${visible("duration") ? `<td>${Number(row.duration_minutes) || 0} min</td>` : ""}${visible("priority") ? `<td>${priorityBadge(row.priority)}</td>` : ""}${visible("status") ? `<td>${statusBadge(row)}</td>` : ""}<td class="aw-actions-column"><div class="aw-row-actions"><button onclick="PilozCRM.openActivityDetail('${row.id}')" aria-label="Ouvrir">↗</button>${ui.data?.permissions?.write ? `<button onclick="PilozCRM.openActivityForm('${row.id}')" aria-label="Modifier">✎</button>` : ""}</div></td></tr>`).join("")}</tbody></table></section>${pagination()}`;
+    return `<section class="aw-table-wrap ${ui.density === "compact" ? "compact" : ""}"><table class="aw-table"><thead><tr><th class="aw-select-column"><input type="checkbox" aria-label="Sélectionner la page" onchange="PilozCRM.selectAllActivities(this.checked)"></th>${visible("type") ? "<th>Type</th>" : ""}${visible("subject") ? `<th>${sortableHeader("subject", "Activité")}</th>` : ""}${visible("relation") ? "<th>Liée à</th>" : ""}${visible("owner") ? `<th>${sortableHeader("owner", "Responsable")}</th>` : ""}${visible("date") ? `<th>${sortableHeader("activity_at", "Échéance")}</th>` : ""}${visible("duration") ? "<th>Durée</th>" : ""}${visible("priority") ? `<th>${sortableHeader("priority", "Priorité")}</th>` : ""}${visible("status") ? `<th>${sortableHeader("status", "Statut")}</th>` : ""}<th class="aw-actions-column"><span class="sr-only">Actions</span></th></tr></thead><tbody>${rows.map((row) => `<tr class="${isOverdue(row) ? "is-overdue" : ""} ${row.status === "completed" ? "is-completed" : ""} ${ui.selected.has(row.id) ? "is-selected" : ""}" ondblclick="PilozCRM.openActivityDetail('${row.id}')"><td class="aw-select-column"><input type="checkbox" aria-label="Sélectionner ${attr(row.subject)}" ${ui.selected.has(row.id) ? "checked" : ""} onchange="PilozCRM.selectActivity('${row.id}',this.checked)"></td>${visible("type") ? `<td>${activityType(row)}</td>` : ""}${visible("subject") ? `<td><button class="aw-title-link" onclick="PilozCRM.openActivityDetail('${row.id}')"><b>${esc(row.subject)}</b><small>${esc(row.summary || row.description || "Aucun détail")}</small></button></td>` : ""}${visible("relation") ? `<td><span class="aw-related"><b>${esc(linkedLabel(row))}</b>${row.contact_name ? `<small>${esc(row.contact_name)}</small>` : ""}</span></td>` : ""}${visible("owner") ? `<td><span class="aw-owner"><i>${esc(memberName(row.assigned_user_id).slice(0, 1).toUpperCase())}</i><span>${esc(memberName(row.assigned_user_id))}</span></span></td>` : ""}${visible("date") ? `<td><span class="aw-due ${isOverdue(row) ? "late" : ""}"><b>${formatDate(activityDate(row))}</b><small>${row.all_day ? "Journée entière" : formatTime(activityDate(row))}</small></span></td>` : ""}${visible("duration") ? `<td>${Number(row.duration_minutes) || 0} min</td>` : ""}${visible("priority") ? `<td>${priorityBadge(row.priority)}</td>` : ""}${visible("status") ? `<td>${statusBadge(row)}</td>` : ""}<td class="aw-actions-column"><div class="aw-row-actions">${ui.data?.permissions?.write && !["completed", "cancelled"].includes(row.status) ? `<button class="aw-complete-action" onclick="PilozCRM.openCompleteActivityWorkspace('${row.id}')" aria-label="Terminer" title="Terminer">✓</button>` : ""}<button onclick="PilozCRM.openActivityDetail('${row.id}')" aria-label="Ouvrir" title="Ouvrir">↗</button>${ui.data?.permissions?.write ? `<button onclick="PilozCRM.openActivityForm('${row.id}')" aria-label="Modifier" title="Modifier">✎</button>` : ""}</div></td></tr>`).join("")}</tbody></table></section>${pagination()}`;
   }
   function pagination() {
     const total = Number(ui.data?.total) || 0,
@@ -549,7 +557,13 @@
   function render() {
     const main = document.getElementById("main");
     if (!main) return;
-    main.innerHTML = `<main class="aw-shell">${header()}${metrics()}${toolbar()}${quickFilters()}${ui.view === "agenda" ? calendarView() : ui.view === "timeline" ? timelineView() : listView()}</main>`;
+    const content =
+      ui.view === "agenda"
+        ? calendarView()
+        : ui.view === "timeline"
+          ? timelineView()
+          : listView();
+    main.innerHTML = `<main class="aw-shell">${header()}${metrics()}<section class="aw-cockpit">${quickFilters()}<section class="aw-workspace">${toolbar()}${ui.view === "agenda" ? calendarToolbar() : ""}<div class="aw-workspace-content">${content}</div></section></section></main>`;
   }
 
   function entityOptions(rows, getLabel, selected) {
@@ -1653,7 +1667,7 @@
     archiveActivityWorkspace: (id) => transition(id, "archive", {}),
     duplicateActivityWorkspace: duplicate,
     uploadActivityAttachment: uploadAttachment,
-    downloadActivityAttachment,
+    downloadActivityAttachment: downloadAttachment,
     openActivityTypes: openTypes,
     editActivityTypeWorkspace: editType,
     toggleActivityTypeWorkspace: toggleType,
@@ -1662,9 +1676,9 @@
     openBulkReschedule: bulkReschedule,
     runBulkReschedule,
     openBulkActivityStatus: bulkStatus,
-    runBulkActivityStatus,
+    runBulkActivityStatus: runBulkStatus,
     openBulkActivityAssign: bulkAssign,
-    runBulkActivityAssign,
+    runBulkActivityAssign: runBulkAssign,
     openSaveActivityFilter: openSaveFilter,
     saveActivitySavedFilter: saveFilter,
     applyActivitySavedFilter: applySavedFilter,

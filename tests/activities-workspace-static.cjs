@@ -213,6 +213,25 @@ check(
   has(script, "[25, 50, 100, 200]") && has(scale, "least(200"),
 );
 check(
+  "centre opérationnel visible",
+  has(script, "Centre d’activités") &&
+    has(script, "aw-cockpit") &&
+    has(script, "aw-queue-rail") &&
+    has(script, "aw-workspace"),
+);
+check(
+  "indicateurs décisionnels équipe",
+  has(script, "À traiter aujourd’hui") &&
+    has(script, "Non attribuées") &&
+    has(script, "Avancement semaine"),
+);
+check(
+  "API pièces jointes et actions groupées correctement exposée",
+  has(script, "downloadActivityAttachment: downloadAttachment") &&
+    has(script, "runBulkActivityStatus: runBulkStatus") &&
+    has(script, "runBulkActivityAssign: runBulkAssign"),
+);
+check(
   "préférences utilisateur persistantes",
   has(
     scale,
