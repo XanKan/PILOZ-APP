@@ -127,7 +127,7 @@ jobs:
             echo "Le parcours ${test_file} a échoué une première fois ; nouvelle tentative unique."
             node tests/run-html-tests.cjs "tests/${test_file}"
           }
-          tests=(access-control.html api-response.html auth-guard.html browser-tests.html catalog-workspace.html client-workspace.html commercial-workflows.html commercial-workspace.html company-settings-smoke.html dashboard-cockpit.html document-viewer-v2.html due-actions.html electronic-invoice.html erp-smoke.html fiscal-domain.html navigation-smoke.html no-flicker.html production-regression.html scroll-preservation.html settings-overview.html site-offer-selection.html subscription-billing.html template-footer-smoke.html template-list-layout.html)
+          tests=(access-control.html activities-workspace.html api-response.html auth-guard.html browser-tests.html catalog-workspace.html client-workspace.html commercial-workflows.html commercial-workspace.html company-settings-smoke.html dashboard-cockpit.html document-viewer-v2.html due-actions.html electronic-invoice.html erp-smoke.html fiscal-domain.html navigation-smoke.html no-flicker.html production-regression.html scroll-preservation.html settings-overview.html site-offer-selection.html subscription-billing.html template-footer-smoke.html template-list-layout.html)
           for test in "${tests[@]}"; do
             run_browser_test "$test"
           done

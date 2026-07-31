@@ -600,9 +600,17 @@
     value = "",
     initialLabel = "",
     selectedType = kind,
+    clientId = "",
   ) {
-    const selectedLabel = initialLabel || (value ? "Relation enregistrée" : "");
-    return `<label class="aw-relation-field"><span>${esc(label)}</span><div class="aw-relation-control"><input type="hidden" name="${attr(name)}" value="${attr(value)}"><input type="hidden" name="${attr(name)}_type" value="${attr(selectedType)}"><input type="search" autocomplete="off" value="${attr(selectedLabel)}" placeholder="Saisissez au moins 2 caractères…" aria-label="Rechercher ${attr(label.toLowerCase())}" oninput="PilozCRM.searchActivityRelation('${kind}','${name}',this.value)" onfocus="PilozCRM.searchActivityRelation('${kind}','${name}',this.value)"><button type="button" aria-label="Effacer" onclick="PilozCRM.clearActivityRelation('${name}')">×</button><div class="aw-relation-results" id="aw-relation-results-${attr(name)}" hidden></div></div></label>`;
+    const selectedLabel = initialLabel || (value ? "Relation enregistrée" : ""),
+      clientScoped = ["contact", "opportunity", "document"].includes(kind),
+      disabled = clientScoped && !clientId,
+      placeholder = disabled
+        ? "Sélectionnez d’abord un client"
+        : clientScoped
+          ? "Cliquez pour afficher ou recherchez…"
+          : "Saisissez au moins 2 caractères…";
+    return `<label class="aw-relation-field"><span>${esc(label)}</span><div class="aw-relation-control"><input type="hidden" name="${attr(name)}" value="${attr(value)}"><input type="hidden" name="${attr(name)}_type" value="${attr(selectedType)}"><input type="search" autocomplete="off" value="${attr(selectedLabel)}" data-client-scoped="${clientScoped ? "true" : "false"}" data-client-id="${attr(clientId)}" placeholder="${attr(placeholder)}" aria-label="Rechercher ${attr(label.toLowerCase())}" ${disabled ? "disabled" : ""} oninput="PilozCRM.searchActivityRelation('${kind}','${name}',this.value)" onfocus="PilozCRM.searchActivityRelation('${kind}','${name}',this.value)"><button type="button" aria-label="Effacer" onclick="PilozCRM.clearActivityRelation('${name}')" ${disabled ? "disabled" : ""}>×</button><div class="aw-relation-results" id="aw-relation-results-${attr(name)}" hidden></div></div></label>`;
   }
   function enterpriseFormBody(row = {}, detail = {}) {
     const types = ui.data?.types || [],
@@ -615,6 +623,7 @@
       opportunityLink = relationLink("opportunity"),
       documentLink = relationLink("quote", "invoice", "credit_note"),
       supplierLink = relationLink("supplier"),
+      selectedClientId = clientLink?.entity_id || row.client_id || "",
       reminder = (detail.reminders || []).find(
         (item) => item.status === "pending",
       ),
@@ -649,11 +658,11 @@
           .join("")}</select></label>
       </div></section>
       <details open><summary>Relations métier</summary><div class="aw-form-grid">
-        ${relationPicker("client", "client_id", "Client ou prospect", clientLink?.entity_id || row.client_id || "", row.entity_name || "", clientLink?.entity_type || "client")}
-        ${relationPicker("contact", "contact_id", "Contact", contactLink?.entity_id || row.contact_id || "", row.contact_name || "")}
-        ${relationPicker("opportunity", "opportunity_id", "Opportunité", opportunityLink?.entity_id || row.opportunity_id || "", row.opportunity_name || "")}
-        ${relationPicker("document", "document_id", "Devis, facture ou avoir", documentLink?.entity_id || row.document_id || "", row.document_number || "", documentLink?.entity_type || "document")}
-        ${relationPicker("supplier", "supplier_id", "Fournisseur", supplierLink?.entity_id || row.supplier_id || "", row.supplier_name || "")}
+        ${relationPicker("client", "client_id", "Client ou prospect", selectedClientId, row.entity_name || "", clientLink?.entity_type || "client")}
+        ${relationPicker("contact", "contact_id", "Contact du client", contactLink?.entity_id || row.contact_id || "", row.contact_name || "", "contact", selectedClientId)}
+        ${relationPicker("opportunity", "opportunity_id", "Opportunité du client", opportunityLink?.entity_id || row.opportunity_id || "", row.opportunity_name || "", "opportunity", selectedClientId)}
+        ${relationPicker("document", "document_id", "Devis ou facture du client", documentLink?.entity_id || row.document_id || "", row.document_number || "", documentLink?.entity_type || "document", selectedClientId)}
+        <input type="hidden" name="supplier_id" value="${attr(supplierLink?.entity_id || row.supplier_id || "")}">
       </div></details>
       <details><summary>Informations complémentaires</summary><div class="aw-form-grid">
         <label><span>Confidentialité</span><select name="confidentiality">${Object.entries(
@@ -765,6 +774,37 @@
       results: document.getElementById(`aw-relation-results-${name}`),
     };
   }
+  const clientScopedRelations = [
+    ["contact_id", "contact"],
+    ["opportunity_id", "opportunity"],
+    ["document_id", "document"],
+  ];
+  function syncClientScopedRelations(clientId = "", reset = true) {
+    const selectedClientId = String(clientId || "");
+    clientScopedRelations.forEach(([name, type]) => {
+      const field = relationField(name);
+      if (reset) {
+        if (field.hidden) field.hidden.value = "";
+        if (field.type) field.type.value = type;
+        if (field.input) field.input.value = "";
+      }
+      if (field.input) {
+        field.input.dataset.clientId = selectedClientId;
+        field.input.disabled = !selectedClientId;
+        field.input.placeholder = selectedClientId
+          ? "Cliquez pour afficher ou recherchez…"
+          : "Sélectionnez d’abord un client";
+      }
+      const clearButton = field.input
+        ?.closest(".aw-relation-control")
+        ?.querySelector('button[type="button"]');
+      if (clearButton) clearButton.disabled = !selectedClientId;
+      if (field.results) {
+        field.results.hidden = true;
+        field.results.innerHTML = "";
+      }
+    });
+  }
   function clearRelation(name) {
     const field = relationField(name);
     if (field.hidden) field.hidden.value = "";
@@ -776,6 +816,7 @@
       field.results.hidden = true;
       field.results.innerHTML = "";
     }
+    if (name === "client_id") syncClientScopedRelations("", true);
   }
   function chooseRelation(name, encoded) {
     const item = JSON.parse(decodeURIComponent(encoded)),
@@ -787,15 +828,27 @@
     if (name === "client_id" && item.relation_meta?.relationship_type) {
       field.type.value = item.relation_meta.relationship_type;
     }
+    if (name === "client_id")
+      syncClientScopedRelations(item.entity_id, true);
   }
   async function searchRelation(kind, name, value) {
     const field = relationField(name),
-      query = String(value || "").trim();
+      query = String(value || "").trim(),
+      scoped = ["contact", "opportunity", "document"].includes(kind),
+      clientId = String(field.form?.elements?.client_id?.value || "");
     if (field.hidden && field.input?.value !== "Relation enregistrée") {
       field.hidden.value = "";
     }
     clearTimeout(ui.relationTimers.get(name));
-    if (!field.results || query.length < 2) {
+    if (scoped && !clientId) {
+      if (field.results) {
+        field.results.hidden = false;
+        field.results.innerHTML =
+          '<p class="aw-relation-state">Sélectionnez d’abord un client.</p>';
+      }
+      return;
+    }
+    if (!field.results || (!scoped && query.length < 2)) {
       if (field.results) field.results.hidden = true;
       return;
     }
@@ -805,11 +858,40 @@
       name,
       setTimeout(async () => {
         try {
-          const rows = await api().rpc("search_activity_relations", {
-            target_kind: kind,
-            target_search: query,
-            target_limit: 20,
-          });
+          let rows;
+          try {
+            rows = await api().rpc("search_activity_relations_v2", {
+              target_kind: kind,
+              target_search: query,
+              target_limit: 50,
+              target_client_id: scoped ? clientId : null,
+            });
+          } catch (error) {
+            if (!missingRpc(error, "search_activity_relations_v2")) throw error;
+            if (!query) {
+              field.results.innerHTML =
+                '<p class="aw-relation-state">Commencez à saisir pour rechercher dans les éléments de ce client.</p>';
+              return;
+            }
+            rows = await api().rpc("search_activity_relations", {
+              target_kind: kind,
+              target_search: query,
+              target_limit: 50,
+            });
+          }
+          if (scoped) {
+            rows = (rows || []).filter(
+              (item) =>
+                String(item.relation_meta?.client_id || "") === clientId &&
+                (kind !== "document" ||
+                  ["quote", "invoice"].includes(item.entity_type)),
+            );
+          }
+          if (
+            scoped &&
+            String(field.form?.elements?.client_id?.value || "") !== clientId
+          )
+            return;
           if (field.input?.value.trim() !== query) return;
           field.results.innerHTML = rows?.length
             ? rows
@@ -1575,7 +1657,6 @@
         quote: "document_id",
         invoice: "document_id",
         credit_note: "document_id",
-        supplier: "supplier_id",
       };
       const field = form.elements[map[entityType]];
       if (field) {
@@ -1586,6 +1667,12 @@
       if (preset.client_id && form.elements.client_id) {
         form.elements.client_id.value = preset.client_id;
         form.elements.client_id_type.value = "client";
+        syncClientScopedRelations(preset.client_id, false);
+      } else if (
+        ["client", "prospect"].includes(entityType) &&
+        form.elements.client_id
+      ) {
+        syncClientScopedRelations(entityId, false);
       }
       if (preset.activity_type && form.elements.activity_type_id) {
         const wanted = (ui.data?.types || []).find(

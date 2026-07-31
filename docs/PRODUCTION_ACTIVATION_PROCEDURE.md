@@ -41,7 +41,7 @@ Le script applique les migrations additives avec la version épinglée `2.109.1`
 Dans Supabase > SQL Editor, ouvrez et exécutez ensuite le contenu de `scripts/post-deploy-production-checks.sql`. Le JSON rendu doit contenir :
 
 ```json
-{"ok": true, "schema_version": "202607310121"}
+{"ok": true, "schema_version": "202607310123"}
 ```
 
 Conservez ce résultat daté dans votre dossier de preuves, sans donnée client ni secret.

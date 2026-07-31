@@ -19,6 +19,9 @@ const scale = read(
 const weekProgress = read(
   "supabase/migrations/202607310122_activity_week_progress.sql",
 );
+const clientScopedRelations = read(
+  "supabase/migrations/202607310123_activity_client_scoped_relations.sql",
+);
 const script = read("assets/js/modules/erp/erp-activities-workspace.js");
 const css = read("assets/css/activities-workspace.css");
 const index = read("index.html");
@@ -39,7 +42,7 @@ function has(source, value) {
 check(
   "migrations additives",
   !/(drop\s+table|truncate\s+table)/i.test(
-    migration + security + scale + weekProgress,
+    migration + security + scale + weekProgress + clientScopedRelations,
   ),
 );
 check(
@@ -282,7 +285,24 @@ check(
   "relations CRM et documents",
   has(script, "entity_type:'opportunity'") &&
     has(script, "relationType(document)") &&
-    has(script, "entity_type:'supplier'"),
+    has(script, "Contact du client") &&
+    has(script, "Devis ou facture du client"),
+);
+check(
+  "relations filtrées par client",
+  has(script, "syncClientScopedRelations") &&
+    has(script, "search_activity_relations_v2") &&
+    has(script, "target_client_id:scoped?clientId:null") &&
+    has(script, "(!scoped&&query.length<2)") &&
+    has(clientScopedRelations, "target_client_id uuid default null") &&
+    has(clientScopedRelations, "contact.client_id=target_client_id") &&
+    has(clientScopedRelations, "opportunity.client_id=target_client_id") &&
+    has(clientScopedRelations, "document.client_id=target_client_id"),
+);
+check(
+  "fournisseur retiré du formulaire activité",
+  !has(script, 'relationPicker("supplier","supplier_id","Fournisseur"') &&
+    has(script, 'type="hidden" name="supplier_id"'),
 );
 check(
   "participants checklist rappel",

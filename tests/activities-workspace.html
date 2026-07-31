@@ -46,7 +46,7 @@
     window.toast=()=>{};
     window.PilozRuntime={session:{user_id:'user-1'}};
     window.PilozApp={getState(){return {companyId:'company-demo',data:{members:ownerIds.map((id,index)=>({user_id:id,status:'active',display_name:['Quentin Jernot','Camille Martin','Alexandre Petit','Sophie Leroy'][index]})),preferences:[]}}}};
-    window.PilozERP={async query(){return []},async rpc(name){if(name==='get_activity_workspace_v4'||name==='get_activity_workspace_v3')return workspace;throw new Error(`RPC inattendue ${name}`)}};
+    window.PilozERP={async query(){return []},async rpc(name){if(name==='get_activity_workspace_v4'||name==='get_activity_workspace_v3')return workspace;if(name==='get_activity_week_progress_v1')return {week_open:124,week_completed:518};throw new Error(`RPC inattendue ${name}`)}};
     window.PilozModern={renderRoute(){return false}};
     location.hash='crm/activities';
   </script>
@@ -68,6 +68,13 @@
         checks.push(['50 lignes rendues',document.querySelectorAll('.aw-table tbody tr').length===50]);
         checks.push(['actions rapides',document.querySelectorAll('.aw-complete-action').length>0]);
         checks.push(['aucun débordement du document',document.documentElement.scrollWidth<=window.innerWidth+1]);
+        PilozCRM.openActivityForm();
+        const activityForm=document.getElementById('aw-activity-form');
+        checks.push(['relations client verrouillées avant sélection',activityForm?.elements.contact_id?.closest('.aw-relation-control')?.querySelector('input[type=search]')?.disabled===true]);
+        checks.push(['fournisseur absent du formulaire',![...activityForm.querySelectorAll('label span')].some(node=>node.textContent.trim()==='Fournisseur')]);
+        PilozCRM.chooseActivityRelation('client_id',encodeURIComponent(JSON.stringify({entity_type:'client',entity_id:'client-demo',label:'Atelier Horizon',relation_meta:{relationship_type:'client'}})));
+        checks.push(['relations client activées après sélection',activityForm?.elements.contact_id?.closest('.aw-relation-control')?.querySelector('input[type=search]')?.disabled===false]);
+        PilozCRM.closeActivitiesModal();
       }catch(error){checks.push(['exécution',false,error.message])}
       const failed=checks.filter(([,ok])=>!ok),result=document.getElementById('result');
       result.dataset.status=failed.length?'failed':'passed';
