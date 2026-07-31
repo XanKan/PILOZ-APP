@@ -24,7 +24,7 @@ const checks={
   sidebar_keyboard_lock:foundation.includes("rail.setAttribute('inert','')")&&foundation.includes("rail.setAttribute('aria-disabled','true')"),
   navigation_unlocks_on_close:foundation.includes("function phase1CloseSetup(){const node=document.getElementById('phase1-setup');if(node)node.remove();phase1SetOnboardingNavigationLock(false);}"),
   professional_onboarding_activates_lock:onboarding.includes('phase1SetOnboardingNavigationLock(true);'),
-  completion_uses_safe_close:onboarding.includes("sauver('Configuration enregistrée');phase1CloseSetup();PilozApp?.refresh();"),
+  completion_uses_safe_close:onboarding.includes("sauver('Configuration enregistrée');phase1CloseSetup();if(openTraining)")&&onboarding.includes("else PilozApp?.refresh();"),
 };
 
 console.log(JSON.stringify(checks,null,2));
