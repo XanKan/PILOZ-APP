@@ -29,9 +29,11 @@ assert.ok(app.includes("La prochaine consigne arrive automatiquement"), "L'utili
 assert.ok(app.includes("function continueTraining(){clearTimeout(ui.trainingAdvanceTimer)"), "Un clic manuel ne doit pas doubler l'avancement automatique");
 assert.ok(app.includes("function closeTraining(){clearTimeout(ui.trainingFramePoll);clearTimeout(ui.trainingFieldTimer);clearTimeout(ui.trainingAdvanceTimer)"), "Quitter la formation doit annuler l'enchainement automatique");
 
-for (const label of ["Documentation", "Formation", "Pilo", "Mes tickets", "Contacter le support"]) {
+for (const label of ["Documentation", "Formation", "Pilo", "Contacter le support"]) {
   assert.ok(app.includes(label), `Entrée d'aide absente : ${label}`);
 }
+assert.ok(!app.includes("['help/contact','Contacter le support']"), "La navigation Aide ne doit plus afficher une rubrique Contacter le support séparée");
+assert.ok(app.includes("['help/tickets','Contacter le support']"), "La rubrique des tickets doit être renommée Contacter le support");
 assert.ok(app.includes("TRAINING_COURSES"), "Le catalogue de formation doit être disponible");
 assert.ok(app.includes("TRAINING_EXERCISES"), "Chaque capsule doit proposer de vraies actions interactives");
 assert.ok(app.includes("saveTrainingProgress"), "La progression des formations doit être conservée");
