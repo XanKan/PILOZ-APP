@@ -105,7 +105,7 @@ function closeTo(actual,expected,label){if(Math.abs(Number(actual)-expected)>.00
     if(granularities.short!=='day'||granularities.medium!=='week'||granularities.annual!=='month'||granularities.long!=='year')
       throw new Error(`invalid automatic granularities: ${JSON.stringify(granularities)}`);
     await setIdentity(db,owner);
-    const cockpit=(await db.query("select public.get_dashboard_cockpit('current_month',null,null,'previous') value")).rows[0].value;
+    const cockpit=(await db.query("select public.get_dashboard_cockpit('custom','2026-07-01','2026-07-31','previous') value")).rows[0].value;
     if(cockpit.first_name!=='Alice')throw new Error(`profile: ${cockpit.first_name}`);
     closeTo(cockpit.summary.revenue_ht,900,'revenue net of credit');
     closeTo(cockpit.summary.collected,500,'collections net of reversal');
@@ -137,7 +137,7 @@ function closeTo(actual,expected,label){if(Math.abs(Number(actual)-expected)>.00
     if(!tooManyMetrics)throw new Error('dashboard metric limit not enforced');
 
     await setIdentity(db,reader);
-    const readOnly=(await db.query("select public.get_dashboard_cockpit('current_month',null,null,'previous') value")).rows[0].value;
+    const readOnly=(await db.query("select public.get_dashboard_cockpit('custom','2026-07-01','2026-07-31','previous') value")).rows[0].value;
     if(readOnly.summary.permissions.write!==false||readOnly.summary.permissions.margin!==false
       ||readOnly.summary.permissions.sales_documents!==false||readOnly.summary.permissions.payments!==false
       ||readOnly.summary.permissions.customers!==false||readOnly.summary.permissions.activities!==false)throw new Error('read-only permissions exposed sensitive actions');
@@ -145,18 +145,18 @@ function closeTo(actual,expected,label){if(Math.abs(Number(actual)-expected)>.00
     if(readOnly.preferences.block_order.length)throw new Error('user preference isolation failed');
 
     await setIdentity(db,sales);
-    const salesCockpit=(await db.query("select public.get_dashboard_cockpit('current_month',null,null,'previous') value")).rows[0].value;
+    const salesCockpit=(await db.query("select public.get_dashboard_cockpit('custom','2026-07-01','2026-07-31','previous') value")).rows[0].value;
     if(salesCockpit.summary.scope!=='personal'||Number(salesCockpit.summary.revenue_ht)!==0)throw new Error('sales personal scope failed');
 
     await setIdentity(db,otherOwner);
-    const other=(await db.query("select public.get_dashboard_cockpit('current_month',null,null,'previous') value")).rows[0].value;
+    const other=(await db.query("select public.get_dashboard_cockpit('custom','2026-07-01','2026-07-31','previous') value")).rows[0].value;
     closeTo(other.summary.revenue_ht,9000,'company B revenue');
     if(other.preferences.block_order.length)throw new Error('company preference isolation failed');
 
     await db.exec('reset role');
     await db.query("select set_config('request.jwt.claim.sub','',false)");
     await db.exec('set role anon');
-    const anonymousError=await db.query("select public.get_dashboard_cockpit('current_month',null,null,'previous')").then(()=>null,error=>error);
+    const anonymousError=await db.query("select public.get_dashboard_cockpit('custom','2026-07-01','2026-07-31','previous')").then(()=>null,error=>error);
     if(!anonymousError)throw new Error('anonymous dashboard access was accepted');
 
     process.stdout.write(JSON.stringify({ok:true,revenue:cockpit.summary.revenue_ht,collected:cockpit.summary.collected,outstanding:cockpit.summary.outstanding,margin:cockpit.summary.gross_margin,rls:true,permissions:true,preferences:true})+'\n');
