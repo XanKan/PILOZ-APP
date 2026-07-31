@@ -349,6 +349,17 @@
           payload;
         data = await api().rpc("get_activity_workspace_v3", legacyPayload);
       }
+      if (!Number.isFinite(Number(data?.counts?.week_open))) {
+        try {
+          const weekly = await api().rpc("get_activity_week_progress_v1", {});
+          data = {
+            ...(data || {}),
+            counts: { ...(data?.counts || {}), ...(weekly || {}) },
+          };
+        } catch (error) {
+          if (!missingRpc(error, "get_activity_week_progress_v1")) throw error;
+        }
+      }
       if (
         token !== ui.request ||
         !["crm/activities", "activities"].includes(route())
@@ -389,8 +400,15 @@
   function metrics() {
     const c = ui.data?.counts || {};
     if (!ui.showMetrics) return "";
-    const completed = Number(c.completed_week) || 0,
-      openWeek = Number(c.week) || 0,
+    const completed = Number.isFinite(Number(c.week_completed))
+        ? Number(c.week_completed)
+        : Number(c.completed_week) || 0,
+      // `week` already includes completed activities. Prefer the exact open
+      // counter exposed by the current RPC and keep a compatible fallback for
+      // databases that have not received the additive migration yet.
+      openWeek = Number.isFinite(Number(c.week_open))
+        ? Number(c.week_open)
+        : Math.max(0, (Number(c.week) || 0) - completed),
       rate = Math.round((completed / Math.max(1, completed + openWeek)) * 100);
     return `<section class="aw-metrics" aria-label="Indicateurs d’activité">
       <button type="button" class="aw-metric aw-metric-focus ${ui.quick === "today" ? "active" : ""}" onclick="PilozCRM.setActivityQuick('today')"><span><i class="aw-metric-icon">✓</i><em>À traiter aujourd’hui</em></span><strong>${(Number(c.today) || 0).toLocaleString("fr-FR")}</strong><small>actions planifiées</small></button>

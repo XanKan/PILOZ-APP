@@ -16,6 +16,9 @@ const knowledge = read(
 const scale = read(
   "supabase/migrations/202607310121_activities_enterprise_scale.sql",
 );
+const weekProgress = read(
+  "supabase/migrations/202607310122_activity_week_progress.sql",
+);
 const script = read("assets/js/modules/erp/erp-activities-workspace.js");
 const css = read("assets/css/activities-workspace.css");
 const index = read("index.html");
@@ -35,7 +38,9 @@ function has(source, value) {
 
 check(
   "migrations additives",
-  !/(drop\s+table|truncate\s+table)/i.test(migration + security + scale),
+  !/(drop\s+table|truncate\s+table)/i.test(
+    migration + security + scale + weekProgress,
+  ),
 );
 check(
   "types configurables",
@@ -224,6 +229,15 @@ check(
   has(script, "À traiter aujourd’hui") &&
     has(script, "Non attribuées") &&
     has(script, "Avancement semaine"),
+);
+check(
+  "avancement hebdomadaire sans double comptage",
+  has(script, "c.week_open") &&
+    has(script, "c.week_completed") &&
+    has(script, "get_activity_week_progress_v1") &&
+    has(weekProgress, "function public.get_activity_week_progress_v1") &&
+    has(weekProgress, "grant execute") &&
+    has(script, "Math.max(0, (Number(c.week) || 0) - completed)"),
 );
 check(
   "API pièces jointes et actions groupées correctement exposée",

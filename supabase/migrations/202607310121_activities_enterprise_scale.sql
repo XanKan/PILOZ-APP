@@ -223,6 +223,8 @@ begin
       count(*) filter(where archived_at is null and status not in('completed','cancelled') and activity_at::date=current_date)::integer today,
       count(*) filter(where archived_at is null and status not in('completed','cancelled') and activity_at<now())::integer overdue,
       count(*) filter(where archived_at is null and activity_at>=date_trunc('week',now()) and activity_at<date_trunc('week',now())+interval '7 days')::integer week,
+      count(*) filter(where archived_at is null and status not in('completed','cancelled') and activity_at>=date_trunc('week',now()) and activity_at<date_trunc('week',now())+interval '7 days')::integer week_open,
+      count(*) filter(where archived_at is null and status='completed' and activity_at>=date_trunc('week',now()) and activity_at<date_trunc('week',now())+interval '7 days')::integer week_completed,
       count(*) filter(where completed_at>=date_trunc('week',now()))::integer completed_week,
       count(*) filter(where archived_at is null and activity_type='call' and status not in('completed','cancelled'))::integer calls,
       count(*) filter(where archived_at is null and activity_type in('reminder','quote_followup','invoice_followup','payment_followup') and status not in('completed','cancelled'))::integer reminders,
