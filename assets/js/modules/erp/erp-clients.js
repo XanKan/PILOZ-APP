@@ -1812,14 +1812,36 @@
       `<form id="client-create-form" class="client-form drawer-form" onsubmit="event.preventDefault();PilozClients.saveNewClient()"><div class="client-kind-choice"><label><input type="radio" name="kind" value="company" checked onchange="PilozClients.toggleCreatorKind('company')"><span>Professionnel<small>Entreprise, association ou organisation</small></span></label><label><input type="radio" name="kind" value="person" onchange="PilozClients.toggleCreatorKind('person')"><span>Particulier<small>Personne physique</small></span></label></div><div class="client-form-grid"><div data-create-company><label class="full client-company-lookup"><span>Recherche INPI</span><input type="search" autocomplete="off" placeholder="Raison sociale, SIREN ou SIRET" oninput="PilozClients.searchCreatorCompany(this.value)"><small>Les informations officielles et l’adresse seront préremplies.</small><div id="client-company-lookup-results" class="phase1-search-results" role="listbox"></div></label><label class="full"><span>Raison sociale *</span><input name="legal_name"></label><label><span>SIREN</span><input name="siren"></label><label><span>SIRET</span><input name="siret"></label><label><span>Nom commercial</span><input name="trade_name"></label><label><span>Forme juridique</span><input name="legal_form"></label><label><span>Code APE / NAF</span><input name="ape_code"></label><label><span>Prénom du contact principal</span><input name="contact_first_name" autocomplete="given-name"></label><label><span>Nom du contact principal</span><input name="contact_last_name" autocomplete="family-name"></label></div><div data-create-person hidden><label><span>Civilité</span><select name="civility"><option value="">—</option><option>M.</option><option>Mme</option></select></label><label><span>Prénom *</span><input name="first_name"></label><label><span>Nom *</span><input name="last_name"></label></div><label><span>E-mail</span><input name="email" type="email"></label><label><span>Téléphone</span><input name="phone_e164"></label><label class="full"><span>Adresse</span><input name="address_line_1"></label><label><span>Code postal</span><input name="postal_code"></label><label><span>Ville</span><input name="city"></label><label><span>Pays</span><input name="country_code" value="FR"></label><label><span>Statut</span><select name="customer_status"><option value="active">Actif</option><option value="prospect">Prospect</option><option value="watch">À surveiller</option></select></label></div><footer>${button("Annuler", "PilozClients.closeDrawer()")}${button("Créer le client", "", "btn-p", 'type="submit" data-client-save')}</footer></form>`,
       true,
     );
+    setTimeout(() => toggleCreatorKind("company"), 0);
   }
   function toggleCreatorKind(kind) {
-    document
-      .querySelector("[data-create-company]")
-      ?.toggleAttribute("hidden", kind !== "company");
-    document
-      .querySelector("[data-create-person]")
-      ?.toggleAttribute("hidden", kind !== "person");
+    const professional = kind === "company",
+      form = document.getElementById("client-create-form"),
+      companyPanel = form?.querySelector("[data-create-company]"),
+      personPanel = form?.querySelector("[data-create-person]");
+    companyPanel?.toggleAttribute("hidden", !professional);
+    personPanel?.toggleAttribute("hidden", professional);
+    companyPanel
+      ?.querySelectorAll("input:not([type=search]),select,textarea")
+      .forEach((node) => (node.disabled = !professional));
+    personPanel
+      ?.querySelectorAll("input,select,textarea")
+      .forEach((node) => (node.disabled = professional));
+    if (form?.elements.legal_name)
+      form.elements.legal_name.required = professional;
+    if (form?.elements.first_name)
+      form.elements.first_name.required = !professional;
+    if (form?.elements.last_name)
+      form.elements.last_name.required = !professional;
+    if (!professional) {
+      clearTimeout(creatorCompanyTimer);
+      creatorCompanyResults = [];
+      renderCreatorCompanyResults();
+      const search = form?.querySelector(
+        ".client-company-lookup input[type=search]",
+      );
+      if (search) search.value = "";
+    }
   }
   function renderCreatorCompanyResults(rows = [], message = "") {
     const node = document.getElementById("client-company-lookup-results");

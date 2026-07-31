@@ -71,8 +71,10 @@ async function expectError(promise,label){const error=await promise.then(()=>nul
     const reorderedFirst=reorderedConfig.stages.filter(stage=>stage.pipeline_id===renewal.id).sort((left,right)=>Number(left.position)-Number(right.position))[0];
     assert(reorderedFirst.id===renewalStageIds[0],'réordonnancement des étapes non persisté');
 
-    const prospect=await rpc(db,"select to_jsonb(public.create_crm_prospect($1::jsonb)) value",[JSON.stringify({kind:'company',legal_name:'Prospect Atlas',email:'atlas@example.test',phone_e164:'+33102030405',siret:'12345678900011',assigned_user_id:owner})]);
-    assert(prospect.relationship_type==='prospect'&&prospect.company_id===companyA,'création prospect invalide');
+    const prospect=await rpc(db,"select to_jsonb(public.create_crm_prospect($1::jsonb)) value",[JSON.stringify({kind:'company',legal_name:'Prospect Atlas',legal_form:'SAS',ape_code:'6201Z',email:'atlas@example.test',phone_e164:'+33102030405',siren:'123456789',siret:'12345678900011',assigned_user_id:owner})]);
+    assert(prospect.relationship_type==='prospect'&&prospect.company_id===companyA&&prospect.legal_form==='SAS'&&prospect.ape_code==='6201Z'&&prospect.siren==='123456789','création prospect professionnel invalide');
+    const individualProspect=await rpc(db,"select to_jsonb(public.create_crm_prospect($1::jsonb)) value",[JSON.stringify({kind:'person',civility:'Mme',first_name:'Claire',last_name:'Martin',legal_name:'Ne doit pas rester',legal_form:'SAS',siren:'999999999',siret:'99999999900011',ape_code:'6201Z'})]);
+    assert(individualProspect.kind==='person'&&individualProspect.civility==='Mme'&&individualProspect.first_name==='Claire'&&individualProspect.last_name==='Martin'&&individualProspect.legal_name===null&&individualProspect.legal_form===null&&individualProspect.siren===null&&individualProspect.siret===null&&individualProspect.ape_code===null,'les champs professionnels du particulier ne sont pas nettoyés');
     await expectError(rpc(db,"select public.create_crm_prospect($1::jsonb) value",[JSON.stringify({kind:'company',legal_name:'Doublon',email:'ATLAS@example.test'})]),'anti-doublon prospect');
 
     const updatedProspect=await rpc(db,"select to_jsonb(public.update_crm_prospect($1,$2::jsonb)) value",[prospect.id,JSON.stringify({kind:'company',legal_name:'Prospect Atlas Conseil',email:'atlas@example.test',phone_e164:'+33102030405',city:'Paris',crm_status:'qualified'})]);
