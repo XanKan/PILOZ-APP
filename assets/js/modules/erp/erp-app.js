@@ -236,19 +236,11 @@
   if(codes.includes('document_total_must_be_positive'))messages.push('vérifiez que le total est supérieur à zéro');
   if(codes.includes('vat_rate_for_non_vat_company'))messages.push('corrigez la TVA ou le régime fiscal de l’entreprise');
   if(codes.some(code=>['issuer_legal_form_required','issuer_vat_number_required','issuer_share_capital_required'].includes(code)))messages.push('complétez la forme juridique, le capital et le numéro de TVA de l’entreprise');
-  if(codes.includes('client_siren_required_for_einvoicing'))messages.push('complétez le SIREN du client professionnel français');
   if(codes.includes('supply_date_required'))messages.push('renseignez la date de vente ou de réalisation de la prestation');
   if(codes.includes('operation_category_required'))messages.push('choisissez la nature de l’opération');
   if(codes.some(code=>['payment_terms_required','early_payment_discount_notice_required','late_payment_penalty_notice_required','collection_fee_notice_required'].includes(code)))messages.push('complétez les conditions de paiement et mentions de retard dans Paramètres → Documents');
   if(codes.includes('credit_source_required'))messages.push('créez l’avoir depuis la facture définitive à corriger');
   return messages.length?`Avant de finaliser : ${messages.join(' ; ')}.`:'La facture contient des informations obligatoires incomplètes.';
- }
- function kickSuperPdpJobs(){
-  const connector=(state.data.platformConnectors||[]).find(row=>row.environment==='production'&&row.status==='active'&&row.production_enabled===true);
-  if(!connector||!state.companyId)return;
-  setTimeout(()=>api().invoke('platform-connector',{action:'superpdp_process_company_jobs',companyId:state.companyId}).catch(error=>{
-   console.warn('[PILOZ SUPER PDP] Le traitement automatique sera repris par le worker',{code:error?.code||'',status:error?.status||0});
-  }),0);
  }
  async function finalizeCurrentDocument(options={}){
   if(!state.draft?.id||state.busy)return null;
@@ -279,7 +271,6 @@
    hydrateDraftFrom(id);
    const label=isQuote?'Devis enregistré.':'Facture finalisée et verrouillée.';
    notice(pdfQueued?`${label} Le PDF définitif se prépare en arrière-plan.`:label,'success');
-   if(!isQuote)kickSuperPdpJobs();
    return result;
   }catch(error){
    console.error('[PILOZ Documents] Échec d’enregistrement',{code:error?.code||'',status:error?.status||0,message:error?.message||String(error)});

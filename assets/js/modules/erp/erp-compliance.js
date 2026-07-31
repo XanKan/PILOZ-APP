@@ -75,9 +75,9 @@ function anomalyCard(summary){
   const retained=Number(summary.retained_fiscal_documents||0),missing=Number(summary.fiscal_documents_missing_pdf_hash||0);
   return `<section class="phase1-card"><h2>Conservation comptable</h2><p><strong>${retained} document(s) définitif(s) protégés</strong></p><p>${missing?status(`${missing} PDF à régénérer`,'danger'):status('Empreintes PDF complètes','success')}</p><p class="modern-card-desc">Factures, données, snapshots, liens et justificatifs sont verrouillés jusqu’à leur date de conservation légale. Aucune suppression automatique n’est exécutée.</p></section>`;
  }
- function einvoiceCard(entry){
-  const ready=normalize(entry.readiness||entry.summary?.einvoice_readiness),obligation=normalize(entry.einvoiceObligation),size=obligation.company_size||ready.company_size||'unknown';
-  return `<section class="phase1-card"><h2>Facturation électronique</h2><p>${ready.issue_ready?status('Émission prête','success'):status('Plateforme externe requise','warning')}</p><p><b>Réception :</b> 1er septembre 2026<br><b>Émission :</b> ${ready.issue_mandatory_on?datetime(ready.issue_mandatory_on):'à déterminer selon la taille'}</p><p class="modern-card-desc">Taille déclarée : ${esc(size)} · ${Number(ready.production_connector_count||0)} connecteur de production · ${Number(ready.verified_profile_count||0)} profil structuré vérifié.</p>${button('Configurer','PilozCompliance.configureEinvoice()','btn-o')}</section>`;
+function einvoiceCard(entry){
+  const ready=normalize(entry.readiness||entry.summary?.einvoice_readiness),connected=Number(ready.production_connector_count||0)>0;
+  return `<section class="phase1-card"><h2>Réception électronique fournisseurs</h2><p>${connected?status('Réception configurée','success'):status('Connexion à configurer','warning')}</p><p class="modern-card-desc">Les factures fournisseurs reçues par la plateforme connectée sont centralisées dans Piloz. L’émission des factures clients est reportée et n’est pas proposée dans l’application.</p>${button('Configurer la réception',"PilozApp.go('settings/einvoicing')",'btn-o')}</section>`;
  }
  function breachesCard(entry){
   const rows=Array.isArray(entry.breaches)?entry.breaches:[];
@@ -109,7 +109,7 @@ function anomalyCard(summary){
   if(!entry){renderLoading();load(s.companyId);return;}
   if(entry.error){renderFailure(entry.error);return;}
   const summary=normalize(entry.summary),actions=button('Lancer un contrôle d’intégrité','PilozCompliance.runIntegrity()','btn-p')+button('Actualiser','PilozCompliance.refresh()','btn-o');
-  document.getElementById('main').innerHTML=header('Conformité et fiscalité','État réel du moteur fiscal, des archives et de la facturation électronique.',actions)+
+  document.getElementById('main').innerHTML=header('Conformité et fiscalité','État réel du moteur fiscal, des archives et de la réception électronique fournisseurs.',actions)+
     `<section class="phase1-card" style="margin-bottom:12px;border-left:4px solid #d89a24!important"><h2>Démarche de conformité en cours</h2><p>Aucune certification NF 525 ou NF 203, homologation, conformité AFNOR ou qualité de plateforme agréée n’est revendiquée.</p></section>`+
     configurationGrid(summary)+`<div class="modern-settings-grid" style="margin-top:12px">${blockersCard(summary)}
       ${historyCard('Dernière clôture',summary.last_closure,'Aucune clôture enregistrée.')}
@@ -135,8 +135,7 @@ function anomalyCard(summary){
   document.getElementById('main').innerHTML=header('À propos et conformité','Version, périmètre de preuve et validations externes restantes.')+
    `<div class="modern-settings-grid">
     <section class="phase1-card"><h2>Version de Piloz</h2><dl class="company-summary-list"><div><dt>Application</dt><dd>0.9.0-compliance.48</dd></div><div><dt>Schéma attendu</dt><dd>202607270094</dd></div><div><dt>Moteur de calcul</dt><dd>financial-v2-sales-account-types</dd></div><div><dt>Générateur PDF</dt><dd>pdf-v3-cgv</dd></div><div><dt>Déploiement</dt><dd>27 juillet 2026</dd></div></dl></section>
-    <section class="phase1-card"><h2>Formats électroniques</h2><p>${Number(summary.verified_format_profiles||0)} profil officiel vérifié.</p><p class="modern-card-desc">UBL, CII et Factur-X restent bloqués tant que les artefacts officiels et validateurs ne sont pas installés.</p></section>
-    <section class="phase1-card"><h2>Plateforme agréée</h2><p>${Number(summary.production_connectors||0)} connecteur de production actif.</p><p class="modern-card-desc">Connexion prévue; aucune qualité de plateforme agréée n’est revendiquée par Piloz.</p></section>
+    <section class="phase1-card"><h2>Réception fournisseurs</h2><p>${Number(summary.production_connectors||0)} connecteur actif.</p><p class="modern-card-desc">Le connecteur est limité à la réception et au traitement des factures fournisseurs.</p></section>
     <section class="phase1-card" style="grid-column:1/-1"><h2>Certifications obtenues</h2>${certificationBlock(summary)}</section>
     <section class="phase1-card" style="grid-column:1/-1"><h2>Limites et validations requises</h2><ul style="margin:0;padding-left:20px;display:grid;gap:7px"><li>Référentiels officiels complets NF 525, NF 203 et XP à confronter à la matrice.</li><li>Revue juridique des règles de facturation, TVA, conservation et RGPD.</li><li>Audit technique, KMS, signature, restauration réelle et test d’intrusion.</li><li>Profils électroniques officiels et plateforme agréée à sélectionner puis homologuer.</li></ul></section>
    </div>`;
@@ -204,14 +203,6 @@ async function completePrivacyRequest(id){
   const summary=String(global.prompt('Résumé de la réponse remise à la personne','')||'').trim();if(!summary)return;
   try{await global.PilozERP.rpc('transition_data_subject_request',{target_request_id:id,target_status:'fulfilled',target_reason:'Réponse remise',target_legal_basis:null,target_response_summary:summary,target_identity_verified_at:null});notify('Demande clôturée avec traçabilité.','success');const s=state();cache.delete(s.companyId);await load(s.companyId);}catch(error){notify(safeError(error),'error');}
  }
- async function configureEinvoice(){
-  const s=state();if(!s||!isAdmin(s))return;
-  const size=String(global.prompt('Taille de l’entreprise : large, eti, sme, micro ou unknown','sme')||'').trim().toLowerCase();
-  if(!['large','eti','sme','micro','unknown'].includes(size))return notify('Taille d’entreprise invalide.','error');
-  const platform=String(global.prompt('Nom de la plateforme agréée choisie (laisser vide si aucune)','')||'').trim();
-  const contract=platform?String(global.prompt('Référence du contrat avec la plateforme','')||'').trim():'';
-  try{await global.PilozERP.rpc('configure_einvoice_obligations',{target_company_id:s.companyId,target_company_size:size,target_platform_name:platform||null,target_contract_reference:contract||null});notify('Calendrier de facturation électronique enregistré. La connexion reste non prête tant que le connecteur de production n’est pas validé.','success');cache.delete(s.companyId);await load(s.companyId);}catch(error){notify(safeError(error),'error');}
- }
  async function recordBreach(){
   const s=state();if(!s||!isAdmin(s))return;
   const nature=String(global.prompt('Décrivez précisément la violation de données','')||'').trim();if(!nature)return;
@@ -258,5 +249,5 @@ async function activateProduction(){
   return baseRender(route,s);
  }
  modern.renderRoute=renderRoute;
- global.PilozCompliance={renderCompliance,renderAbout,refresh,runIntegrity,activateProduction,enableMaintenance,runMaintenance,createPrivacyRequest,startPrivacyRequest,exportPrivacyRequest,completePrivacyRequest,configureEinvoice,recordBreach,transitionBreach,createAgreement,updateSecurityControl};
+ global.PilozCompliance={renderCompliance,renderAbout,refresh,runIntegrity,activateProduction,enableMaintenance,runMaintenance,createPrivacyRequest,startPrivacyRequest,exportPrivacyRequest,completePrivacyRequest,recordBreach,transitionBreach,createAgreement,updateSecurityControl};
 })(window);

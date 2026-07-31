@@ -21,7 +21,7 @@ const checks={
   tokens_encrypted:oauth.includes('AES-GCM')&&oauth.includes('access_token_ciphertext: await encrypt(accessToken)'),
   tokens_never_browser_readable:migration.includes('revoke all on public.superpdp_company_authorizations')&&migration.includes('superpdp_oauth_states'),
   immutable_consent_log:migration.includes('superpdp_consent_events_immutable')&&migration.includes('protect_immutable_fiscal_row'),
-  finalization_is_queued:migration.includes('documents_queue_superpdp_after_finalization')&&migration.includes("'send_document'"),
+  historical_finalization_queue_is_migrated:migration.includes('documents_queue_superpdp_after_finalization')&&migration.includes("'send_document'"),
   automatic_inbox_queue:migration.includes('enqueue_superpdp_recurring_jobs')&&migration.includes("'sync_incoming'"),
   worker_is_secret_protected:connector.includes('SUPERPDP_WORKER_SECRET')&&connector.includes('workerAuthorized(req)'),
   worker_retries:connector.includes('retry_scheduled')&&connector.includes('Math.pow(2')&&connector.includes('dead_letter'),
@@ -31,7 +31,7 @@ const checks={
   popup_validates_source_and_origin:electronicUi.includes('event.source!==popup')&&electronicUi.includes('event.origin!==expectedOrigin')&&electronicUi.includes("window.open('about:blank'")&&!electronicUi.includes('location.assign(result.url)'),
   popup_survives_opener_isolation:electronicUi.includes("BroadcastChannel('piloz-superpdp-oauth')")&&electronicUi.includes("window.name==='piloz-superpdp-authorization'"),
   directory_is_automated:electronicUi.includes('status=await ensureDirectory(status)')&&electronicUi.includes("action:'activate_directory'"),
-  onboarding_has_electronic_invoice_step:onboarding.includes('Étape 7 — Facturation électronique')&&onboarding.includes('phase1SetupStep/7')&&onboarding.includes('electronicInvoicingDeferred'),
+  onboarding_has_supplier_reception_step:onboarding.includes('Étape 7 — Réception des factures fournisseurs')&&onboarding.includes('phase1SetupStep/7')&&onboarding.includes('electronicInvoicingDeferred'),
   onboarding_uses_shared_oauth_flow:onboarding.includes('PilozElectronicInvoicing.startProduction')&&onboarding.includes('PilozElectronicInvoicing.productionStatus'),
   documented_setup:docs.includes('authorization_code')&&docs.includes('SUPERPDP_PRODUCTION_CLIENT_SECRET')&&docs.includes('SUPERPDP_WORKER_SECRET')&&docs.includes('étape 7 de l’onboarding')
 };

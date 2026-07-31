@@ -6,6 +6,7 @@ const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 const edge=read('supabase/functions/platform-connector/index.ts');
 const sandboxMigration=read('supabase/migrations/202607270098_superpdp_sandbox_invoice_exchange.sql');
 const productionMigration=read('supabase/migrations/202607280101_superpdp_production_oauth.sql');
+const outboundDisabledMigration=read('supabase/migrations/202607310125_disable_outbound_electronic_invoicing.sql');
 const viewer=read('assets/js/modules/erp/erp-document-viewer-v2.js');
 const supplier=read('assets/js/modules/erp/erp-superpdp-workspace.js');
 const app=read('assets/js/modules/erp/erp-app.js');
@@ -27,12 +28,15 @@ const checks={
   provider_refusal_actionable:edge.includes('Détail SUPER PDP')&&edge.includes('providerMessage'),
   outside_scope_vat_rate_omitted:edge.includes('!["O", "E"].includes(category)')&&edge.includes('BR-O-05 forbids BT-152'),
   optional_empty_values_removed:edge.includes('function compactJson(value: unknown)')&&edge.includes('return compactJson(result) as JsonObject'),
-  outgoing_send_action:edge.includes('superpdp_send_document')&&edge.includes('service_create_canonical_invoice_record'),
+  outbound_api_blocked:edge.includes('const outboundActions = new Set(["superpdp_send_test_invoice", "superpdp_send_document", "superpdp_sync_status"])')&&edge.includes('electronic_invoice_outbound_disabled'),
+  incoming_xml_remains_available:edge.includes('.eq("direction", "incoming")')&&edge.includes('action === "superpdp_document_xml"'),
+  outbound_jobs_cancelled:outboundDisabledMigration.includes("job_type = 'send_document'")&&outboundDisabledMigration.includes("status = 'cancelled'"),
+  finalization_trigger_removed:outboundDisabledMigration.includes('drop trigger if exists documents_queue_superpdp_after_finalization'),
   incoming_sync_action:edge.includes('superpdp_sync_incoming')&&edge.includes('direction=in&limit=100')&&edge.includes('document_type: "purchase_invoice"'),
   incoming_environment_reported:edge.includes('environment: targetEnvironment'),
   partial_import_reported:edge.includes('failed: results.filter')&&supplier.includes('n’ont pas pu être intégrées'),
-  customer_pdf_xml_tabs:viewer.includes("setPreviewFormat('pdf')")&&viewer.includes("setPreviewFormat('xml')")&&viewer.includes('downloadElectronicXml'),
-  customer_send_and_status:viewer.includes('sendElectronicInvoice')&&viewer.includes('syncElectronicStatus'),
+  customer_pdf_only:!viewer.includes("setPreviewFormat('xml')")&&!viewer.includes('downloadElectronicXml'),
+  customer_outbound_actions_hidden:!viewer.includes('sendElectronicInvoice')&&!viewer.includes('syncElectronicStatus')&&!viewer.includes('superpdp_send_document'),
   supplier_pdf_xml_tabs:supplier.includes("setMode('pdf')")&&supplier.includes("setMode('xml')")&&supplier.includes('downloadXml'),
   supplier_connector_label:supplier.includes('<b>SUPER PDP</b>')&&supplier.includes('Configurer SUPER PDP'),
   no_visible_test_environment_copy:![viewer,supplier].some(source=>/bac à sable|environnement de test|Échange de test|Envoyer au bac/i.test(source)),

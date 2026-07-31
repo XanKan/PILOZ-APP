@@ -20,11 +20,11 @@
   else if(global.toast)global.toast(message);
  }
  function header(){
-  return `<header class="modern-page-header"><div><h1>Facturation électronique</h1><p>Configurez SUPER PDP et gérez les échanges de facturation électronique de votre entreprise.</p></div><div class="actions">${button('Retour aux paramètres',"PilozApp.go('settings/overview')")}</div></header>`;
+  return `<header class="modern-page-header"><div><h1>Réception électronique fournisseurs</h1><p>Configurez SUPER PDP pour recevoir et traiter les factures fournisseurs de votre entreprise.</p></div><div class="actions">${button('Retour aux paramètres',"PilozApp.go('settings/overview')")}</div></header>`;
  }
  function productionCard(){
   const p=view.production||{},configured=Boolean(p.configured),active=Boolean(p.production_enabled),directory=p.directory_status||'not_requested';
-  return `<section class="phase1-card"><div class="erp-card-heading"><div><h2>SUPER PDP · Production</h2><p>Autorisation OAuth propre à cette entreprise. Aucun mot de passe ni jeton n’est enregistré dans le navigateur.</p></div>${badge(active?'Production active':configured?'Activation en cours':'À activer',active?'success':configured?'warning':'muted')}</div>
+  return `<section class="phase1-card"><div class="erp-card-heading"><div><h2>SUPER PDP · Réception fournisseurs</h2><p>Autorisation OAuth propre à cette entreprise. Aucun mot de passe ni jeton n’est enregistré dans le navigateur.</p></div>${badge(active?'Réception active':configured?'Activation en cours':'À activer',active?'success':configured?'warning':'muted')}</div>
    <div class="phase1-grid">
     <div class="phase1-field"><span>Entreprise SUPER PDP</span><strong>${esc(p.provider_company_name||'—')}</strong><small>${esc(p.provider_company_number||'')}</small></div>
     <div class="phase1-field"><span>Entreprise vérifiée</span><strong>${badge(statusLabel(p.company_verification_status),statusTone(p.company_verification_status))}</strong></div>
@@ -42,8 +42,8 @@
     ${active&&directory!=='active'?button(view.busy?'Activation…':'Activer la réception','PilozElectronicInvoicing.activateDirectory()','btn-p',view.busy?'disabled':''):''}
     ${configured&&!view.disconnectConfirm?button('Déconnecter','PilozElectronicInvoicing.askDisconnect()','btn-o',view.busy?'disabled':''):''}
    </div>
-   ${view.disconnectConfirm?`<aside class="phase1-alert phase1-alert-danger"><strong>Déconnecter cette entreprise ?</strong><span>Les jetons seront effacés et les envois automatiques suspendus. Les factures et le journal d’audit restent conservés.</span><div class="actions">${button('Annuler','PilozElectronicInvoicing.cancelDisconnect()')}${button('Confirmer la déconnexion','PilozElectronicInvoicing.disconnect()','btn-p',view.busy?'disabled':'')}</div></aside>`:''}
-   ${active?`<aside class="ops-info-callout"><strong>Automatisation active</strong><span>Les factures finalisées sont mises en file d’envoi sans intervention. Les factures reçues, statuts et événements sont synchronisés par le connecteur serveur.</span></aside>`:''}
+   ${view.disconnectConfirm?`<aside class="phase1-alert phase1-alert-danger"><strong>Déconnecter cette entreprise ?</strong><span>Les jetons seront effacés et les synchronisations de réception suspendues. Les factures déjà reçues et le journal d’audit restent conservés.</span><div class="actions">${button('Annuler','PilozElectronicInvoicing.cancelDisconnect()')}${button('Confirmer la déconnexion','PilozElectronicInvoicing.disconnect()','btn-p',view.busy?'disabled':'')}</div></aside>`:''}
+   ${active?`<aside class="ops-info-callout"><strong>Réception automatique active</strong><span>Les factures fournisseurs reçues, leurs statuts et leurs événements sont synchronisés par le connecteur serveur.</span></aside>`:''}
   </section>`;
  }
  function auditCard(){
@@ -79,7 +79,7 @@
   const width=620,height=760,left=Math.max(0,Math.round((screen.width-width)/2)),top=Math.max(0,Math.round((screen.height-height)/2));
   const popup=window.open('about:blank','piloz-superpdp-authorization',`popup=yes,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`);
   if(!popup)throw new Error('Autorisez les fenêtres contextuelles pour terminer l’activation sécurisée.');
-  popup.document.title='Activation de la facturation électronique';
+  popup.document.title='Activation de la réception électronique fournisseurs';
   popup.document.body.innerHTML='<main style="font:16px system-ui;padding:32px;text-align:center;color:#102a43"><strong>Ouverture de la vérification sécurisée…</strong><p>Cette fenêtre se fermera automatiquement.</p></main>';
   return popup;
  }
@@ -129,7 +129,7 @@
    let status=await productionStatus();
    status=await ensureDirectory(status);
    await load();
-   view.success=status?.production_enabled?'Facturation électronique activée. Les échanges sont désormais gérés dans Piloz.':'Autorisation enregistrée. La vérification de l’entreprise reste en cours.';
+   view.success=status?.production_enabled?'Réception électronique activée. Les factures fournisseurs reçues sont désormais gérées dans Piloz.':'Autorisation enregistrée. La vérification de l’entreprise reste en cours.';
    if(!options.silent)notify(view.success,'success');
    return status;
   }catch(error){

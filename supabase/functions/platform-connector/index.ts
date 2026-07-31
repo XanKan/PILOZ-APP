@@ -747,7 +747,8 @@ async function sendDocument(
 async function exchangeXml(userClient: SupabaseClient, adminClient: SupabaseClient, companyId: string, documentId: string) {
   await requireElectronicInvoiceManager(userClient, companyId);
   const { data: exchange, error } = await adminClient.from("superpdp_invoice_exchanges").select("*")
-    .eq("company_id", companyId).eq("document_id", documentId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    .eq("company_id", companyId).eq("document_id", documentId).eq("direction", "incoming")
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (error || !exchange?.xml_storage_path) throw Object.assign(new Error("superpdp_xml_unavailable"), { status: 404 });
   const bytes = await downloadStored(adminClient, exchange.xml_storage_path);
   return { ok: true, environment: exchange.environment || "sandbox", format: exchange.xml_format || "cii", status: exchange.status, xml: new TextDecoder().decode(bytes), exchangeId: exchange.id };
@@ -1104,6 +1105,7 @@ async function processJobs(adminClient: SupabaseClient, companyId = "", limit = 
   }
   let query = adminClient.from("superpdp_jobs").select("*")
     .in("status", ["pending", "retry_scheduled"]).lte("available_at", new Date().toISOString())
+    .eq("job_type", "sync_incoming")
     .order("created_at", { ascending: true }).limit(Math.max(1, Math.min(50, limit)));
   if (companyId) query = query.eq("company_id", companyId);
   const { data: jobs, error } = await query;
@@ -1116,9 +1118,7 @@ async function processJobs(adminClient: SupabaseClient, companyId = "", limit = 
     if (claimed.error || !claimed.data) continue;
     try {
       let result: unknown;
-      if (job.job_type === "send_document" && safeUuid(job.document_id)) {
-        result = await sendDocument(adminClient, adminClient, job.company_id, job.document_id, "production", true);
-      } else if (job.job_type === "sync_incoming") {
+      if (job.job_type === "sync_incoming") {
         result = await syncIncoming(adminClient, adminClient, job.company_id, "production", true);
         await adminClient.from("superpdp_company_authorizations").update({ last_incoming_sync_at: new Date().toISOString() }).eq("company_id", job.company_id).is("revoked_at", null);
       } else {
@@ -1166,16 +1166,15 @@ Deno.serve(async req => {
   try {
     const action = text(body.action), companyId = safeUuid(body.companyId), documentId = safeUuid(body.documentId);
     const companyActions = new Set(["superpdp_test", "superpdp_send_test_invoice", "superpdp_send_document", "superpdp_document_xml", "superpdp_sync_status", "superpdp_sync_incoming", "superpdp_create_invoice_event", "superpdp_process_company_jobs"]);
+    const outboundActions = new Set(["superpdp_send_test_invoice", "superpdp_send_document", "superpdp_sync_status"]);
     if (companyActions.has(action) && !companyId) return json({ error: "Entreprise invalide.", code: "invalid_company_id" }, 400);
+    if (outboundActions.has(action)) return json({ error: "L’émission électronique des factures clients est désactivée.", code: "electronic_invoice_outbound_disabled" }, 410);
     if (["superpdp_send_document", "superpdp_document_xml", "superpdp_sync_status", "superpdp_create_invoice_event"].includes(action) && !documentId) {
       return json({ error: "Document invalide.", code: "invalid_document_id" }, 400);
     }
     if (action === "superpdp_test") return json(await testSuperPdp(userClient, companyId));
-    if (action === "superpdp_send_test_invoice") return json(await sendSuperPdpTestInvoice(userClient, companyId, text(body.confirmation)));
     const targetEnvironment = await preferredEnvironment(adminClient, companyId, text(body.environment));
-    if (action === "superpdp_send_document") return json(await sendDocument(userClient, adminClient, companyId, documentId, targetEnvironment));
     if (action === "superpdp_document_xml") return json(await exchangeXml(userClient, adminClient, companyId, documentId));
-    if (action === "superpdp_sync_status") return json(await syncStatus(userClient, adminClient, companyId, documentId));
     if (action === "superpdp_sync_incoming") return json(await syncIncoming(userClient, adminClient, companyId, targetEnvironment));
     if (action === "superpdp_process_company_jobs") {
       await requireElectronicInvoiceManager(userClient, companyId);
@@ -1202,7 +1201,7 @@ Deno.serve(async req => {
       if (error) return json({ error: "L'opération n'a pas abouti.", code: error.code || "simulation_failed" }, 409);
       return json(data);
     }
-    if (action === "production") return json({ error: "La production SUPER PDP se configure depuis Paramètres > Extensions > Facturation électronique.", code: "superpdp_production_managed_by_oauth" }, 409);
+    if (action === "production") return json({ error: "La réception SUPER PDP se configure depuis Paramètres > Extensions > Réception électronique fournisseurs.", code: "superpdp_production_managed_by_oauth" }, 409);
     return json({ error: "Action de connecteur inconnue." }, 400);
   } catch (error) {
     const code = String((error as Error)?.message || "platform_connector_failed");
@@ -1246,6 +1245,7 @@ Deno.serve(async req => {
       superpdp_exchange_event_audit_failed: "L’évènement d’échange SUPER PDP n’a pas pu être enregistré.",
       superpdp_artifact_audit_failed: "Les justificatifs électroniques n’ont pas pu être inscrits dans le registre Piloz.",
       superpdp_incoming_list_failed: "SUPER PDP n’a pas pu fournir la liste des factures reçues. Vérifiez l’autorisation et l’état de l’entreprise, puis réessayez.",
+      electronic_invoice_outbound_disabled: "L’émission électronique des factures clients est désactivée.",
     };
     const provider = object((error as { provider?: unknown })?.provider);
     const providerMessage = text(provider.message).replace(/[\r\n\t]+/g, " ").slice(0, 240);

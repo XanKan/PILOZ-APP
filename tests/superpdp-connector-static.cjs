@@ -28,10 +28,10 @@ const checks={
   sandbox_audited:sandboxMigration.includes('configure_superpdp_sandbox_connector')&&sandboxMigration.includes('record_superpdp_sandbox_test_transmission'),
   production_consents_audited:productionMigration.includes('superpdp_consent_events')&&productionMigration.includes('authorization_granted'),
   production_jobs_are_private:productionMigration.includes('revoke all on public.superpdp_company_authorizations,public.superpdp_oauth_states,public.superpdp_jobs from anon,authenticated'),
-  settings_route:app.includes("'settings/einvoicing':'settings'")&&modern.includes("['settings/einvoicing','Facturation électronique']"),
+  settings_route:app.includes("'settings/einvoicing':'settings'")&&modern.includes("['settings/einvoicing','Réception électronique fournisseurs']"),
   extension_catalog:extensions.includes("id:'superpdp'")&&extensions.includes("internalRoute:'settings/einvoicing'"),
   ui_loaded:html.includes('erp-electronic-invoicing.js'),
-  production_ui:ui.includes('SUPER PDP · Production')&&ui.includes('Automatisation active'),
+  reception_only_ui:ui.includes('SUPER PDP · Réception fournisseurs')&&ui.includes('Réception automatique active')&&!ui.includes('Les factures finalisées sont mises en file'),
   no_visible_sandbox_controls:!/bac à sable|environnement de test|Envoyer une facture de test|Tester la connexion/i.test(ui),
   piloz_remains_production:edge.includes('appEnvironment: "production"')
 };
