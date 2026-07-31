@@ -195,4 +195,9 @@ assert.ok(app.includes("TRAINING_DEPOSIT_FINAL_ID='piloz-training-deposit-final'
 assert.ok(app.includes("selector:'.document-v2-deduction-edit',allow:true") && app.includes("#document-deposit-deduction-form input[name=\"mode\"][value=\"prorata\"]") && app.includes("#document-deposit-deduction-form button[type=\"submit\"]"), "Le parcours Acomptes doit piloter les vrais controles de deduction");
 assert.ok(app.includes("if(lesson.id==='retenues')trainingOpenDraft(TRAINING_DEDUCTION_DRAFT_ID)") && app.includes("lesson.id==='retenues'&&next===3") && app.includes("applyDepositDeduction"), "La formation Acomptes doit ouvrir le vrai brouillon puis appliquer le choix avant le controle du total");
 
+assert.ok(app.includes("selector:'#crm-opportunity-stage',allow:true,event:'change'"), "La formation Pipeline doit permettre de sélectionner une vraie étape");
+assert.ok(app.includes("selector:'#crm-opportunity-form input[name=\"next_action\"]',allow:true,event:'input',minLength:3"), "La formation Pipeline doit autoriser la saisie de la prochaine action");
+assert.ok(app.includes("selector:'#crm-opportunity-form input[name=\"next_action_at\"]',allow:true,event:'change'"), "La formation Pipeline doit autoriser la date de prochaine action");
+assert.ok(app.includes("['Planifier la date','Choisissez la date et l’heure auxquelles cette action doit être réalisée.']"), "La prochaine action et sa date doivent être deux étapes distinctes");
+
 console.log(JSON.stringify({ ok: true, navigation: 5, trainingCourses: 5, safeContext: 11, privateAttachments: true, feedbackComments: true }));
