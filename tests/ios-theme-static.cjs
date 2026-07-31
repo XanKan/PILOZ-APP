@@ -5,7 +5,7 @@ const css = fs.readFileSync('assets/css/piloz-ios.css', 'utf8');
 
 const checks = {
   theme_loaded_after_feature_styles:
-    html.indexOf('assets/css/piloz-ios.css?v=20260729.3') > html.indexOf('assets/css/accounting-extensions.css'),
+    html.indexOf('assets/css/piloz-ios.css') > html.indexOf('assets/css/accounting-extensions.css'),
   dark_navigation_present:
     css.includes('.rail{') && css.includes('linear-gradient(180deg,#0c2947 0%,#071b31 52%,#061426 100%)'),
   shared_ios_controls_present:

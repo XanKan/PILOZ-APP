@@ -1,0 +1,28 @@
+# Rapport de migration Activités
+
+## Migrations
+
+### `202607310118_activities_workspace_completion.sql`
+
+Migration additive : permissions, types, résultats, colonnes de cycle de vie, rappels, checklist, pièces jointes, événements, synchronisation, filtres enregistrés, index, valeurs par défaut et reprise des activités existantes.
+
+### `202607310119_activities_workspace_security_api.sql`
+
+Ajoute les contrôles de visibilité/écriture, la RLS restrictive, les politiques des tables filles et du stockage, la validation des relations et toutes les RPC du workspace.
+
+### `202607310120_activities_knowledge_base.sql`
+
+Publie les articles officiels Pilo relatifs aux activités et à leur sécurité.
+
+## Compatibilité et reprise
+
+- aucune donnée existante supprimée ;
+- les anciens types sont associés aux nouveaux types configurables ;
+- les dates historiques sont reportées vers `starts_at`/`ends_at` ;
+- les relations historiques restent présentes et sont compatibles avec le modèle multi-liens ;
+- les anciennes routes et les appels rapides CRM sont redirigés vers le nouveau module.
+
+## Déploiement
+
+Les migrations doivent être appliquées dans l’ordre numérique par le processus Supabase de production. Tant qu’elles ne sont pas appliquées, l’interface ne doit pas être considérée active en production. Après déploiement, exécuter les contrôles post-déploiement et vérifier la version `202607310120`.
+

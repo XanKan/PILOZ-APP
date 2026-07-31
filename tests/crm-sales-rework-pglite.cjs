@@ -85,6 +85,19 @@ async function expectError(promise,label){const error=await promise.then(()=>nul
     assert(completed.activity.status==='completed'&&completed.next_activity?.subject==='Envoyer le devis'&&completed.stage_id===stages[1].id,'clôture atomique ou prochaine action invalide');
     const activityWorkspace=await rpc(db,"select public.get_crm_activity_workspace('today','all',null,current_date-1,current_date+2,1,200) value");
     assert(activityWorkspace.rows.some(row=>row.id===activity.id)&&activityWorkspace.rows.some(row=>row.id===completed.next_activity.id),'centre d’activités incomplet');
+    const workspaceV3=await rpc(db,"select public.get_activity_workspace_v3('list','all',null,null,null,null,null,null,null,false,1,50) value");
+    assert(workspaceV3.types.some(row=>row.slug==='call')&&workspaceV3.types.some(row=>row.slug==='payment_followup'),'types d’activités complets absents');
+    assert(Array.isArray(workspaceV3.all_types)&&Array.isArray(workspaceV3.saved_filters),'configuration et filtres du workspace absents');
+    const callType=workspaceV3.types.find(row=>row.slug==='call');
+    const workspaceCreated=await rpc(db,"select to_jsonb(public.save_activity_workspace(null,$1::jsonb)) value",[JSON.stringify({activity_type_id:callType.id,subject:'Appel de recette workspace',status:'scheduled',priority:'urgent',starts_at:new Date().toISOString(),duration_minutes:30,assigned_user_id:owner,confidentiality:'private',links:[{entity_type:'client',entity_id:target.id},{entity_type:'opportunity',entity_id:opportunity.id}],checklist:[{label:'Confirmer le besoin',position:0}],reminders:[{channel:'in_app',remind_at:new Date(Date.now()+3600000).toISOString(),recipient_user_id:owner}]})]);
+    const workspaceDetail=await rpc(db,'select public.get_activity_detail($1) value',[workspaceCreated.id]);
+    assert(workspaceDetail.activity.confidentiality==='private'&&workspaceDetail.links.length===2&&workspaceDetail.checklist.length===1&&workspaceDetail.reminders.length===1,'détail activité, confidentialité ou sous-objets invalides');
+    const savedFilter=await rpc(db,"select to_jsonb(public.save_activity_saved_filter(null,'Mes appels urgents','list',$1::jsonb)) value",[JSON.stringify({type_id:callType.id,status:'scheduled',quick:'all'})]);
+    const workspaceWithFilter=await rpc(db,"select public.get_activity_workspace_v3('list','all',null,null,null,null,null,null,null,false,1,50) value");
+    assert(workspaceWithFilter.saved_filters.some(row=>row.id===savedFilter.id&&row.user_id===owner),'filtre sauvegardé absent du workspace');
+    assert(await rpc(db,'select public.delete_activity_saved_filter($1) value',[savedFilter.id])===true,'suppression du filtre personnel impossible');
+    const transitioned=await rpc(db,"select to_jsonb(public.transition_activity_workspace($1,'status','{\"status\":\"in_progress\"}'::jsonb)) value",[workspaceCreated.id]);
+    assert(transitioned.status==='in_progress','transition de statut activité invalide');
     const reports=await rpc(db,"select public.get_crm_reports(date_trunc('month',current_date)::date,current_date,null,null) value");
     assert(reports.permissions.export===true&&reports.metrics.pipeline_count>=1&&reports.quotes.created>=3,`agrégats commerciaux serveur invalides: ${JSON.stringify(reports)}`);
     assert(reports.comparison?.start&&reports.comparison?.end,'comparaison de période absente');
@@ -102,6 +115,6 @@ async function expectError(promise,label){const error=await promise.then(()=>nul
     const after=(await rpc(db,"select public.get_crm_pipeline_workspace(null,null,'{}'::jsonb,1,75) value")).opportunities.find(row=>row.id===opportunity.id).name;
     assert(before===after,'RLS lecteur seule contournable en accès direct');
 
-    process.stdout.write(JSON.stringify({ok:true,stages:stages.length,party_picker:true,quick_create:true,primary_contact:true,inpi_details:true,opportunity:true,document_amount:true,conversion:true,activities:true,reports:true,comparison:true,forecast:true,tenant_isolation:true,read_only:true})+'\n');
+    process.stdout.write(JSON.stringify({ok:true,stages:stages.length,party_picker:true,quick_create:true,primary_contact:true,inpi_details:true,opportunity:true,document_amount:true,conversion:true,activities:true,activity_workspace_v3:true,saved_filters:true,confidentiality:true,reports:true,comparison:true,forecast:true,tenant_isolation:true,read_only:true})+'\n');
   }finally{await db.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

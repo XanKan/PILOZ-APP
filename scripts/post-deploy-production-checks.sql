@@ -2,7 +2,7 @@
 with controls as(
   select 'latest_migration' control,
     coalesce((select max(version)::text from supabase_migrations.schema_migrations),'missing') value,
-    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607290117' ok
+    coalesce((select max(version)::text from supabase_migrations.schema_migrations),'')='202607310120' ok
   union all
   select 'company_access_system_roles',count(*)::text,count(*)=0
   from public.companies company
@@ -456,6 +456,36 @@ with controls as(
       and not has_function_privilege('anon','public.create_support_ticket(uuid,text,text,text,text,text,text,jsonb,text,jsonb,uuid)','EXECUTE')
       and has_function_privilege('authenticated','public.create_support_ticket(uuid,text,text,text,text,text,text,jsonb,text,jsonb,uuid)','EXECUTE')
   union all
+  select 'activities_workspace_rpc',
+    coalesce(to_regprocedure('public.get_activity_workspace_v3(text,text,text,text[],uuid[],uuid,uuid,timestamp with time zone,timestamp with time zone,boolean,integer,integer)')::text,'missing'),
+    to_regprocedure('public.get_activity_workspace_v3(text,text,text,text[],uuid[],uuid,uuid,timestamp with time zone,timestamp with time zone,boolean,integer,integer)') is not null
+  union all
+  select 'activities_detail_rpc',
+    coalesce(to_regprocedure('public.get_activity_detail(uuid)')::text,'missing'),
+    to_regprocedure('public.get_activity_detail(uuid)') is not null
+  union all
+  select 'activities_complete_rpc',
+    coalesce(to_regprocedure('public.complete_activity_workspace(uuid,uuid,text,integer,jsonb)')::text,'missing'),
+    to_regprocedure('public.complete_activity_workspace(uuid,uuid,text,integer,jsonb)') is not null
+  union all
+  select 'activities_rls',coalesce(relrowsecurity::text,'missing'),coalesce(relrowsecurity,false)
+  from (select relrowsecurity from pg_class where oid=to_regclass('public.activities')) activities_table
+  union all
+  select 'activity_events_rls',coalesce(relrowsecurity::text,'missing'),coalesce(relrowsecurity,false)
+  from (select relrowsecurity from pg_class where oid=to_regclass('public.activity_events')) activity_events_table
+  union all
+  select 'activity_events_immutable_permissions',
+    concat_ws(',',has_table_privilege('authenticated','public.activity_events','INSERT'),has_table_privilege('authenticated','public.activity_events','UPDATE'),has_table_privilege('authenticated','public.activity_events','DELETE')),
+    not has_table_privilege('authenticated','public.activity_events','INSERT')
+      and not has_table_privilege('authenticated','public.activity_events','UPDATE')
+      and not has_table_privilege('authenticated','public.activity_events','DELETE')
+  union all
+  select 'activities_physical_delete_blocked',count(*)::text,count(*)=1
+  from pg_trigger
+  where tgrelid='public.activities'::regclass
+    and tgname='activities_prevent_physical_delete'
+    and not tgisinternal
+  union all
   select 'over_reversed_payments',count(*)::text,count(*)=0 from(
     select original.id from public.payments original
     left join public.payments reversal on reversal.reverses_payment_id=original.id and reversal.status='confirmed'
@@ -466,7 +496,7 @@ with controls as(
 )
 select jsonb_build_object(
   'ok',bool_and(ok),
-  'schema_version','202607290117',
+  'schema_version','202607310120',
   'checked_at',clock_timestamp(),
   'controls',jsonb_agg(jsonb_build_object('name',control,'value',value,'ok',ok) order by control)
 ) production_check from controls;
