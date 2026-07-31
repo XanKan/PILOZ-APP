@@ -15,6 +15,18 @@ const deletionMigration = fs.readFileSync(
   path.join(root, "supabase", "migrations", "202608010128_demo_account_secure_deletion.sql"),
   "utf8",
 );
+const completionMigration = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "202608010129_complete_demo_account_onboarding.sql"),
+  "utf8",
+);
+const repairSeedMigration = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "202608010130_repair_demo_seed_data.sql"),
+  "utf8",
+);
+const licenseSource = fs.readFileSync(
+  path.join(root, "supabase", "functions", "license-access", "index.ts"),
+  "utf8",
+);
 
 assert.match(source, /action\s*===\s*["']demo_accounts\.create["']/);
 assert.match(source, /action\s*===\s*["']demo_accounts\.list["']/);
@@ -24,6 +36,8 @@ assert.match(source, /sendDemoCredentialsEmail\(\{to:ownerEmail,firstName,passwo
 assert.match(source, /credentialsSent:true/);
 assert.match(source, /admin_tags:\s*\[\s*["']demo["']\s*,\s*["']seeded["']\s*\]/);
 assert.match(source, /status:\s*["']trialing["']\s*,\s*trial_days:\s*14/);
+assert.match(source, /siret:\s*["']12345678900012["']/);
+assert.match(source, /quote_prefix:\s*["']DEV-DEMO["']/);
 assert.match(source, /metadata:\s*\{\s*demo:\s*true\s*\}/);
 assert.match(source, /privileged\(\)\.rpc\(["']append_platform_admin_audit_service["']/);
 assert.match(source, /target_actor_user_id:\s*context\.user_id/);
@@ -39,5 +53,16 @@ assert.match(deletionMigration, /service_role_required/i);
 assert.match(deletionMigration, /admin_tags[\s\S]*demo/i);
 assert.match(deletionMigration, /platform_status\s*<>\s*'suspended'/i);
 assert.match(deletionMigration, /to service_role/i);
+assert.match(completionMigration, /admin_tags\s*@>\s*array\[['"]demo['"]\]/i);
+assert.match(completionMigration, /onboarding_completed\s*=\s*true/i);
+assert.match(completionMigration, /onboarding_completed_at\s*=\s*coalesce/i);
+assert.match(repairSeedMigration, /Nova Bâtiment/);
+assert.match(repairSeedMigration, /DEMO-SRV-001/);
+assert.match(repairSeedMigration, /admin_tags\s*@>\s*array\[['"]demo['"]\]/i);
+assert.match(licenseSource, /repairDemoCompany/);
+assert.match(licenseSource, /siret:\s*["']12345678900012["']/);
+assert.match(licenseSource, /Nova Bâtiment/);
+assert.match(licenseSource, /DEMO-SRV-001/);
+assert.match(licenseSource, /metadata:\s*\{\s*demo:\s*true\s*\}/);
 
 console.log("demo account provisioning static checks passed");
