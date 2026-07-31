@@ -19,6 +19,27 @@ function slug(value:unknown){return text(value,180).normalize("NFD").replace(/[\
 function oneOf(value:unknown,allowed:string[],fallback?:string){const result=text(value,80);if(allowed.includes(result))return result;if(fallback!==undefined)return fallback;throw new Error("Valeur non autorisée");}
 function safeFileName(value:unknown){const original=text(value,240).replace(/[\u0000-\u001f\u007f]/g,"");if(!original||original.includes("/")||original.includes("\\"))throw new Error("Nom de fichier invalide");const extension=(original.split(".").pop()||"").toLowerCase();const base=original.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9._-]+/g,"-").replace(/^-+|-+$/g,"").slice(0,180)||"fichier";return{original,extension,storage:base};}
 function bytesFromBase64(value:string){try{const binary=atob(value),bytes=new Uint8Array(binary.length);for(let index=0;index<binary.length;index++)bytes[index]=binary.charCodeAt(index);return bytes;}catch{throw new Error("Contenu de fichier invalide");}}
+function htmlEscape(value:unknown){return String(value??"").replace(/[&<>"']/g,character=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[character]||character));}
+function randomCharacter(alphabet:string){const value=new Uint32Array(1);crypto.getRandomValues(value);return alphabet[value[0]%alphabet.length];}
+function temporaryPassword(){
+ const upper="ABCDEFGHJKLMNPQRSTUVWXYZ",lower="abcdefghijkmnopqrstuvwxyz",digits="23456789",symbols="!@#$%*-_+?",all=upper+lower+digits+symbols;
+ const characters=[randomCharacter(upper),randomCharacter(lower),randomCharacter(digits),randomCharacter(symbols)];
+ while(characters.length<20)characters.push(randomCharacter(all));
+ for(let index=characters.length-1;index>0;index--){const value=new Uint32Array(1);crypto.getRandomValues(value);const target=value[0]%(index+1);[characters[index],characters[target]]=[characters[target],characters[index]];}
+ return characters.join("");
+}
+async function sendDemoCredentialsEmail(input:{to:string;firstName:string;password:string}){
+ const apiKey=Deno.env.get("RESEND_API_KEY");
+ if(!apiKey)throw Object.assign(new Error("L’envoi des accès de démonstration n’est pas configuré."),{status:503});
+ const from=Deno.env.get("EMAIL_FROM")||"PILOZ <noreply@piloz.fr>",loginUrl="https://app.piloz.fr/?mode=login";
+ const safeName=htmlEscape(input.firstName),safeEmail=htmlEscape(input.to),safePassword=htmlEscape(input.password);
+ const result=await fetch("https://api.resend.com/emails",{method:"POST",headers:{Authorization:`Bearer ${apiKey}`,"Content-Type":"application/json"},body:JSON.stringify({
+  from,to:[input.to],subject:"Vos accès temporaires à la démonstration Piloz",
+  text:`Bonjour ${input.firstName},\n\nVotre espace de démonstration Piloz est prêt pour 14 jours.\n\nAdresse de connexion : ${input.to}\nMot de passe temporaire : ${input.password}\nConnexion : ${loginUrl}\n\nLes données présentes dans cet espace sont fictives. Nous vous recommandons de modifier ce mot de passe depuis les paramètres de sécurité après votre première connexion.\n\nL’équipe Piloz`,
+  html:`<div style="font-family:Arial,sans-serif;color:#102747;line-height:1.55;max-width:620px;margin:auto"><h1 style="font-size:24px">Votre démonstration Piloz est prête</h1><p>Bonjour ${safeName},</p><p>Votre espace de démonstration est accessible pendant <strong>14 jours</strong> avec des données entièrement fictives.</p><div style="background:#eefaf8;border:1px solid #bcece5;border-radius:14px;padding:18px"><p style="margin:0 0 8px"><strong>Adresse de connexion</strong><br>${safeEmail}</p><p style="margin:0"><strong>Mot de passe temporaire</strong><br><code style="font-size:16px">${safePassword}</code></p></div><p style="margin:24px 0"><a href="${loginUrl}" style="background:#0ca89b;color:white;text-decoration:none;border-radius:10px;padding:12px 18px;font-weight:700">Ouvrir Piloz</a></p><p>Nous vous recommandons de modifier ce mot de passe depuis les paramètres de sécurité après votre première connexion.</p><p style="color:#687b91;font-size:13px">Si vous ne trouvez pas cet e-mail, vérifiez vos courriers indésirables.</p></div>`
+ })});
+ if(!result.ok)throw Object.assign(new Error("Le compte n’a pas été créé car l’e-mail contenant les accès n’a pas pu être envoyé."),{status:502});
+}
 const knowledgeAttachmentTypes:Record<string,Set<string>>={"application/pdf":new Set(["pdf"]),"image/png":new Set(["png"]),"image/jpeg":new Set(["jpg","jpeg"]),"image/webp":new Set(["webp"]),"image/gif":new Set(["gif"]),"text/plain":new Set(["txt","log","md"]),"text/markdown":new Set(["md"]),"application/vnd.openxmlformats-officedocument.wordprocessingml.document":new Set(["docx"]),"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":new Set(["xlsx"])};
 
 Deno.serve(async req=>{
@@ -100,9 +121,10 @@ Deno.serve(async req=>{
     const {data:plans,error:planError}=await service.from("subscription_plan_versions").select("id,plan_key,name,availability,recommended,price_monthly_cents").is("effective_to",null).order("recommended",{ascending:false}).order("price_monthly_cents",{ascending:true}).limit(50);
     const plan=plans?.find(candidate=>candidate.availability==="available")||null;
     if(planError)throw planError;if(!plan)throw Object.assign(new Error("Aucun plan actif n'est disponible pour l'essai."),{status:409});
-    const {data:invitation,error:inviteError}=await service.auth.admin.inviteUserByEmail(ownerEmail,{data:{first_name:firstName,last_name:lastName,demo_account:true},redirectTo:"https://app.piloz.fr/?mode=login"});
-    if(inviteError||!invitation.user)throw Object.assign(new Error("L'invitation du compte de démonstration n'a pas pu être envoyée."),{status:inviteError?.status||400});
-    createdUserId=invitation.user.id;
+    const password=temporaryPassword();
+    const {data:createdAuth,error:createError}=await service.auth.admin.createUser({email:ownerEmail,password,email_confirm:true,user_metadata:{first_name:firstName,last_name:lastName,demo_account:true,password_change_recommended:true}});
+    if(createError||!createdAuth.user)throw Object.assign(new Error("Le compte de démonstration n'a pas pu être créé."),{status:createError?.status||400});
+    createdUserId=createdAuth.user.id;
     const demoName=`Horizon Conseil — Démo ${firstName} ${lastName}`.slice(0,180);
     const {data:company,error:companyError}=await client.rpc("platform_admin_create_company",{target_owner_user_id:createdUserId,target_company:{owner_first_name:firstName,owner_last_name:lastName,owner_email:ownerEmail,provisioning_name:demoName,provisioning_pending:false,legal_name:"Horizon Conseil (démonstration)",trade_name:"Horizon Conseil",company_type:"company",legal_form:"Société de démonstration",address_line1:"18 avenue des Ateliers",postal_code:"85000",city:"La Roche-sur-Yon",country:"France",country_code:"FR",email:"contact@horizon-conseil.example",phone:"+33100000000",currency:"EUR",language:"fr",admin_tags:["demo","seeded"],internal_admin_notes:"Compte de démonstration Piloz — données entièrement fictives."},target_subscription:{plan_version_id:plan.id,billing_interval:"monthly",status:"trialing",trial_days:14,max_users:null},target_reason:reason});
     if(companyError)throw companyError;createdCompanyId=company.id;
@@ -130,10 +152,15 @@ Deno.serve(async req=>{
      {company_id:createdCompanyId,client_id:atelier?.id||null,activity_type:"email",subject:"Envoyer le compte rendu",description:"Activité terminée de démonstration.",scheduled_at:now.toISOString(),completed_at:now.toISOString(),assigned_user_id:createdUserId,created_by:createdUserId,metadata:{demo:true}}
     ]);
     if(activitiesError)throw activitiesError;
+    await sendDemoCredentialsEmail({to:ownerEmail,firstName,password});
     await audit("demo_account.create","company",createdCompanyId,createdCompanyId,null,{email:ownerEmail,trial_days:14,plan_key:plan.plan_key,seeded:true},reason);
-    return response(req,{company,ownerUserId:createdUserId,invitationSent:true,trialDays:14,seedVersion:"2026-07-31",message:"Compte de démonstration créé. L'invitation sécurisée a été envoyée ; le destinataire choisira son mot de passe."},201);
+   return response(req,{company,ownerUserId:createdUserId,credentialsSent:true,trialDays:14,seedVersion:"2026-07-31",message:"Compte de démonstration créé. Les accès temporaires ont été envoyés par e-mail."},201);
    }catch(error){
-    if(createdCompanyId)await service.from("companies").delete().eq("id",createdCompanyId);
+    if(createdCompanyId){
+     await service.from("companies").update({platform_status:"suspended",suspension_level:"full",suspended_at:new Date().toISOString(),suspension_reason:"Annulation automatique après échec du provisionnement"}).eq("id",createdCompanyId);
+     const cleanup=await service.rpc("platform_admin_delete_suspended_demo_company",{target_company_id:createdCompanyId,target_actor_user_id:context.user_id,target_reason:"Annulation automatique après échec du provisionnement"});
+     if(cleanup.error)await service.from("companies").delete().eq("id",createdCompanyId);
+    }
     if(createdUserId)await service.auth.admin.deleteUser(createdUserId);
     throw error;
    }
@@ -147,6 +174,22 @@ Deno.serve(async req=>{
      return {...item,owner_email:owner.user?.email||null};
     }));
     return response(req,{items});
+  }
+  if(action==="demo_accounts.delete"){
+   requirePermission("companies.write");requirePermission("users.write");requirePermission("subscriptions.write");
+   const companyId=uuid(payload.companyId),reason=text(payload.reason,500);
+   if(!reason)throw Object.assign(new Error("Le motif de suppression est obligatoire."),{status:400});
+   const service=privileged();
+   const {data,error}=await service.rpc("platform_admin_delete_suspended_demo_company",{target_company_id:companyId,target_actor_user_id:context.user_id,target_reason:reason});
+   if(error){
+    const known=String(error.message||"");
+    if(known.includes("demo_company_must_be_suspended_first"))throw Object.assign(new Error("Suspendez d’abord ce compte de démonstration."),{status:409});
+    if(known.includes("demo_company_required"))throw Object.assign(new Error("Seuls les comptes de démonstration peuvent être supprimés ici."),{status:403});
+    throw error;
+   }
+   const ownerUserId=text(data?.owner_user_id,40);let authDeleted=true;
+   if(ownerUserId){const {error:authError}=await service.auth.admin.deleteUser(ownerUserId);authDeleted=!authError;}
+   return response(req,{deleted:true,authDeleted,message:authDeleted?"Compte de démonstration supprimé définitivement.":"Les données de démonstration ont été supprimées. Le compte de connexion devra être nettoyé séparément."});
   }
   if(action==="companies.update"){
    requirePermission("companies.write");const {data,error}=await client.rpc("platform_admin_update_company",{target_company_id:uuid(payload.companyId),target_changes:record(payload.changes),target_reason:text(payload.reason,500)});if(error)throw error;return response(req,{company:data});

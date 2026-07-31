@@ -33,8 +33,11 @@ function accessFor(subscription:any){
   const periodValid=status==="trialing"?afterNow(subscription.trial_ends_at):afterNow(subscription.subscription_ends_at);
   return{allowed:activeStatus&&paymentReady&&periodValid,reason:!activeStatus?"subscription_inactive":!paymentReady?"payment_required":!periodValid?"subscription_expired":"licensed"};
  }
- // Une licence manuelle est uniquement valable lorsqu'un administrateur Piloz l'a explicitement activée.
- return{allowed:status==="active"&&afterNow(subscription.subscription_ends_at),reason:status!=="active"?"manual_license_inactive":!afterNow(subscription.subscription_ends_at)?"subscription_expired":"licensed"};
+ // Les essais créés et bornés par Piloz Admin sont des licences manuelles valides
+ // jusqu'à trial_ends_at. Une licence manuelle active reste bornée par sa date de fin.
+ const activeStatus=status==="active"||status==="trialing";
+ const periodValid=status==="trialing"?afterNow(subscription.trial_ends_at):afterNow(subscription.subscription_ends_at);
+ return{allowed:activeStatus&&periodValid,reason:!activeStatus?"manual_license_inactive":!periodValid?"subscription_expired":"licensed"};
 }
 
 Deno.serve(async req=>{

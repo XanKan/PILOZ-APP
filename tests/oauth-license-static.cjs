@@ -17,7 +17,7 @@ const checks={
  all_auth_paths_gated:app.includes('verifyLicenseAccess?.()')&&guard.includes('verifyLicenseAccess?.()'),
  stripe_license_requires_payment:license.includes('subscription.payment_status==="paid"')&&license.includes('external_subscription_id'),
  unconfigured_trial_denied:license.includes('provider==="stripe"')&&license.includes('status==="active"'),
- manual_license_admin_only:license.includes('status==="active"&&afterNow(subscription.subscription_ends_at)'),
+ manual_license_trial_supported:license.includes('status==="active"||status==="trialing"')&&license.includes('status==="trialing"?afterNow(subscription.trial_ends_at):afterNow(subscription.subscription_ends_at)'),
  no_legacy_auto_trial:!app.includes("toast('🎁 Votre essai gratuit")&&!app.includes("apiLic('POST', 'licences'"),
  authenticated_edge_function:/\[functions\.license-access\][\s\S]*verify_jwt\s*=\s*true/.test(config)
 };
