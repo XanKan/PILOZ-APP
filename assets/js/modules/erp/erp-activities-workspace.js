@@ -42,6 +42,8 @@
     busy: false,
     searchTimer: null,
     relationTimers: new Map(),
+    relationRows: new Map(),
+    relationFilters: new Map(),
   };
   const defaultColumns = [
     "type",
@@ -608,9 +610,9 @@
       placeholder = disabled
         ? "Sélectionnez d’abord un client"
         : clientScoped
-          ? "Cliquez pour afficher ou recherchez…"
+          ? "Cliquez pour afficher ou rechercher…"
           : "Saisissez au moins 2 caractères…";
-    return `<label class="aw-relation-field"><span>${esc(label)}</span><div class="aw-relation-control"><input type="hidden" name="${attr(name)}" value="${attr(value)}"><input type="hidden" name="${attr(name)}_type" value="${attr(selectedType)}"><input type="search" autocomplete="off" value="${attr(selectedLabel)}" data-client-scoped="${clientScoped ? "true" : "false"}" data-client-id="${attr(clientId)}" placeholder="${attr(placeholder)}" aria-label="Rechercher ${attr(label.toLowerCase())}" ${disabled ? "disabled" : ""} oninput="PilozCRM.searchActivityRelation('${kind}','${name}',this.value)" onfocus="PilozCRM.searchActivityRelation('${kind}','${name}',this.value)"><button type="button" aria-label="Effacer" onclick="PilozCRM.clearActivityRelation('${name}')" ${disabled ? "disabled" : ""}>×</button><div class="aw-relation-results" id="aw-relation-results-${attr(name)}" hidden></div></div></label>`;
+    return `<label class="aw-relation-field"><span>${esc(label)}</span><div class="aw-relation-control"><input type="hidden" name="${attr(name)}" value="${attr(value)}"><input type="hidden" name="${attr(name)}_type" value="${attr(selectedType)}"><input class="aw-relation-search" type="text" autocomplete="off" value="${attr(selectedLabel)}" data-client-scoped="${clientScoped ? "true" : "false"}" data-client-id="${attr(clientId)}" placeholder="${attr(placeholder)}" aria-label="Rechercher ${attr(label.toLowerCase())}" aria-haspopup="listbox" aria-expanded="false" ${disabled ? "disabled" : ""} oninput="PilozCRM.searchActivityRelation('${kind}','${name}',this.value)" onfocus="PilozCRM.openActivityRelation('${kind}','${name}')" onclick="PilozCRM.openActivityRelation('${kind}','${name}')"><button class="aw-relation-clear${value ? "" : " is-hidden"}" type="button" aria-label="Effacer la relation" onclick="event.preventDefault();event.stopPropagation();PilozCRM.clearActivityRelation('${name}')" ${disabled ? "disabled" : ""}>×</button><div class="aw-relation-results" id="aw-relation-results-${attr(name)}" role="listbox" hidden></div></div></label>`;
   }
   function enterpriseFormBody(row = {}, detail = {}) {
     const types = ui.data?.types || [],
@@ -763,16 +765,184 @@
   }
   function relationField(name) {
     const form = document.getElementById("aw-activity-form");
+    const hidden = form?.elements?.[name],
+      control = hidden?.closest(".aw-relation-control");
     return {
       form,
-      hidden: form?.elements?.[name],
+      hidden,
       type: form?.elements?.[`${name}_type`],
-      input: form
-        ?.querySelector(`[name="${CSS.escape(name)}"]`)
-        ?.closest(".aw-relation-control")
-        ?.querySelector('input[type="search"]'),
+      control,
+      input: control?.querySelector(".aw-relation-search"),
+      clear: control?.querySelector(".aw-relation-clear"),
       results: document.getElementById(`aw-relation-results-${name}`),
     };
+  }
+  function setRelationExpanded(field, expanded) {
+    if (field.input)
+      field.input.setAttribute("aria-expanded", expanded ? "true" : "false");
+  }
+  function closeRelationResults(exceptName = "") {
+    document.querySelectorAll(".aw-relation-results").forEach((results) => {
+      if (exceptName && results.id === `aw-relation-results-${exceptName}`) return;
+      results.hidden = true;
+      const control = results.closest(".aw-relation-control");
+      control
+        ?.querySelector(".aw-relation-search")
+        ?.setAttribute("aria-expanded", "false");
+    });
+  }
+  function relationSearchKey(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase("fr-FR");
+  }
+  function localRelationRows(kind, clientId = "", query = "") {
+    const data = state().data || {},
+      needle = relationSearchKey(query),
+      matches = (values) =>
+        !needle || relationSearchKey(values.filter(Boolean).join(" ")).includes(needle),
+      rows = [];
+    if (kind === "client") {
+      (data.clients || []).forEach((client) => {
+        if (client.active === false) return;
+        const label =
+          client.trade_name ||
+          client.legal_name ||
+          [client.first_name, client.last_name].filter(Boolean).join(" ") ||
+          "Client";
+        if (
+          !matches([
+            label,
+            client.email,
+            client.phone_e164,
+            client.siren,
+            client.siret,
+            client.city,
+          ])
+        )
+          return;
+        rows.push({
+          entity_type:
+            client.relationship_type === "prospect" ? "prospect" : "client",
+          entity_id: client.id,
+          label,
+          subtitle: [client.city, client.email, client.siret]
+            .filter(Boolean)
+            .join(" · "),
+          relation_meta: {
+            relationship_type: client.relationship_type || "client",
+            client_id: client.id,
+          },
+        });
+      });
+    } else if (kind === "contact") {
+      (data.clientContacts || []).forEach((contact) => {
+        if (contact.active === false || String(contact.client_id || "") !== clientId)
+          return;
+        const label =
+          [contact.first_name, contact.last_name].filter(Boolean).join(" ") ||
+          contact.email ||
+          "Contact";
+        if (!matches([label, contact.email, contact.phone_e164, contact.job_title]))
+          return;
+        rows.push({
+          entity_type: "contact",
+          entity_id: contact.id,
+          label,
+          subtitle: [contact.job_title, contact.email, contact.phone_e164]
+            .filter(Boolean)
+            .join(" · "),
+          relation_meta: { client_id: contact.client_id },
+        });
+      });
+    } else if (kind === "opportunity") {
+      (data.opportunities || []).forEach((opportunity) => {
+        if (
+          opportunity.archived_at ||
+          String(opportunity.client_id || "") !== clientId
+        )
+          return;
+        const label = opportunity.name || "Opportunité";
+        if (!matches([label, opportunity.stage, opportunity.status])) return;
+        rows.push({
+          entity_type: "opportunity",
+          entity_id: opportunity.id,
+          label,
+          subtitle: [opportunity.stage, opportunity.status]
+            .filter(Boolean)
+            .join(" · "),
+          relation_meta: {
+            client_id: opportunity.client_id,
+            stage: opportunity.stage || "",
+          },
+        });
+      });
+    } else if (kind === "document") {
+      (data.documents || []).forEach((document) => {
+        if (
+          !["quote", "invoice"].includes(document.document_type) ||
+          String(document.client_id || "") !== clientId
+        )
+          return;
+        const label = document.number || "Brouillon",
+          typeLabel = document.document_type === "quote" ? "Devis" : "Facture";
+        if (!matches([label, document.subject, typeLabel])) return;
+        rows.push({
+          entity_type: document.document_type,
+          entity_id: document.id,
+          label,
+          subtitle: [typeLabel, document.subject].filter(Boolean).join(" · "),
+          relation_meta: {
+            client_id: document.client_id,
+            document_type: document.document_type,
+          },
+        });
+      });
+    }
+    return rows
+      .sort((left, right) => left.label.localeCompare(right.label, "fr"))
+      .slice(0, 50);
+  }
+  function mergeRelationRows(...groups) {
+    const values = new Map();
+    groups.flat().forEach((item) => {
+      if (!item?.entity_id) return;
+      values.set(`${item.entity_type}:${item.entity_id}`, item);
+    });
+    return [...values.values()];
+  }
+  function renderRelationRows(name, kind, rows) {
+    const field = relationField(name);
+    if (!field.results) return;
+    ui.relationRows.set(name, rows || []);
+    const activeFilter = ui.relationFilters.get(name) || "all",
+      visibleRows =
+        kind === "document" && activeFilter !== "all"
+          ? (rows || []).filter((item) => item.entity_type === activeFilter)
+          : rows || [],
+      filters =
+        kind === "document"
+          ? `<div class="aw-relation-filters" role="group" aria-label="Filtrer les documents"><button type="button" class="${activeFilter === "all" ? "active" : ""}" onclick="event.stopPropagation();PilozCRM.filterActivityDocuments('${name}','all')">Tous</button><button type="button" class="${activeFilter === "quote" ? "active" : ""}" onclick="event.stopPropagation();PilozCRM.filterActivityDocuments('${name}','quote')">Devis</button><button type="button" class="${activeFilter === "invoice" ? "active" : ""}" onclick="event.stopPropagation();PilozCRM.filterActivityDocuments('${name}','invoice')">Factures</button></div>`
+          : "";
+    const items = visibleRows.length
+      ? visibleRows
+          .map((item) => {
+            const encoded = encodeURIComponent(JSON.stringify(item)).replace(
+                /'/g,
+                "%27",
+              ),
+              badge =
+                kind === "document"
+                  ? `<em>${item.entity_type === "quote" ? "Devis" : "Facture"}</em>`
+                  : "";
+            return `<button type="button" class="aw-relation-result" role="option" onclick="PilozCRM.chooseActivityRelation('${name}','${attr(encoded)}')"><span><b>${esc(item.label)}</b><small>${esc(item.subtitle || item.entity_type)}</small></span>${badge}</button>`;
+          })
+          .join("")
+      : `<p class="aw-relation-state">${kind === "document" && activeFilter !== "all" ? `Aucun ${activeFilter === "quote" ? "devis" : "facture"} pour ce client.` : "Aucun élément lié à ce client."}</p>`;
+    field.results.innerHTML = filters + items;
+    field.results.hidden = false;
+    setRelationExpanded(field, true);
   }
   const clientScopedRelations = [
     ["contact_id", "contact"],
@@ -792,17 +962,20 @@
         field.input.dataset.clientId = selectedClientId;
         field.input.disabled = !selectedClientId;
         field.input.placeholder = selectedClientId
-          ? "Cliquez pour afficher ou recherchez…"
+          ? "Cliquez pour afficher ou rechercher…"
           : "Sélectionnez d’abord un client";
       }
-      const clearButton = field.input
-        ?.closest(".aw-relation-control")
-        ?.querySelector('button[type="button"]');
-      if (clearButton) clearButton.disabled = !selectedClientId;
+      if (field.clear) {
+        field.clear.disabled = !selectedClientId;
+        field.clear.classList.add("is-hidden");
+      }
       if (field.results) {
         field.results.hidden = true;
         field.results.innerHTML = "";
       }
+      setRelationExpanded(field, false);
+      ui.relationRows.delete(name);
+      ui.relationFilters.delete(name);
     });
   }
   function clearRelation(name) {
@@ -810,13 +983,18 @@
     if (field.hidden) field.hidden.value = "";
     if (field.input) {
       field.input.value = "";
-      field.input.focus();
+      field.input.dataset.relationQuery = "";
     }
+    if (field.clear) field.clear.classList.add("is-hidden");
     if (field.results) {
       field.results.hidden = true;
       field.results.innerHTML = "";
     }
+    setRelationExpanded(field, false);
+    ui.relationRows.delete(name);
+    ui.relationFilters.delete(name);
     if (name === "client_id") syncClientScopedRelations("", true);
+    field.input?.focus();
   }
   function chooseRelation(name, encoded) {
     const item = JSON.parse(decodeURIComponent(encoded)),
@@ -824,27 +1002,42 @@
     if (field.hidden) field.hidden.value = item.entity_id;
     if (field.type) field.type.value = item.entity_type;
     if (field.input) field.input.value = item.label;
-    if (field.results) field.results.hidden = true;
+    if (field.clear) field.clear.classList.remove("is-hidden");
+    closeRelationResults();
     if (name === "client_id" && item.relation_meta?.relationship_type) {
       field.type.value = item.relation_meta.relationship_type;
     }
     if (name === "client_id")
       syncClientScopedRelations(item.entity_id, true);
   }
-  async function searchRelation(kind, name, value) {
+  function openRelation(kind, name) {
+    const field = relationField(name);
+    if (!field.input || field.input.disabled) return;
+    closeRelationResults(name);
+    searchRelation(kind, name, "", true);
+  }
+  function filterDocumentRelations(name, filter) {
+    ui.relationFilters.set(name, ["quote", "invoice"].includes(filter) ? filter : "all");
+    renderRelationRows(name, "document", ui.relationRows.get(name) || []);
+  }
+  async function searchRelation(kind, name, value, preserveSelection = false) {
     const field = relationField(name),
       query = String(value || "").trim(),
       scoped = ["contact", "opportunity", "document"].includes(kind),
       clientId = String(field.form?.elements?.client_id?.value || "");
-    if (field.hidden && field.input?.value !== "Relation enregistrée") {
+    if (!preserveSelection && field.hidden) {
       field.hidden.value = "";
+      if (field.type) field.type.value = kind;
+      if (field.clear) field.clear.classList.add("is-hidden");
     }
     clearTimeout(ui.relationTimers.get(name));
+    closeRelationResults(name);
     if (scoped && !clientId) {
       if (field.results) {
         field.results.hidden = false;
         field.results.innerHTML =
           '<p class="aw-relation-state">Sélectionnez d’abord un client.</p>';
+        setRelationExpanded(field, true);
       }
       return;
     }
@@ -852,8 +1045,13 @@
       if (field.results) field.results.hidden = true;
       return;
     }
+    if (field.input) field.input.dataset.relationQuery = query;
     field.results.hidden = false;
-    field.results.innerHTML = '<p class="aw-relation-state">Recherche…</p>';
+    setRelationExpanded(field, true);
+    const localRows = localRelationRows(kind, clientId, query);
+    if (localRows.length || (scoped && !query))
+      renderRelationRows(name, kind, localRows);
+    else field.results.innerHTML = '<p class="aw-relation-state">Recherche…</p>';
     ui.relationTimers.set(
       name,
       setTimeout(async () => {
@@ -869,8 +1067,7 @@
           } catch (error) {
             if (!missingRpc(error, "search_activity_relations_v2")) throw error;
             if (!query) {
-              field.results.innerHTML =
-                '<p class="aw-relation-state">Commencez à saisir pour rechercher dans les éléments de ce client.</p>';
+              renderRelationRows(name, kind, localRows);
               return;
             }
             rows = await api().rpc("search_activity_relations", {
@@ -892,24 +1089,16 @@
             String(field.form?.elements?.client_id?.value || "") !== clientId
           )
             return;
-          if (field.input?.value.trim() !== query) return;
-          field.results.innerHTML = rows?.length
-            ? rows
-                .map((item) => {
-                  const encoded = encodeURIComponent(JSON.stringify(item));
-                  return `<button type="button" onclick="PilozCRM.chooseActivityRelation('${name}','${attr(encoded)}')"><b>${esc(item.label)}</b><small>${esc(item.subtitle || item.entity_type)}</small></button>`;
-                })
-                .join("")
-            : '<p class="aw-relation-state">Aucun résultat. Vérifiez votre recherche.</p>';
+          if (field.input?.dataset.relationQuery !== query) return;
+          renderRelationRows(name, kind, mergeRelationRows(localRows, rows || []));
         } catch (error) {
           if (missingRpc(error, "search_activity_relations")) {
-            field.results.innerHTML =
-              '<p class="aw-relation-state">La recherche distante sera disponible après la mise à jour de la base.</p>';
+            renderRelationRows(name, kind, localRows);
           } else {
             field.results.innerHTML = `<p class="aw-relation-state error">${esc(errorMessage(error))}</p>`;
           }
         }
-      }, 250),
+      }, scoped && !query ? 0 : 200),
     );
   }
   function relationType(document) {
@@ -1711,9 +1900,7 @@
   });
   document.addEventListener("pointerdown", (event) => {
     if (event.target.closest(".aw-relation-control")) return;
-    document.querySelectorAll(".aw-relation-results").forEach((results) => {
-      results.hidden = true;
-    });
+    closeRelationResults();
   });
   Object.assign(crm, {
     activitiesWorkspace: ui,
@@ -1736,6 +1923,8 @@
       load();
     },
     searchActivityRelation: searchRelation,
+    openActivityRelation: openRelation,
+    filterActivityDocuments: filterDocumentRelations,
     chooseActivityRelation: chooseRelation,
     clearActivityRelation: clearRelation,
     setActivityType(value) {

@@ -45,7 +45,7 @@
     };
     window.toast=()=>{};
     window.PilozRuntime={session:{user_id:'user-1'}};
-    window.PilozApp={getState(){return {companyId:'company-demo',data:{members:ownerIds.map((id,index)=>({user_id:id,status:'active',display_name:['Quentin Jernot','Camille Martin','Alexandre Petit','Sophie Leroy'][index]})),preferences:[]}}}};
+    window.PilozApp={getState(){return {companyId:'company-demo',data:{members:ownerIds.map((id,index)=>({user_id:id,status:'active',display_name:['Quentin Jernot','Camille Martin','Alexandre Petit','Sophie Leroy'][index]})),preferences:[],clients:[{id:'client-demo',legal_name:'Atelier Horizon',city:'Paris',active:true}],clientContacts:[{id:'contact-demo',client_id:'client-demo',first_name:'Camille',last_name:'Martin',email:'camille@atelier-horizon.test',active:true}],opportunities:[{id:'opportunity-demo',client_id:'client-demo',name:'Rénovation des bureaux',stage:'Proposition'}],documents:[{id:'quote-demo',client_id:'client-demo',document_type:'quote',number:'DEV-DEMO-0001',subject:'Rénovation'},{id:'invoice-demo',client_id:'client-demo',document_type:'invoice',number:'FAC-DEMO-0001',subject:'Rénovation'}]}}}};
     window.PilozERP={async query(){return []},async rpc(name){if(name==='get_activity_workspace_v4'||name==='get_activity_workspace_v3')return workspace;if(name==='get_activity_week_progress_v1')return {week_open:124,week_completed:518};throw new Error(`RPC inattendue ${name}`)}};
     window.PilozModern={renderRoute(){return false}};
     location.hash='crm/activities';
@@ -70,10 +70,14 @@
         checks.push(['aucun débordement du document',document.documentElement.scrollWidth<=window.innerWidth+1]);
         PilozCRM.openActivityForm();
         const activityForm=document.getElementById('aw-activity-form');
-        checks.push(['relations client verrouillées avant sélection',activityForm?.elements.contact_id?.closest('.aw-relation-control')?.querySelector('input[type=search]')?.disabled===true]);
+        checks.push(['relations client verrouillées avant sélection',activityForm?.elements.contact_id?.closest('.aw-relation-control')?.querySelector('.aw-relation-search')?.disabled===true]);
         checks.push(['fournisseur absent du formulaire',![...activityForm.querySelectorAll('label span')].some(node=>node.textContent.trim()==='Fournisseur')]);
         PilozCRM.chooseActivityRelation('client_id',encodeURIComponent(JSON.stringify({entity_type:'client',entity_id:'client-demo',label:'Atelier Horizon',relation_meta:{relationship_type:'client'}})));
-        checks.push(['relations client activées après sélection',activityForm?.elements.contact_id?.closest('.aw-relation-control')?.querySelector('input[type=search]')?.disabled===false]);
+        checks.push(['relations client activées après sélection',activityForm?.elements.contact_id?.closest('.aw-relation-control')?.querySelector('.aw-relation-search')?.disabled===false]);
+        PilozCRM.openActivityRelation('document','document_id');
+        checks.push(['documents listés sans saisie',document.querySelectorAll('#aw-relation-results-document_id .aw-relation-result').length===2]);
+        checks.push(['filtres devis et factures',document.querySelectorAll('#aw-relation-results-document_id .aw-relation-filters button').length===3]);
+        checks.push(['une seule croix par relation',document.querySelectorAll('.aw-relation-control .aw-relation-clear').length===4]);
         PilozCRM.closeActivitiesModal();
       }catch(error){checks.push(['exécution',false,error.message])}
       const failed=checks.filter(([,ok])=>!ok),result=document.getElementById('result');

@@ -902,10 +902,10 @@ body.aw-modal-open {
 .aw-relation-control {
   position: relative;
 }
-.aw-relation-control > input[type="search"] {
+.aw-relation-control > .aw-relation-search {
   padding-right: 38px;
 }
-.aw-relation-control > button {
+.aw-relation-control > .aw-relation-clear {
   position: absolute;
   z-index: 2;
   top: 7px;
@@ -918,12 +918,17 @@ body.aw-modal-open {
   color: #6b7f93;
   cursor: pointer;
 }
+.aw-relation-control > .aw-relation-clear.is-hidden {
+  display: none;
+}
 .aw-relation-results {
   position: absolute;
   z-index: 40;
   top: calc(100% + 5px);
   left: 0;
-  right: 0;
+  width: max-content;
+  min-width: 100%;
+  max-width: min(560px, calc(100vw - 48px));
   max-height: 270px;
   overflow: auto;
   padding: 5px;
@@ -932,8 +937,11 @@ body.aw-modal-open {
   background: #fff;
   box-shadow: 0 18px 42px rgba(5, 35, 53, 0.18);
 }
-.aw-relation-results > button {
+.aw-relation-results > .aw-relation-result {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
   width: 100%;
   padding: 10px 11px;
   border: 0;
@@ -943,9 +951,57 @@ body.aw-modal-open {
   text-align: left;
   cursor: pointer;
 }
-.aw-relation-results > button:hover,
-.aw-relation-results > button:focus {
+.aw-relation-results > .aw-relation-result:hover,
+.aw-relation-results > .aw-relation-result:focus {
   background: #edf9f7;
+}
+.aw-relation-result > span {
+  display: grid;
+  min-width: 0;
+}
+.aw-relation-result b,
+.aw-relation-result small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aw-relation-result em {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #e8f7f4;
+  color: #087e73;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+.aw-relation-filters {
+  position: sticky;
+  z-index: 1;
+  top: -5px;
+  display: flex;
+  gap: 5px;
+  margin: -5px -5px 4px;
+  padding: 8px;
+  border-bottom: 1px solid #dbe8eb;
+  background: #fff;
+}
+.aw-relation-filters button {
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 1px solid #d3e2e6;
+  border-radius: 999px;
+  background: #fff;
+  color: #405d72;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.aw-relation-filters button:hover,
+.aw-relation-filters button.active {
+  border-color: #19a99a;
+  background: #e9faf7;
+  color: #087e73;
 }
 .aw-relation-results small {
   margin-top: 3px;

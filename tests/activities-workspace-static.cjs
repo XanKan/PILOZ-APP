@@ -291,6 +291,10 @@ check(
 check(
   "relations filtrées par client",
   has(script, "syncClientScopedRelations") &&
+    has(script, "localRelationRows") &&
+    has(script, "openActivityRelation: openRelation") &&
+    has(script, "filterActivityDocuments: filterDocumentRelations") &&
+    has(script, '["quote", "invoice"].includes(document.document_type)') &&
     has(script, "search_activity_relations_v2") &&
     has(script, "target_client_id:scoped?clientId:null") &&
     has(script, "(!scoped&&query.length<2)") &&
@@ -298,6 +302,19 @@ check(
     has(clientScopedRelations, "contact.client_id=target_client_id") &&
     has(clientScopedRelations, "opportunity.client_id=target_client_id") &&
     has(clientScopedRelations, "document.client_id=target_client_id"),
+);
+check(
+  "sélecteurs relationnels sans saisie obligatoire",
+  has(script, 'onclick="PilozCRM.openActivityRelation') &&
+    has(script, 'class="aw-relation-search" type="text"') &&
+    has(script, 'Tous</button>') &&
+    has(script, 'Devis</button>') &&
+    has(script, 'Factures</button>'),
+);
+check(
+  "une seule commande d'effacement relationnelle",
+  has(script, "aw-relation-clear") &&
+    !has(css, '.aw-relation-control > input[type="search"]'),
 );
 check(
   "fournisseur retiré du formulaire activité",
