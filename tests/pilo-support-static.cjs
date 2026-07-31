@@ -75,8 +75,6 @@ assert.ok(app.includes("#due-payment-form input[name=\"amount\"]") && app.includ
 assert.ok(!app.includes("if(['facture','paiement','premiere','suivante'].includes(lesson.id))"), "Le parcours Règlement ne doit jamais forcer la visionneuse de devis ou de factures");
 assert.ok(app.includes("TRAINING_PROGRESS_FINAL_ID='piloz-training-progress-final'") && app.includes("openNextSituation"), "Le parcours Situation suivante doit partir d'une situation finalisée");
 assert.ok(app.includes(".document-v2-situation-toggle input[type=\"checkbox\"]") && app.includes("input[aria-label=\"Avancement total\"]"), "Le parcours Situation doit utiliser les contrôles réels du brouillon");
-assert.ok(app.includes("tr[data-scope-value=\"service\"] input[data-field=\"account_code\"]") && app.includes("setAccountingTab(\\'vat\\')"), "Le parcours Comptabilité doit utiliser le compte Service et l'onglet TVA réels");
-assert.ok(app.includes("data-training-export-balance") && app.includes("411ATELIERHORIZON") && app.includes("data-training-export-validate"), "L'export de formation doit présenter une écriture fictive équilibrée");
 assert.ok((app.match(/selector:'\[data-finalize-document\]'/g)||[]).length>=1, "La formation Devis doit aller jusqu'à la validation protégée");
 assert.ok(app.includes("saisir une ligne manuellement") && app.includes("sélectionner un article déjà créé") && app.includes("créer un nouvel article"), "Le coach doit expliquer les trois modes de saisie d’un article");
 assert.ok(!app.includes("selector:'[data-training-demo-item]'"), "Le guide ne doit pas bloquer le clic sur un résultat avec une étape intermédiaire");
@@ -101,9 +99,11 @@ assert.ok(app.includes("event.stopImmediatePropagation()"), "Les actions métier
 assert.ok(app.includes("closeTraining"), "L'utilisateur doit pouvoir quitter la formation à tout moment");
 assert.ok(!app.includes('class="training-sim-app"'), "L'ancien faux écran Piloz ne doit plus être rendu");
 assert.ok(!app.includes("Vous commencerez par créer un devis, puis vous choisirez"), "L'introduction d'une capsule ne doit jamais reprendre le texte d'une autre formation");
-for (const route of ["sales/quotes", "sales/invoices", "sales/due-dates", "crm/pipeline", "library/prospects", "accounting/exports"]) {
+for (const route of ["sales/quotes", "sales/invoices", "sales/due-dates", "crm/pipeline", "library/prospects"]) {
   assert.ok(app.includes(`route:'${route}'`), `Parcours de formation absent pour ${route}`);
 }
+assert.ok(!app.includes("id:'comptabilite'"), "La comptabilité doit être absente de l’Académie Piloz");
+assert.ok(!app.includes("route:'accounting/exports'") && !app.includes("route:'accounting/settings/journals'"), "Aucune route comptable ne doit rester dans la formation");
 assert.ok(app.includes("loadedKey=`${trainingStorageKey()}:${lesson.id}`"), "La progression doit être isolée par utilisateur, entreprise et capsule");
 assert.ok(app.includes("saved.step??(saved.completed?lesson.steps.length:0)"), "Une ancienne position vidéo ne doit pas valider une capsule interactive");
 for (const interaction of ["completeTrainingAction", "validateTrainingInput", "trainingSelect", "trainingChoice", "trainingToggle", "trainingDrop"]) {
@@ -210,4 +210,4 @@ assert.ok(app.includes("function trainingMutationAction") && app.includes("if(!t
 assert.ok(erpApi.includes("TRAINING_MUTATION_RPC") && erpApi.includes("guardTrainingRequest(path,options)") && erpApi.includes("guardTrainingInvoke(name)"), "La couche API doit refuser les ecritures pendant une formation");
 assert.ok(crmRework.includes("global.PilozHelp?.isTrainingActive?.()&&trainingRows.length") && crmRework.includes('data-party-id="${esc(row.id)}"'), "Le selecteur CRM de formation doit rester local et fictif");
 
-console.log(JSON.stringify({ ok: true, navigation: 5, trainingCourses: 5, safeContext: 11, privateAttachments: true, feedbackComments: true }));
+console.log(JSON.stringify({ ok: true, navigation: 5, trainingCourses: 4, safeContext: 11, privateAttachments: true, feedbackComments: true }));
