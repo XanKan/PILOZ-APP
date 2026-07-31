@@ -250,36 +250,71 @@
   async function openProspectForm(id=''){
     const configuration=await getConfiguration();
     const row=(id&&ui.detail?.prospect?.id===id?ui.detail.prospect:null)||(ui.prospects?.rows||[]).find(item=>item.id===id)||{};
+    const kind=row.kind==='person'?'person':'company';
     const statusOptions=[['new','Nouveau'],['to_qualify','À qualifier'],['qualified','Qualifié'],['in_progress','En cours'],['to_follow_up','À relancer'],['not_interested','Non intéressé']];
-    drawer(id?'Modifier le prospect':'Nouveau prospect','Les doublons e-mail, téléphone, SIREN et SIRET sont contrôlés.',`
+    ui.prospectCompanyResults=[];
+    drawer(id?'Modifier le prospect':'Création client / prospect','Professionnel : recherchez l’entreprise dans le registre officiel. Particulier : seuls les champs personnels sont demandés.',`
       <div id="crm-form-message" class="crm-form-message" hidden></div>
       <form id="crm-prospect-form" class="crm-form-grid" onsubmit="event.preventDefault();PilozCRM.saveProspect('${esc(id)}')">
-        <label class="crm-field"><span>Type</span><select name="kind"><option value="company" ${row.kind!=='person'?'selected':''}>Entreprise</option><option value="person" ${row.kind==='person'?'selected':''}>Particulier</option></select></label>
+        <fieldset class="crm-kind-choice full"><legend>Type de prospect</legend>
+          <label><input id="crm-prospect-kind-company" type="radio" name="kind" value="company" ${kind==='company'?'checked':''} onchange="PilozCRM.toggleProspectKind('company')"><span>Professionnel<small>Entreprise, association ou organisation</small></span></label>
+          <label><input id="crm-prospect-kind-person" type="radio" name="kind" value="person" ${kind==='person'?'checked':''} onchange="PilozCRM.toggleProspectKind('person')"><span>Particulier<small>Personne physique</small></span></label>
+        </fieldset>
         <label class="crm-field"><span>Statut</span><select name="crm_status">${statusOptions.map(([value,label])=>`<option value="${value}" ${(row.crm_status||'new')===value?'selected':''}>${label}</option>`).join('')}</select></label>
-        <label class="crm-field full"><span>Raison sociale / nom *</span><input name="legal_name" required value="${esc(row.legal_name||'')}"></label>
-        <label class="crm-field"><span>Nom commercial</span><input name="trade_name" value="${esc(row.trade_name||'')}"></label>
-        <label class="crm-field"><span>Contact principal</span><input name="contact_name" value="${esc(row.contact_name||'')}"></label>
-        <label class="crm-field"><span>Prénom</span><input name="first_name" value="${esc(row.first_name||'')}"></label>
-        <label class="crm-field"><span>Nom</span><input name="last_name" value="${esc(row.last_name||'')}"></label>
+        <div class="crm-prospect-kind-panel full" data-prospect-company>
+          <label class="crm-field full crm-company-lookup"><span>Recherche officielle INPI / INSEE</span><input id="crm-prospect-company-search" type="search" autocomplete="off" placeholder="Nom de l’entreprise, SIREN ou SIRET" oninput="PilozCRM.searchProspectCompany(this.value)"><small>Choisissez un établissement pour préremplir les informations officielles. La saisie manuelle reste possible.</small><div id="crm-prospect-company-results" class="crm-company-results" role="listbox"></div></label>
+          <label class="crm-field full"><span>Raison sociale *</span><input name="legal_name" value="${esc(row.legal_name||'')}"></label>
+          <label class="crm-field"><span>Nom commercial</span><input name="trade_name" value="${esc(row.trade_name||'')}"></label>
+          <label class="crm-field"><span>Forme juridique</span><input name="legal_form" value="${esc(row.legal_form||'')}"></label>
+          <label class="crm-field"><span>SIREN</span><input name="siren" inputmode="numeric" value="${esc(row.siren||'')}"></label>
+          <label class="crm-field"><span>SIRET</span><input name="siret" inputmode="numeric" value="${esc(row.siret||'')}"></label>
+          <label class="crm-field"><span>Code APE / NAF</span><input name="ape_code" value="${esc(row.ape_code||'')}"></label>
+          <label class="crm-field"><span>Prénom du contact principal</span><input name="contact_first_name" autocomplete="given-name" value="${esc(row.first_name||'')}"></label>
+          <label class="crm-field"><span>Nom du contact principal</span><input name="contact_last_name" autocomplete="family-name" value="${esc(row.last_name||'')}"></label>
+        </div>
+        <div class="crm-prospect-kind-panel full" data-prospect-person ${kind==='person'?'':'hidden'}>
+          <label class="crm-field"><span>Civilité</span><select name="civility"><option value="">—</option><option value="M." ${row.civility==='M.'?'selected':''}>M.</option><option value="Mme" ${row.civility==='Mme'?'selected':''}>Mme</option></select></label>
+          <label class="crm-field"><span>Prénom *</span><input name="first_name" autocomplete="given-name" value="${esc(row.first_name||'')}"></label>
+          <label class="crm-field"><span>Nom *</span><input name="last_name" autocomplete="family-name" value="${esc(row.last_name||'')}"></label>
+        </div>
         <label class="crm-field"><span>E-mail</span><input name="email" type="email" value="${esc(row.email||'')}"></label>
         <label class="crm-field"><span>Téléphone</span><input name="phone_e164" type="tel" value="${esc(row.phone_e164||'')}"></label>
-        <label class="crm-field"><span>SIREN</span><input name="siren" value="${esc(row.siren||'')}"></label>
-        <label class="crm-field"><span>SIRET</span><input name="siret" value="${esc(row.siret||'')}"></label>
         <label class="crm-field full"><span>Adresse</span><input name="address_line_1" value="${esc(row.address_line_1||'')}"></label>
+        <label class="crm-field full"><span>Complément</span><input name="address_line_2" value="${esc(row.address_line_2||'')}"></label>
         <label class="crm-field"><span>Code postal</span><input name="postal_code" value="${esc(row.postal_code||'')}"></label>
         <label class="crm-field"><span>Ville</span><input name="city" value="${esc(row.city||'')}"></label>
+        <label class="crm-field"><span>Pays</span><input name="country_code" value="${esc(row.country_code||'FR')}" maxlength="2"></label>
         <label class="crm-field"><span>Source</span><select name="source_id"><option value="">Non renseignée</option>${(configuration.sources||[]).map(source=>`<option value="${source.id}" ${source.id===row.crm_source_id?'selected':''}>${esc(source.name)}</option>`).join('')}</select></label>
         <label class="crm-field"><span>Responsable</span><select name="assigned_user_id"><option value="">Moi</option>${memberOptions(row.assigned_user_id)}</select></label>
       </form>
-    `,`${button('Annuler','PilozCRM.closeDrawer()')}${button('Enregistrer',`PilozCRM.saveProspect('${esc(id)}')`,'primary')}`);
+    `,`${button('Annuler','PilozCRM.closeDrawer()')}${button(id?'Enregistrer':'Créer le prospect',`PilozCRM.saveProspect('${esc(id)}')`,'primary','id="crm-prospect-submit" data-training-prospect-submit')}`);
+    crm.toggleProspectKind(kind);
   }
 
   async function saveProspect(id=''){
     const form=document.getElementById('crm-prospect-form');
     if(!form?.reportValidity()||ui.busy)return;
+    const raw=formObject(form);
+    const professional=raw.kind==='company';
+    const payload={
+      ...raw,
+      legal_name:professional?String(raw.legal_name||'').trim()||null:null,
+      trade_name:professional?raw.trade_name||null:null,
+      legal_form:professional?raw.legal_form||null:null,
+      siren:professional?raw.siren||null:null,
+      siret:professional?raw.siret||null:null,
+      ape_code:professional?raw.ape_code||null:null,
+      civility:professional?null:raw.civility||null,
+      first_name:professional?String(raw.contact_first_name||'').trim()||null:String(raw.first_name||'').trim()||null,
+      last_name:professional?String(raw.contact_last_name||'').trim()||null:String(raw.last_name||'').trim()||null,
+      contact_name:professional?[raw.contact_first_name,raw.contact_last_name].map(value=>String(value||'').trim()).filter(Boolean).join(' ')||null:[raw.first_name,raw.last_name].map(value=>String(value||'').trim()).filter(Boolean).join(' ')||null
+    };
+    delete payload.contact_first_name;
+    delete payload.contact_last_name;
+    if(professional&&!payload.legal_name){message('Renseignez ou recherchez la raison sociale.');return;}
+    if(!professional&&(!payload.first_name||!payload.last_name)){message('Renseignez le prénom et le nom du particulier.');return;}
     ui.busy=true;
     try{
-      const payload=formObject(form);
       const result=id
         ?await api().rpc('update_crm_prospect',{target_prospect_id:id,target_payload:payload})
         :await api().rpc('create_crm_prospect',{target_payload:payload});
