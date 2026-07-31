@@ -1092,12 +1092,24 @@
     return ui.detail.get(id);
   }
   function toggleCoordinateKind(kind) {
-    document
-      .querySelector("[data-professional]")
-      ?.toggleAttribute("hidden", kind !== "company");
-    document
-      .querySelector("[data-person]")
-      ?.toggleAttribute("hidden", kind !== "person");
+    const professional = kind === "company",
+      form = document.getElementById("client-coordinates-form"),
+      companyPanel = form?.querySelector("[data-professional]"),
+      personPanel = form?.querySelector("[data-person]");
+    companyPanel?.toggleAttribute("hidden", !professional);
+    personPanel?.toggleAttribute("hidden", professional);
+    companyPanel
+      ?.querySelectorAll("input,select,textarea")
+      .forEach((node) => (node.disabled = !professional));
+    personPanel
+      ?.querySelectorAll("input,select,textarea")
+      .forEach((node) => (node.disabled = professional));
+    if (form?.elements.legal_name)
+      form.elements.legal_name.required = professional;
+    if (form?.elements.first_name)
+      form.elements.first_name.required = !professional;
+    if (form?.elements.last_name)
+      form.elements.last_name.required = !professional;
   }
   function preferencesForm(id, pref, c, state, data = { extra: {} }) {
     const coordinateData = entryFor(id)?.tabs.get("coordinates") ||
