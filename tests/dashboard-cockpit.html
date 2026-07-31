@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tests cockpit PILOZ</title>
 <link rel="stylesheet" href="../assets/css/modern-erp.css">
 <link rel="stylesheet" href="../assets/css/dashboard-cockpit.css">
@@ -57,8 +58,11 @@ window.PilozCommercialWorkspace={openClient:id=>calls.push({name:'openClient',id
   check('valeurs financières serveur affichées',main.textContent.includes('42 000')&&main.textContent.includes('31 200')&&main.textContent.includes('8 450'));
   check('aucun undefined ou null visible',!main.textContent.includes('undefined')&&!main.textContent.includes('null'));
   check('graphique analytique et alternative accessible',document.querySelectorAll('.cockpit-chart-line').length===2&&!!document.querySelector('.cockpit-chart-table table'));
+  check('courbes lissées enrichies par des zones colorées',document.querySelectorAll('.cockpit-chart-area').length===2&&document.querySelectorAll('.cockpit-chart-line')[0]?.getAttribute('d')?.includes(' C '));
+  check('échelle monétaire et pic du graphique visibles',document.querySelectorAll('.cockpit-axis-value').length===5&&!!document.querySelector('.cockpit-chart-peak'));
   check('prévision non garantie explicitée',main.textContent.includes('Montants attendus, non garantis'));
   check('prévisions semaine et mois affichées',main.textContent.includes('Semaine prochaine')&&main.textContent.includes('Mois prochain'));
+  check('barres prévisionnelles proportionnelles',document.querySelectorAll('.cockpit-forecast-bars i[style*="--forecast-width"]').length===3);
   check('actions prioritaires concrètes',main.textContent.includes('FAC-2026-0042')&&main.textContent.includes('Relancer'));
   check('notifications limitées et blocs métier',document.querySelectorAll('.cockpit-notifications article').length===1&&main.textContent.includes('Articles et main d’œuvre'));
   check('échéances avec actions directes',document.querySelectorAll('.cockpit-due-list article>div button').length===2&&main.textContent.includes('Retard moyen'));

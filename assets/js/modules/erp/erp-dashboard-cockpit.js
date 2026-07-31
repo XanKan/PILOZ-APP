@@ -257,10 +257,26 @@
       return`<button type="button" class="cockpit-pulse-card tone-${metricTones[key]||'ocean'}" onclick="PilozDashboardCockpit.navigate('${definition.route}')" title="${esc(definition.definition)}"><i>${icon(metricIcons[key])}</i><span><small>${esc(definition.label)}</small><strong>${metricValue(key,payload)}</strong><em>${esc(metricContext(key,payload))}</em></span></button>`;
     }).join('')}</div></section>`;
   }
-  function pointPath(points,key,width,height,min,max){
-    if(!points.length)return'';
+  function chartCoordinates(points,key,width,height,min,max){
     const range=Math.max(1,max-min);
-    return points.map((point,index)=>`${index?'L':'M'} ${(index/(Math.max(1,points.length-1))*width).toFixed(1)} ${(height-((number(point[key])-min)/range*height)).toFixed(1)}`).join(' ');
+    return points.map((point,index)=>({
+      x:index/(Math.max(1,points.length-1))*width,
+      y:height-((number(point[key])-min)/range*height),
+      value:number(point[key])
+    }));
+  }
+  function smoothChartPath(coordinates){
+    if(!coordinates.length)return'';
+    if(coordinates.length===1)return`M ${coordinates[0].x.toFixed(1)} ${coordinates[0].y.toFixed(1)}`;
+    return coordinates.slice(1).reduce((path,current,index)=>{
+      const previous=coordinates[index],control=(previous.x+current.x)/2;
+      return`${path} C ${control.toFixed(1)} ${previous.y.toFixed(1)}, ${control.toFixed(1)} ${current.y.toFixed(1)}, ${current.x.toFixed(1)} ${current.y.toFixed(1)}`;
+    },`M ${coordinates[0].x.toFixed(1)} ${coordinates[0].y.toFixed(1)}`);
+  }
+  function chartAreaPath(coordinates,height){
+    if(!coordinates.length)return'';
+    const first=coordinates[0],last=coordinates[coordinates.length-1];
+    return`${smoothChartPath(coordinates)} L ${last.x.toFixed(1)} ${height} L ${first.x.toFixed(1)} ${height} Z`;
   }
   function chartSeries(){
     if(ui.chartMode==='invoiced')return[['invoiced','Facturé']];
@@ -272,14 +288,21 @@
   function renderChart(payload){
     const points=Array.isArray(payload.timeseries)?payload.timeseries:[],summary=payload.summary,currency=summary.currency||'EUR';
     if(!points.length||!points.some(point=>chartSeries().some(([key])=>number(point[key])!==0)))return`<section class="cockpit-chart-panel"><header><div><span>Analyse</span><h2>Performance de l’activité</h2></div>${chartControls(summary)}</header><div class="cockpit-chart-empty"><b>Aucune facture sur cette période.</b><button onclick="PilozDashboardCockpit.setPeriod('current_year')">Voir l’année en cours</button></div>${renderPerformanceSummary(summary)}</section>`;
-    const width=820,height=250,series=chartSeries().filter(([key])=>key!=='margin'||summary.permissions?.margin),chartValues=points.flatMap(point=>series.map(([key])=>number(point[key]))),min=Math.min(0,...chartValues),max=Math.max(0,...chartValues),range=Math.max(1,max-min);
+    const width=800,height=224,left=66,series=chartSeries().filter(([key])=>key!=='margin'||summary.permissions?.margin),chartValues=points.flatMap(point=>series.map(([key])=>number(point[key]))),min=Math.min(0,...chartValues),max=Math.max(0,...chartValues),range=Math.max(1,max-min);
     const labels=[0,Math.floor((points.length-1)/2),points.length-1].filter((value,index,array)=>array.indexOf(value)===index);
-    const colors=['var(--primary,#0b9d91)','var(--cockpit-navy,#102a4c)','var(--cockpit-amber,#d28b20)'];
-    const paths=series.map(([key,label],index)=>`<path class="cockpit-chart-line line-${key}" style="--line:${colors[index]}" d="${pointPath(points,key,width,height,min,max)}" vector-effect="non-scaling-stroke"><title>${esc(label)}</title></path>`).join('');
-    const dots=points.map((point,index)=>series.map(([key,label],seriesIndex)=>{const x=index/(Math.max(1,points.length-1))*width,y=height-((number(point[key])-min)/range*height),details=[`${date(point.date)} — ${label} : ${money(point[key],currency)}`,`${number(point.invoice_count)} facture(s)`];if(number(point.credits))details.push(`Avoirs : ${money(point.credits,currency)}`);if(number(point.corrections))details.push(`Corrections et remboursements : ${money(point.corrections,currency)}`);return`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" style="--dot:${colors[seriesIndex]}" tabindex="0"><title>${esc(details.join(' · '))}</title></circle>`;}).join('')).join('');
-    const grid=[0,.25,.5,.75,1].map(ratio=>`<line x1="0" y1="${(height*ratio).toFixed(1)}" x2="${width}" y2="${(height*ratio).toFixed(1)}"></line>`).join('');
+    const palette={invoiced:'#10a99b',collected:'#173f68',margin:'#d28a20',comparison:'#7868d4'};
+    const coordinates=Object.fromEntries(series.map(([key])=>[key,chartCoordinates(points,key,width,height,min,max)]));
+    const definitions=series.map(([key],index)=>`<linearGradient id="cockpit-area-${key}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${palette[key]||'#10a99b'}" stop-opacity="${index?'0.2':'0.3'}"/><stop offset="100%" stop-color="${palette[key]||'#10a99b'}" stop-opacity="0"/></linearGradient><filter id="cockpit-glow-${key}" x="-20%" y="-30%" width="140%" height="160%"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="${palette[key]||'#10a99b'}" flood-opacity=".2"/></filter>`).join('');
+    const areas=series.map(([key])=>`<path class="cockpit-chart-area area-${key}" d="${chartAreaPath(coordinates[key],height)}" fill="url(#cockpit-area-${key})"></path>`).join('');
+    const paths=series.map(([key,label])=>`<path class="cockpit-chart-line line-${key}" style="--line:${palette[key]||'#10a99b'}" d="${smoothChartPath(coordinates[key])}" filter="url(#cockpit-glow-${key})" vector-effect="non-scaling-stroke"><title>${esc(label)}</title></path>`).join('');
+    const dots=points.map((point,index)=>series.map(([key,label])=>{const coordinate=coordinates[key][index],details=[`${date(point.date)} — ${label} : ${money(point[key],currency)}`,`${number(point.invoice_count)} facture(s)`];if(number(point.credits))details.push(`Avoirs : ${money(point.credits,currency)}`);if(number(point.corrections))details.push(`Corrections et remboursements : ${money(point.corrections,currency)}`);return`<circle class="${index===points.length-1?'is-latest':''}" cx="${coordinate.x.toFixed(1)}" cy="${coordinate.y.toFixed(1)}" r="${index===points.length-1?'5':'3.5'}" style="--dot:${palette[key]||'#10a99b'}" tabindex="0"><title>${esc(details.join(' · '))}</title></circle>`;}).join('')).join('');
+    const yTicks=[0,.25,.5,.75,1].map(ratio=>({y:height*ratio,value:max-ratio*range}));
+    const grid=yTicks.map(row=>`<line x1="0" y1="${row.y.toFixed(1)}" x2="${width}" y2="${row.y.toFixed(1)}"></line>`).join('');
+    const yLabels=yTicks.map(row=>`<text class="cockpit-axis-value" x="-14" y="${(row.y+3).toFixed(1)}" text-anchor="end">${esc(compactMoney(row.value,currency))}</text>`).join('');
+    const primaryKey=series[0][0],peakIndex=coordinates[primaryKey].reduce((best,row,index,array)=>row.value>array[best].value?index:best,0),peak=coordinates[primaryKey][peakIndex],calloutX=Math.max(4,Math.min(width-116,peak.x-58));
+    const peakCallout=`<g class="cockpit-chart-peak" transform="translate(${calloutX.toFixed(1)} ${(Math.max(6,peak.y-43)).toFixed(1)})"><rect width="116" height="29" rx="9"></rect><text x="58" y="18" text-anchor="middle">Pic · ${esc(compactMoney(peak.value,currency))}</text></g>`;
     const accessible=points.map(point=>`<tr><th>${date(point.date)}</th>${series.map(([key])=>`<td>${money(point[key],currency)}</td>`).join('')}</tr>`).join('');
-    return`<section class="cockpit-chart-panel"><header><div><span>Analyse</span><h2>Performance de l’activité</h2><p>${esc(periodLabel(summary))}</p></div>${chartControls(summary)}</header><div class="cockpit-chart-legend">${series.map(([key,label],index)=>`<span><i style="--legend:${colors[index]}"></i>${esc(label)}</span>`).join('')}</div><div class="cockpit-chart" role="img" aria-label="Évolution de la performance sur la période"><svg viewBox="-8 -8 ${width+16} ${height+36}" preserveAspectRatio="none"><g class="cockpit-chart-grid">${grid}</g>${paths}${dots}${labels.map(index=>`<text x="${(index/(Math.max(1,points.length-1))*width).toFixed(1)}" y="${height+24}" text-anchor="${index===0?'start':index===points.length-1?'end':'middle'}">${esc(date(points[index]?.date))}</text>`).join('')}</svg></div><div class="cockpit-chart-table sr-only"><table><caption>Données du graphique de performance</caption><thead><tr><th>Date</th>${series.map(([,label])=>`<th>${esc(label)}</th>`).join('')}</tr></thead><tbody>${accessible}</tbody></table></div>${renderPerformanceSummary(summary)}</section>`;
+    return`<section class="cockpit-chart-panel"><header><div><span>Analyse</span><h2>Performance de l’activité</h2><p>${esc(periodLabel(summary))}</p></div>${chartControls(summary)}</header><div class="cockpit-chart-legend">${series.map(([key,label])=>`<span><i style="--legend:${palette[key]||'#10a99b'}"></i><span>${esc(label)} <b>${compactMoney(points.reduce((sum,point)=>sum+number(point[key]),0),currency)}</b></span></span>`).join('')}</div><div class="cockpit-chart" role="img" aria-label="Évolution de la performance sur la période"><svg viewBox="0 -18 ${width+left+10} ${height+52}" preserveAspectRatio="xMidYMid meet"><defs>${definitions}</defs><g transform="translate(${left} 0)"><g class="cockpit-chart-grid">${grid}</g>${yLabels}${areas}${paths}${dots}${peakCallout}${labels.map(index=>`<text class="cockpit-axis-date" x="${(index/(Math.max(1,points.length-1))*width).toFixed(1)}" y="${height+28}" text-anchor="${index===0?'start':index===points.length-1?'end':'middle'}">${esc(date(points[index]?.date))}</text>`).join('')}</g></svg></div><div class="cockpit-chart-table sr-only"><table><caption>Données du graphique de performance</caption><thead><tr><th>Date</th>${series.map(([,label])=>`<th>${esc(label)}</th>`).join('')}</tr></thead><tbody>${accessible}</tbody></table></div>${renderPerformanceSummary(summary)}</section>`;
   }
   function chartControls(summary){
     const modes=[['performance','Facturé + encaissé'],['invoiced','Facturé'],['collected','Encaissé'],['comparison','Comparaison']];
@@ -315,12 +338,12 @@
   }
   function funnelLabel(key){return{draft:'Créés',sent:'Envoyés',pending:'En attente',accepted:'Acceptés',rejected:'Refusés',invoiced:'Facturés',expired:'Expirés',other:'Autres'}[key]||key;}
   function renderFunnel(data,summary){
-    const rows=data?.stages||[],max=Math.max(1,...rows.map(row=>number(row.count)));
-    return rows.length?`<div class="cockpit-funnel">${rows.map(row=>`<button onclick="PilozDashboardCockpit.navigate('sales/quotes','${row.key}')"><i style="--funnel:${Math.max(14,number(row.count)/max*100)}%"></i><span>${esc(funnelLabel(row.key))}</span><b>${number(row.count)}</b><small>${money(row.amount,summary.currency)}</small></button>`).join('')}</div><footer><span>Taux de transformation <b>${data.conversion_rate===null?'—':number(data.conversion_rate).toLocaleString('fr-FR',{maximumFractionDigits:1})+' %'}</b></span><span>En attente <b>${money(data.pending_amount,summary.currency)}</b></span><span>Acceptés <b>${money(data.accepted_amount,summary.currency)}</b></span><span>Expirent bientôt <b>${number(data.expiring_soon)}</b></span></footer>`:emptyBlock('Aucun devis sur cette période.');
+    const rows=data?.stages||[],max=Math.max(1,...rows.map(row=>number(row.count))),colors={draft:'#7e8ca0',sent:'#268fca',pending:'#d28a20',accepted:'#139c70',rejected:'#d76363',invoiced:'#7762c9',expired:'#b35d6f',other:'#557084'};
+    return rows.length?`<div class="cockpit-funnel">${rows.map(row=>`<button style="--stage-color:${colors[row.key]||colors.other}" onclick="PilozDashboardCockpit.navigate('sales/quotes','${row.key}')"><i style="--funnel:${Math.max(14,number(row.count)/max*100)}%"></i><span>${esc(funnelLabel(row.key))}</span><b>${number(row.count)}</b><small>${money(row.amount,summary.currency)}</small></button>`).join('')}</div><footer><span>Taux de transformation <b>${data.conversion_rate===null?'—':number(data.conversion_rate).toLocaleString('fr-FR',{maximumFractionDigits:1})+' %'}</b></span><span>En attente <b>${money(data.pending_amount,summary.currency)}</b></span><span>Acceptés <b>${money(data.accepted_amount,summary.currency)}</b></span><span>Expirent bientôt <b>${number(data.expiring_soon)}</b></span></footer>`:emptyBlock('Aucun devis sur cette période.');
   }
   function renderCrmPipeline(data,summary){
     const rows=data?.stages||[],max=Math.max(1,...rows.map(row=>number(row.amount)));
-    return rows.length?`<div class="cockpit-funnel">${rows.map(row=>`<button onclick="PilozDashboardCockpit.navigate('crm/pipeline')"><i style="--funnel:${Math.max(14,number(row.amount)/max*100)}%;background:${esc(row.color||'var(--primary)')}"></i><span>${esc(row.name)}</span><b>${number(row.count)}</b><small>${money(row.weighted,summary.currency)} pondéré</small></button>`).join('')}</div><footer><span>Pipeline total <b>${money(data.pipeline_total,summary.currency)}</b></span><span>Pipeline pondéré <b>${money(data.pipeline_weighted,summary.currency)}</b></span><span>Opportunités <b>${number(data.open_opportunities)}</b></span><span>À clôturer ce mois <b>${number(data.closing_this_month)}</b></span></footer>`:emptyBlock('Aucune opportunité ouverte.',`<button onclick="PilozDashboardCockpit.quick('opportunity')">Créer une opportunité</button>`);
+    return rows.length?`<div class="cockpit-funnel">${rows.map(row=>`<button style="--stage-color:${esc(row.color||'#0ca99b')}" onclick="PilozDashboardCockpit.navigate('crm/pipeline')"><i style="--funnel:${Math.max(14,number(row.amount)/max*100)}%"></i><span>${esc(row.name)}</span><b>${number(row.count)}</b><small>${money(row.weighted,summary.currency)} pondéré</small></button>`).join('')}</div><footer><span>Pipeline total <b>${money(data.pipeline_total,summary.currency)}</b></span><span>Pipeline pondéré <b>${money(data.pipeline_weighted,summary.currency)}</b></span><span>Opportunités <b>${number(data.open_opportunities)}</b></span><span>À clôturer ce mois <b>${number(data.closing_this_month)}</b></span></footer>`:emptyBlock('Aucune opportunité ouverte.',`<button onclick="PilozDashboardCockpit.quick('opportunity')">Créer une opportunité</button>`);
   }
   function documentTabs(data){
     const tabs=[['quote','Devis'],['invoice','Factures'],['credit_note','Avoirs'],['purchase_invoice','Achats']];
