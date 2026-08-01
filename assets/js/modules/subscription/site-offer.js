@@ -29,15 +29,32 @@
   if(!result?.claimed)throw new Error('La confirmation Stripe n’a pas pu être rattachée au compte.');
   writeClaim(null);clear();const params=new URLSearchParams(location.search);['mode','plan','billing','source'].forEach(key=>params.delete(key));history.replaceState(null,'',location.pathname+(params.toString()?`?${params}`:'')+location.hash);return result;
  }
- async function verifyLicenseAccess(){
-  if(!global.PilozRuntime?.session||!global.PilozERP)throw Object.assign(new Error('La session Piloz n’est pas encore prête.'),{code:'session_not_ready'});
-  const result=await global.PilozERP.invoke('license-access',{});
-  if(!result?.allowed){
-   const error=new Error('Aucune licence Piloz active n’est associée à ce compte. Souscrivez une offre ou contactez l’administrateur de votre entreprise.');
-   error.code=result?.reason||'license_required';throw error;
+ function publishLicenseContext(status,result=null,error=null){
+  global.PilozLicenseContextStatus=status;
+  if(result)global.PilozLicenseContext=result;
+  const detail={status,result,errorCode:String(error?.code||'')};
+  if(typeof global.PilozLicenseContextChanged==='function'){
+   try{global.PilozLicenseContextChanged(detail);}catch(callbackError){console.warn('[PILOZ Licence] Synchronisation de l\'interface impossible',{message:callbackError?.message||String(callbackError)});}
   }
-  global.PilozLicenseContext=result;
-  return result;
+  if(typeof global.dispatchEvent==='function'&&typeof global.CustomEvent==='function'){
+   try{global.dispatchEvent(new global.CustomEvent('piloz:license-context-ready',{detail}));}catch{}
+  }
+ }
+ async function verifyLicenseAccess(){
+  publishLicenseContext('loading');
+  try{
+   if(!global.PilozRuntime?.session||!global.PilozERP)throw Object.assign(new Error('La session Piloz n’est pas encore prête.'),{code:'session_not_ready'});
+   const result=await global.PilozERP.invoke('license-access',{});
+   if(!result?.allowed){
+    const error=new Error('Aucune licence Piloz active n’est associée à ce compte. Souscrivez une offre ou contactez l’administrateur de votre entreprise.');
+    error.code=result?.reason||'license_required';throw error;
+   }
+   publishLicenseContext('ready',result);
+   return result;
+  }catch(error){
+   publishLicenseContext('error',null,error);
+   throw error;
+  }
  }
  function hasPendingCheckout(){return!!readClaim();}
  function routeAfterAuth(){

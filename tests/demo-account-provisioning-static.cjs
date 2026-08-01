@@ -40,6 +40,14 @@ const phase1Source = fs.readFileSync(
   path.join(root, "assets", "js", "phase1-foundation.js"),
   "utf8",
 );
+const onboardingSource = fs.readFileSync(
+  path.join(root, "assets", "js", "modules", "onboarding", "professional-onboarding.js"),
+  "utf8",
+);
+const siteOfferSource = fs.readFileSync(
+  path.join(root, "assets", "js", "modules", "subscription", "site-offer.js"),
+  "utf8",
+);
 
 assert.match(source, /action\s*===\s*["']demo_accounts\.create["']/);
 assert.match(source, /action\s*===\s*["']demo_accounts\.list["']/);
@@ -98,5 +106,13 @@ assert.match(appShell, /user_metadata:j\.user\?\.user_metadata\|\|\{\}/);
 assert.match(phase1Source, /function phase1IsDemoSession/);
 assert.match(phase1Source, /PilozLicenseContext\?\.demoAccount===true/);
 assert.match(phase1Source, /!phase1IsDemoSession\(\)/);
+assert.match(phase1Source, /\['idle','loading'\]/);
+assert.match(onboardingSource, /function demoAccountBypassesOnboarding/);
+assert.match(onboardingSource, /piloz:license-context-ready/);
+assert.match(siteOfferSource, /publishLicenseContext\('loading'\)/);
+assert.match(siteOfferSource, /publishLicenseContext\('ready',result\)/);
+assert.match(appShell, /phase1-foundation\.js\?v=20260801\.3/);
+assert.match(appShell, /site-offer\.js\?v=20260801\.1/);
+assert.match(appShell, /professional-onboarding\.js\?v=20260801\.1/);
 
 console.log("demo account provisioning static checks passed");

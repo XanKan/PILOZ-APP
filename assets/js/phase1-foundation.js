@@ -21,7 +21,7 @@ function phase1IsDemoSession(){
  const licensedDemo=window.PilozLicenseContext?.demoAccount===true;
  return licensedDemo||(typeof window.PilozSessionIsDemo==='function'&&window.PilozSessionIsDemo(SES));
 }
-function phase1NeedsSetup(){return!!SES&&!phase1IsDemoSession()&&!phase1StatusReport().completed;}
+function phase1NeedsSetup(){const licensePending=['idle','loading'].includes(String(window.PilozLicenseContextStatus||'idle'));return!!SES&&!licensePending&&!phase1IsDemoSession()&&!phase1StatusReport().completed;}
 function phase1FirstIncompleteStep(){const s=phase1StatusReport();if(!s.identity)return 1;if(!s.fiscal)return 2;if(!s.documents)return 3;if(!s.banking)return 4;return 5;}
 function phase1HashForView(view){const map={accueil:'dashboard',suivi:'pipeline',semaine:'relances',pilotage:'reports',params:'settings',quotes:'sales/quotes',invoices:'sales/invoices',contracts:'sales/contracts','sales-clients':'sales/clients',catalog:'sales/catalog','due-dates':'sales/due-dates',backoffice:'backoffice',factu:'sales/quotes'};return map[view]||'dashboard';}
 function phase1ViewFromHash(){const raw=(location.hash||'').replace(/^#/,'');const map={'dashboard':'accueil','pipeline':'suivi','relances':'semaine','reports':'pilotage','settings':'params','sales/quotes':'quotes','sales/invoices':'invoices','sales/contracts':'contracts','sales/clients':'sales-clients','sales/catalog':'catalog','sales/due-dates':'due-dates','backoffice':'backoffice'};return map[raw]||'';}

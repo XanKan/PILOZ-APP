@@ -13,6 +13,6 @@ assert(!onboarding.includes('Étape 7 — Réception des factures fournisseurs')
 assert(!onboarding.includes('professionalActivateElectronicInvoicing')&&!onboarding.includes('professionalLoadElectronicInvoicing'),'Aucune activation électronique ne doit être déclenchée depuis l’onboarding.');
 assert(!onboarding.includes('electronicInvoicingDeferred'),'L’onboarding ne doit plus stocker de report de facturation électronique.');
 assert(styles.includes('.onboarding-training-topics')&&styles.includes('.onboarding-training-actions'),'La nouvelle étape doit disposer de sa mise en page responsive.');
-assert(index.includes('professional-onboarding.js?v=20260731.3')&&index.includes('phase1-foundation.css?v=20260731.6'),'Le cache des ressources modifiées doit être invalidé.');
+assert(index.includes('professional-onboarding.js?v=20260801.1')&&index.includes('phase1-foundation.css?v=20260731.6'),'Le cache des ressources modifiées doit être invalidé.');
 
 console.log('PASS onboarding training static');
