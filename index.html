@@ -510,7 +510,11 @@ function sessionIdentityFromToken(token){
     if(!part)return{};
     const normalized=part.replace(/-/g,'+').replace(/_/g,'/').padEnd(Math.ceil(part.length/4)*4,'=');
     const payload=JSON.parse(decodeURIComponent(Array.from(atob(normalized),char=>'%'+char.charCodeAt(0).toString(16).padStart(2,'0')).join('')));
-    return {user_id:isValidUuid(payload.sub)?payload.sub:'',email:String(payload.email||'')};
+    return {
+      user_id:isValidUuid(payload.sub)?payload.sub:'',
+      email:String(payload.email||''),
+      user_metadata:payload.user_metadata&&typeof payload.user_metadata==='object'?payload.user_metadata:{}
+    };
   }catch(error){return{};}
 }
 function hydrateSessionIdentity(session){
@@ -518,9 +522,15 @@ function hydrateSessionIdentity(session){
   const identity=sessionIdentityFromToken(session.access_token);
   if(!isValidUuid(session.user_id)&&identity.user_id)session.user_id=identity.user_id;
   if(!session.email&&identity.email)session.email=identity.email;
+  if(!session.user_metadata||typeof session.user_metadata!=='object')session.user_metadata=identity.user_metadata||{};
   return session;
 }
+function authSessionIsDemo(session=SES){
+  const metadata=session?.user_metadata||sessionIdentityFromToken(session?.access_token).user_metadata||{};
+  return metadata.demo_account===true||['true','1','yes'].includes(String(metadata.demo_account||'').toLowerCase());
+}
 window.PilozSessionIdentityFromToken=sessionIdentityFromToken;
+window.PilozSessionIsDemo=authSessionIsDemo;
 /* ⚙️ CONFIGURATION INTÉGRÉE — pour que TOUS les appareils soient pré-configurés,
    collez ici la clé « anon public » de votre projet Supabase (Settings → API).
    Elle commence par eyJ. Tant qu'elle n'est pas renseignée, la configuration manuelle reste possible. */
@@ -642,7 +652,7 @@ async function rafraichir(){
       {method:'POST', headers:{'apikey':CFG.key,'Content-Type':'application/json'}, body:JSON.stringify({refresh_token:SES.refresh_token})});
     if(!r.ok) return false;
     const j = await r.json();
-    SES = {access_token:j.access_token, refresh_token:j.refresh_token, user_id:j.user.id, email:j.user.email};
+    SES = {access_token:j.access_token, refresh_token:j.refresh_token, user_id:j.user.id, email:j.user.email, user_metadata:j.user?.user_metadata||{}};
     lsSet('piloz_ses', SES); return true;
   }catch(e){ return false; }
 }
@@ -2832,7 +2842,7 @@ async function authLogin(){
     const r = await fetch(CFG.url.replace(/\/$/,'') + '/auth/v1/token?grant_type=password', {method:'POST', headers:{'apikey':CFG.key,'Content-Type':'application/json'}, body:JSON.stringify({email:loginDraft.email.trim(), password:loginDraft.password})});
     const j = await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(j.msg || j.error_description || j.message || 'Identifiants refusés.');
-    SES = {access_token:j.access_token, refresh_token:j.refresh_token, user_id:j.user.id, email:j.user.email};
+    SES = {access_token:j.access_token, refresh_token:j.refresh_token, user_id:j.user.id, email:j.user.email, user_metadata:j.user?.user_metadata||{}};
     window.PilozSiteOffer?.captureUser?.(j.user);
     if(await authSyncSession({remember:loginDraft.remember})===false)return false;
     history.replaceState(null, '', `${location.pathname}#dashboard`);
@@ -2874,7 +2884,7 @@ async function authSignupFinish(){
       pageAuth();
       return false;
     }
-    SES = {access_token:j.access_token, refresh_token:j.refresh_token, user_id:(j.user&&j.user.id)||'', email:(j.user&&j.user.email)||signupDraft.email.trim()};
+    SES = {access_token:j.access_token, refresh_token:j.refresh_token, user_id:(j.user&&j.user.id)||'', email:(j.user&&j.user.email)||signupDraft.email.trim(), user_metadata:j.user?.user_metadata||{}};
     window.PilozSiteOffer?.captureUser?.(j.user);
     clearSignupDraft();
     if(await authSyncSession({remember:true, onboarding})===false)return false;
@@ -3028,7 +3038,7 @@ async function boActif(uid, actif){
   toast(actif?'Compte réactivé':'Compte suspendu'); render();
 }
 </script>
-<script src="assets/js/phase1-foundation.js?v=20260729.4"></script>
+<script src="assets/js/phase1-foundation.js?v=20260801.1"></script>
 <script src="assets/js/api/erp-api.js?v=20260731.1"></script>
 <script src="assets/js/utils/erp-calculations.js?v=20260721.10"></script>
 <script src="assets/js/domain/fiscal-domain.js?v=20260726.2"></script>

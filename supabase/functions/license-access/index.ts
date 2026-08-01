@@ -42,24 +42,35 @@ function accessFor(subscription:any){
 
 async function repairDemoCompany(admin:any,companyId:string,userId:string){
  const {data:company,error:companyError}=await admin.from("companies").select("id,admin_tags").eq("id",companyId).maybeSingle();
- if(companyError||!company||!Array.isArray(company.admin_tags)||!company.admin_tags.includes("demo"))return;
+ if(companyError)throw companyError;
+ const {data:authUser,error:authUserError}=await admin.auth.admin.getUserById(userId);
+ if(authUserError)throw authUserError;
+ const metadata=authUser.user?.user_metadata||{};
+ const metadataDemo=metadata.demo_account===true||["true","1","yes"].includes(String(metadata.demo_account||"").toLowerCase());
+ const taggedDemo=Boolean(company&&Array.isArray(company.admin_tags)&&company.admin_tags.includes("demo"));
+ if(!company||(!taggedDemo&&!metadataDemo))return;
+ if(metadataDemo&&!taggedDemo){
+  const demoTags=Array.from(new Set([...(Array.isArray(company.admin_tags)?company.admin_tags:[]),"demo","seeded"]));
+  const {error:tagError}=await admin.from("companies").update({admin_tags:demoTags}).eq("id",companyId);
+  if(tagError)throw tagError;
+ }
  const now=new Date().toISOString();
  const {error:documentSettingsError}=await admin.from("company_document_settings").upsert(
   {company_id:companyId,quote_prefix:"DEV-DEMO",invoice_prefix:"FAC-DEMO"},
-  {onConflict:"company_id",ignoreDuplicates:true}
+  {onConflict:"company_id"}
  );
  if(documentSettingsError)throw documentSettingsError;
  const {error:documentPrefixError}=await admin.from("company_document_settings").update({quote_prefix:"DEV-DEMO",invoice_prefix:"FAC-DEMO"}).eq("company_id",companyId);
  if(documentPrefixError)throw documentPrefixError;
- const {error:settingsError}=await admin.from("company_settings").update({
+ const {data:completedSettings,error:settingsError}=await admin.from("company_settings").update({
   legal_name:"Horizon Conseil (démonstration)",trade_name:"Horizon Conseil",siren:"123456789",siret:"12345678900012",
   address_line1:"18 avenue des Ateliers",postal_code:"85000",city:"La Roche-sur-Yon",country:"France",country_code:"FR",
   email:"contact@horizon-conseil.example",phone_e164:"+33100000000",currency:"EUR",language:"fr",subject_to_vat:true,
   default_vat_rate:20,onboarding_step:7,onboarding_completed_at:now
- }).eq("company_id",companyId);
- if(settingsError)throw settingsError;
- const {error:preferencesError}=await admin.from("user_preferences").update({company_id:companyId,onboarding_completed:true}).eq("user_id",userId);
- if(preferencesError)throw preferencesError;
+ }).eq("company_id",companyId).select("company_id,onboarding_step,onboarding_completed_at").maybeSingle();
+ if(settingsError||!completedSettings)throw settingsError||new Error("demo_company_settings_missing");
+ const {data:completedPreferences,error:preferencesError}=await admin.from("user_preferences").upsert({user_id:userId,company_id:companyId,onboarding_completed:true},{onConflict:"user_id"}).select("user_id,onboarding_completed").maybeSingle();
+ if(preferencesError||!completedPreferences?.onboarding_completed)throw preferencesError||new Error("demo_user_preferences_incomplete");
  const {data:existingClients,error:clientsLookupError}=await admin.from("clients").select("id,legal_name,first_name,last_name").eq("company_id",companyId);
  if(clientsLookupError)throw clientsLookupError;
  const clientNames=new Set((existingClients||[]).map((client:any)=>client.legal_name||`${client.first_name||""} ${client.last_name||""}`.trim()));

@@ -23,8 +23,17 @@ const repairSeedMigration = fs.readFileSync(
   path.join(root, "supabase", "migrations", "202608010130_repair_demo_seed_data.sql"),
   "utf8",
 );
+const identityRepairMigration = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "202608010131_repair_demo_account_identity_and_onboarding.sql"),
+  "utf8",
+);
 const licenseSource = fs.readFileSync(
   path.join(root, "supabase", "functions", "license-access", "index.ts"),
+  "utf8",
+);
+const appShell = fs.readFileSync(path.join(root, "index.html"), "utf8");
+const phase1Source = fs.readFileSync(
+  path.join(root, "assets", "js", "phase1-foundation.js"),
   "utf8",
 );
 
@@ -38,6 +47,8 @@ assert.match(source, /admin_tags:\s*\[\s*["']demo["']\s*,\s*["']seeded["']\s*\]/
 assert.match(source, /status:\s*["']trialing["']\s*,\s*trial_days:\s*14/);
 assert.match(source, /siret:\s*["']12345678900012["']/);
 assert.match(source, /quote_prefix:\s*["']DEV-DEMO["']/);
+assert.match(source, /user_preferences"\)\.upsert\(\{user_id:createdUserId,company_id:createdCompanyId,onboarding_completed:true\}/);
+assert.match(source, /completedSettings/);
 assert.match(source, /metadata:\s*\{\s*demo:\s*true\s*\}/);
 assert.match(source, /privileged\(\)\.rpc\(["']append_platform_admin_audit_service["']/);
 assert.match(source, /target_actor_user_id:\s*context\.user_id/);
@@ -59,10 +70,22 @@ assert.match(completionMigration, /onboarding_completed_at\s*=\s*coalesce/i);
 assert.match(repairSeedMigration, /Nova Bâtiment/);
 assert.match(repairSeedMigration, /DEMO-SRV-001/);
 assert.match(repairSeedMigration, /admin_tags\s*@>\s*array\[['"]demo['"]\]/i);
+assert.match(identityRepairMigration, /raw_user_meta_data->>'demo_account'/i);
+assert.match(identityRepairMigration, /onboarding_step\s*=\s*7/i);
+assert.match(identityRepairMigration, /on conflict\(user_id\) do update/i);
 assert.match(licenseSource, /repairDemoCompany/);
+assert.match(licenseSource, /auth\.admin\.getUserById\(userId\)/);
+assert.match(licenseSource, /metadata\.demo_account/);
+assert.match(licenseSource, /user_preferences"\)\.upsert\(\{user_id:userId,company_id:companyId,onboarding_completed:true\}/);
 assert.match(licenseSource, /siret:\s*["']12345678900012["']/);
 assert.match(licenseSource, /Nova Bâtiment/);
 assert.match(licenseSource, /DEMO-SRV-001/);
 assert.match(licenseSource, /metadata:\s*\{\s*demo:\s*true\s*\}/);
+assert.match(appShell, /user_metadata:payload\.user_metadata/);
+assert.match(appShell, /function authSessionIsDemo/);
+assert.match(appShell, /window\.PilozSessionIsDemo=authSessionIsDemo/);
+assert.match(appShell, /user_metadata:j\.user\?\.user_metadata\|\|\{\}/);
+assert.match(phase1Source, /function phase1IsDemoSession/);
+assert.match(phase1Source, /!phase1IsDemoSession\(\)/);
 
 console.log("demo account provisioning static checks passed");

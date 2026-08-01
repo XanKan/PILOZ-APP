@@ -16,7 +16,14 @@ vm.runInContext(index.slice(helperStart,helperEnd),helperContext);
 const userId='1586bdf5-b4bb-46ed-a5f1-cdfffd330fa9';
 const payload=Buffer.from(JSON.stringify({sub:userId,email:'invite@example.test'})).toString('base64url');
 const token=`header.${payload}.signature`;
-assert.deepEqual(JSON.parse(JSON.stringify(helperContext.window.PilozSessionIdentityFromToken(token))),{user_id:userId,email:'invite@example.test'});
+assert.deepEqual(JSON.parse(JSON.stringify(helperContext.window.PilozSessionIdentityFromToken(token))),{user_id:userId,email:'invite@example.test',user_metadata:{}});
+const demoPayload=Buffer.from(JSON.stringify({sub:userId,email:'demo@example.test',user_metadata:{demo_account:true}})).toString('base64url');
+const demoToken=`header.${demoPayload}.signature`;
+assert.deepEqual(JSON.parse(JSON.stringify(helperContext.window.PilozSessionIdentityFromToken(demoToken))),{
+  user_id:userId,
+  email:'demo@example.test',
+  user_metadata:{demo_account:true}
+},'Le marqueur de compte demo doit survivre a la restauration de session.');
 
 const calls=[];
 const storage=new Map();
