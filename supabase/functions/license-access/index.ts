@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { seedDemoCommercialData } from "../_shared/demo-commercial-seed.ts";
 
 const allowedOrigins=new Set(["https://app.piloz.fr","http://localhost:4173","http://localhost:5173"]);
 
@@ -117,6 +118,7 @@ async function repairDemoCompany(admin:any,companyId:string,userId:string){
   ]);
   if(activitiesError)throw activitiesError;
  }
+ await seedDemoCommercialData(admin,companyId,userId);
  return true;
 }
 

@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { DEMO_COMMERCIAL_SEED_VERSION, seedDemoCommercialData } from "../_shared/demo-commercial-seed.ts";
 
 type Body={action?:string;payload?:Record<string,unknown>};
 type AdminContext={id:string;user_id:string;role:string;status:string;first_name?:string;last_name?:string;email:string;mfa_required:boolean;aal:string;permissions:string[]};
@@ -159,9 +160,10 @@ Deno.serve(async req=>{
      {company_id:createdCompanyId,client_id:atelier?.id||null,activity_type:"email",subject:"Envoyer le compte rendu",description:"Activité terminée de démonstration.",scheduled_at:now.toISOString(),completed_at:now.toISOString(),assigned_user_id:createdUserId,created_by:createdUserId,metadata:{demo:true}}
     ]);
     if(activitiesError)throw activitiesError;
+    await seedDemoCommercialData(service,createdCompanyId,createdUserId);
     await sendDemoCredentialsEmail({to:ownerEmail,firstName,password});
     await audit("demo_account.create","company",createdCompanyId,createdCompanyId,null,{email:ownerEmail,trial_days:14,plan_key:plan.plan_key,seeded:true},reason);
-   return response(req,{company,ownerUserId:createdUserId,credentialsSent:true,trialDays:14,seedVersion:"2026-07-31",message:"Compte de démonstration créé. Les accès temporaires ont été envoyés par e-mail."},201);
+   return response(req,{company,ownerUserId:createdUserId,credentialsSent:true,trialDays:14,seedVersion:DEMO_COMMERCIAL_SEED_VERSION,message:"Compte de démonstration créé. Les accès temporaires ont été envoyés par e-mail."},201);
    }catch(error){
     if(createdCompanyId){
      await service.from("companies").update({platform_status:"suspended",suspension_level:"full",suspended_at:new Date().toISOString(),suspension_reason:"Annulation automatique après échec du provisionnement"}).eq("id",createdCompanyId);

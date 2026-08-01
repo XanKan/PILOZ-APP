@@ -35,6 +35,10 @@ const licenseSource = fs.readFileSync(
   path.join(root, "supabase", "functions", "license-access", "index.ts"),
   "utf8",
 );
+const commercialSeedSource = fs.readFileSync(
+  path.join(root, "supabase", "functions", "_shared", "demo-commercial-seed.ts"),
+  "utf8",
+);
 const appShell = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const phase1Source = fs.readFileSync(
   path.join(root, "assets", "js", "phase1-foundation.js"),
@@ -62,6 +66,8 @@ assert.match(source, /quote_prefix:\s*["']DEV-DEMO["']/);
 assert.match(source, /user_preferences"\)\.upsert\(\{user_id:createdUserId,company_id:createdCompanyId,onboarding_completed:true\}/);
 assert.match(source, /completedSettings/);
 assert.match(source, /metadata:\s*\{\s*demo:\s*true\s*\}/);
+assert.match(source, /seedDemoCommercialData\(service,createdCompanyId,createdUserId\)/);
+assert.match(source, /seedVersion:DEMO_COMMERCIAL_SEED_VERSION/);
 assert.match(source, /privileged\(\)\.rpc\(["']append_platform_admin_audit_service["']/);
 assert.match(source, /target_actor_user_id:\s*context\.user_id/);
 assert.doesNotMatch(source, /client\.rpc\(["']append_platform_admin_audit["']/);
@@ -99,6 +105,15 @@ assert.match(licenseSource, /siret:\s*["']12345678900012["']/);
 assert.match(licenseSource, /Nova Bâtiment/);
 assert.match(licenseSource, /DEMO-SRV-001/);
 assert.match(licenseSource, /metadata:\s*\{\s*demo:\s*true\s*\}/);
+assert.match(licenseSource, /seedDemoCommercialData\(admin,companyId,userId\)/);
+assert.match(commercialSeedSource, /DEMO_COMMERCIAL_SEED_VERSION/);
+assert.match(commercialSeedSource, /demo_seed_key/);
+assert.match(commercialSeedSource, /DEV-DEMO-1001/);
+assert.match(commercialSeedSource, /FAC-DEMO-2003/);
+assert.match(commercialSeedSource, /from\(["']payments["']\)/);
+assert.match(commercialSeedSource, /from\(["']opportunities["']\)/);
+assert.match(commercialSeedSource, /status:["']partially_paid["']/);
+assert.match(commercialSeedSource, /status:["']overdue["']/);
 assert.match(appShell, /user_metadata:payload\.user_metadata/);
 assert.match(appShell, /function authSessionIsDemo/);
 assert.match(appShell, /window\.PilozSessionIsDemo=authSessionIsDemo/);
