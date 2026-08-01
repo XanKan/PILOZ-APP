@@ -612,7 +612,7 @@
         : clientScoped
           ? "Cliquez pour afficher ou rechercher…"
           : "Saisissez au moins 2 caractères…";
-    return `<label class="aw-relation-field"><span>${esc(label)}</span><div class="aw-relation-control"><input type="hidden" name="${attr(name)}" value="${attr(value)}"><input type="hidden" name="${attr(name)}_type" value="${attr(selectedType)}"><input class="aw-relation-search" type="text" autocomplete="off" value="${attr(selectedLabel)}" data-client-scoped="${clientScoped ? "true" : "false"}" data-client-id="${attr(clientId)}" placeholder="${attr(placeholder)}" aria-label="Rechercher ${attr(label.toLowerCase())}" aria-haspopup="listbox" aria-expanded="false" ${disabled ? "disabled" : ""} oninput="PilozCRM.searchActivityRelation('${kind}','${name}',this.value)" onfocus="PilozCRM.openActivityRelation('${kind}','${name}')" onclick="PilozCRM.openActivityRelation('${kind}','${name}')"><button class="aw-relation-clear${value ? "" : " is-hidden"}" type="button" aria-label="Effacer la relation" onclick="event.preventDefault();event.stopPropagation();PilozCRM.clearActivityRelation('${name}')" ${disabled ? "disabled" : ""}>×</button><div class="aw-relation-results" id="aw-relation-results-${attr(name)}" role="listbox" hidden></div></div></label>`;
+    return `<label class="aw-relation-field"><span>${esc(label)}</span><div class="aw-relation-control"><input type="hidden" name="${attr(name)}" value="${attr(value)}"><input type="hidden" name="${attr(name)}_type" value="${attr(selectedType)}"><input class="aw-relation-search" type="text" autocomplete="off" value="${attr(selectedLabel)}" data-activity-relation-search="${attr(name)}" data-client-scoped="${clientScoped ? "true" : "false"}" data-client-id="${attr(clientId)}" placeholder="${attr(placeholder)}" aria-label="Rechercher ${attr(label.toLowerCase())}" aria-haspopup="listbox" aria-expanded="false" ${disabled ? "disabled" : ""} oninput="PilozCRM.searchActivityRelation('${kind}','${name}',this.value)" onfocus="PilozCRM.openActivityRelation('${kind}','${name}')" onclick="PilozCRM.openActivityRelation('${kind}','${name}')"><button class="aw-relation-clear${value ? "" : " is-hidden"}" type="button" aria-label="Effacer la relation" onclick="event.preventDefault();event.stopPropagation();PilozCRM.clearActivityRelation('${name}')" ${disabled ? "disabled" : ""}>×</button><div class="aw-relation-results" id="aw-relation-results-${attr(name)}" role="listbox" hidden></div></div></label>`;
   }
   function enterpriseFormBody(row = {}, detail = {}) {
     const types = ui.data?.types || [],
@@ -643,6 +643,13 @@
         <label class="wide"><span>Titre *</span><input name="subject" maxlength="180" value="${attr(row.subject || "")}" required placeholder="Ex. Relancer le devis avant vendredi"></label>
         <label class="wide"><span>Description</span><textarea name="description" rows="3" maxlength="10000" placeholder="Contexte, objectif et informations utiles">${esc(row.description || "")}</textarea></label>
       </div></section>
+      <details open><summary>Relations métier</summary><div class="aw-form-grid">
+        ${relationPicker("client", "client_id", "Client ou prospect", selectedClientId, row.entity_name || "", clientLink?.entity_type || "client")}
+        ${relationPicker("contact", "contact_id", "Contact du client", contactLink?.entity_id || row.contact_id || "", row.contact_name || "", "contact", selectedClientId)}
+        ${relationPicker("opportunity", "opportunity_id", "Opportunité du client", opportunityLink?.entity_id || row.opportunity_id || "", row.opportunity_name || "", "opportunity", selectedClientId)}
+        ${relationPicker("document", "document_id", "Devis ou facture du client", documentLink?.entity_id || row.document_id || "", row.document_number || "", documentLink?.entity_type || "document", selectedClientId)}
+        <input type="hidden" name="supplier_id" value="${attr(supplierLink?.entity_id || row.supplier_id || "")}">
+      </div></details>
       <section class="aw-form-section"><h3>Planification</h3><div class="aw-form-grid">
         <label><span>Début *</span><input name="starts_at" type="datetime-local" value="${attr(localInput(start))}" required></label>
         <label><span>Fin</span><input name="ends_at" type="datetime-local" value="${attr(localInput(row.ends_at))}"></label>
@@ -659,13 +666,6 @@
           .map(([id, label]) => option(id, label, row.priority || "normal"))
           .join("")}</select></label>
       </div></section>
-      <details open><summary>Relations métier</summary><div class="aw-form-grid">
-        ${relationPicker("client", "client_id", "Client ou prospect", selectedClientId, row.entity_name || "", clientLink?.entity_type || "client")}
-        ${relationPicker("contact", "contact_id", "Contact du client", contactLink?.entity_id || row.contact_id || "", row.contact_name || "", "contact", selectedClientId)}
-        ${relationPicker("opportunity", "opportunity_id", "Opportunité du client", opportunityLink?.entity_id || row.opportunity_id || "", row.opportunity_name || "", "opportunity", selectedClientId)}
-        ${relationPicker("document", "document_id", "Devis ou facture du client", documentLink?.entity_id || row.document_id || "", row.document_number || "", documentLink?.entity_type || "document", selectedClientId)}
-        <input type="hidden" name="supplier_id" value="${attr(supplierLink?.entity_id || row.supplier_id || "")}">
-      </div></details>
       <details><summary>Informations complémentaires</summary><div class="aw-form-grid">
         <label><span>Confidentialité</span><select name="confidentiality">${Object.entries(
           confidentialityLabels,
@@ -797,6 +797,30 @@
       .replace(/[\u0300-\u036f]/g, "")
       .toLocaleLowerCase("fr-FR");
   }
+  const TRAINING_ACTIVITY_PROSPECT_ID = "piloz-training-activity-prospect";
+  function isActivityTraining() {
+    return global.PilozHelp?.isTrainingActive?.() === true;
+  }
+  function trainingActivityParties(query = "") {
+    if (!isActivityTraining()) return [];
+    const row = {
+        entity_type: "prospect",
+        entity_id: TRAINING_ACTIVITY_PROSPECT_ID,
+        label: "Atelier Horizon",
+        subtitle:
+          "Prospect fictif · 75011 Paris · contact@entreprise-demo.fr",
+        training_demo: true,
+        relation_meta: {
+          relationship_type: "prospect",
+          client_id: TRAINING_ACTIVITY_PROSPECT_ID,
+        },
+      },
+      needle = relationSearchKey(query);
+    return !needle ||
+      relationSearchKey(`${row.label} ${row.subtitle}`).includes(needle)
+      ? [row]
+      : [];
+  }
   function localRelationRows(kind, clientId = "", query = "") {
     const data = state().data || {},
       needle = relationSearchKey(query),
@@ -924,6 +948,10 @@
       filters =
         kind === "document"
           ? `<div class="aw-relation-filters" role="group" aria-label="Filtrer les documents"><button type="button" class="${activeFilter === "all" ? "active" : ""}" onclick="event.stopPropagation();PilozCRM.filterActivityDocuments('${name}','all')">Tous</button><button type="button" class="${activeFilter === "quote" ? "active" : ""}" onclick="event.stopPropagation();PilozCRM.filterActivityDocuments('${name}','quote')">Devis</button><button type="button" class="${activeFilter === "invoice" ? "active" : ""}" onclick="event.stopPropagation();PilozCRM.filterActivityDocuments('${name}','invoice')">Factures</button></div>`
+          : "",
+      createActions =
+        kind === "client" && !isActivityTraining()
+          ? `<div class="aw-relation-create-actions"><button type="button" onclick="event.preventDefault();event.stopPropagation();PilozCRM.openActivityPartyCreator('prospect')">＋ Créer un prospect</button><button type="button" onclick="event.preventDefault();event.stopPropagation();PilozCRM.openActivityPartyCreator('client')">＋ Créer un client</button></div>`
           : "";
     const items = visibleRows.length
       ? visibleRows
@@ -936,11 +964,11 @@
                 kind === "document"
                   ? `<em>${item.entity_type === "quote" ? "Devis" : "Facture"}</em>`
                   : "";
-            return `<button type="button" class="aw-relation-result" role="option" onclick="PilozCRM.chooseActivityRelation('${name}','${attr(encoded)}')"><span><b>${esc(item.label)}</b><small>${esc(item.subtitle || item.entity_type)}</small></span>${badge}</button>`;
+            return `<button type="button" class="aw-relation-result" role="option" data-activity-relation-id="${attr(item.entity_id)}" data-activity-relation-type="${attr(item.entity_type)}"${item.training_demo ? ' data-training-activity-prospect="true"' : ""} onclick="PilozCRM.chooseActivityRelation('${name}','${attr(encoded)}')"><span><b>${esc(item.label)}</b><small>${esc(item.subtitle || item.entity_type)}</small></span>${badge}</button>`;
           })
           .join("")
       : `<p class="aw-relation-state">${kind === "document" && activeFilter !== "all" ? `Aucun ${activeFilter === "quote" ? "devis" : "facture"} pour ce client.` : "Aucun élément lié à ce client."}</p>`;
-    field.results.innerHTML = filters + items;
+    field.results.innerHTML = createActions + filters + items;
     field.results.hidden = false;
     setRelationExpanded(field, true);
   }
@@ -1032,6 +1060,11 @@
     }
     clearTimeout(ui.relationTimers.get(name));
     closeRelationResults(name);
+    if (kind === "client" && isActivityTraining()) {
+      if (field.input) field.input.dataset.relationQuery = query;
+      renderRelationRows(name, kind, trainingActivityParties(query));
+      return;
+    }
     if (scoped && !clientId) {
       if (field.results) {
         field.results.hidden = false;
@@ -1041,14 +1074,16 @@
       }
       return;
     }
-    if (!field.results || (!scoped && query.length < 2)) {
-      if (field.results) field.results.hidden = true;
+    if (!field.results) return;
+    const localRows = localRelationRows(kind, clientId, query);
+    if (!scoped && query.length < 2) {
+      if (kind === "client") renderRelationRows(name, kind, localRows);
+      else field.results.hidden = true;
       return;
     }
     if (field.input) field.input.dataset.relationQuery = query;
     field.results.hidden = false;
     setRelationExpanded(field, true);
-    const localRows = localRelationRows(kind, clientId, query);
     if (localRows.length || (scoped && !query))
       renderRelationRows(name, kind, localRows);
     else field.results.innerHTML = '<p class="aw-relation-state">Recherche…</p>';
@@ -1099,6 +1134,34 @@
           }
         }
       }, scoped && !query ? 0 : 200),
+    );
+  }
+  function promoteActivityPartyCreator() {
+    ["client-workspace-drawer", "crm-drawer-layer"].forEach((id) => {
+      const node = document.getElementById(id);
+      if (node) node.classList.add("aw-related-party-creator");
+    });
+  }
+  async function openActivityPartyCreator(type) {
+    closeRelationResults();
+    if (
+      type === "client" &&
+      typeof global.PilozClients?.openClientCreator === "function"
+    ) {
+      global.PilozClients.openClientCreator();
+      promoteActivityPartyCreator();
+      return;
+    }
+    if (type === "prospect" && typeof crm.openProspectForm === "function") {
+      await crm.openProspectForm();
+      promoteActivityPartyCreator();
+      return;
+    }
+    notify(
+      type === "prospect"
+        ? "La création de prospect est momentanément indisponible."
+        : "La création de client est momentanément indisponible.",
+      "error",
     );
   }
   function relationType(document) {
@@ -1923,6 +1986,7 @@
       load();
     },
     searchActivityRelation: searchRelation,
+    openActivityPartyCreator,
     openActivityRelation: openRelation,
     filterActivityDocuments: filterDocumentRelations,
     chooseActivityRelation: chooseRelation,

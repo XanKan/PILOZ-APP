@@ -791,6 +791,12 @@ body.aw-modal-open {
   background: rgba(5, 24, 39, 0.48);
   backdrop-filter: blur(5px);
 }
+
+/* La création d'un client ou d'un prospect lancée depuis une activité
+   reste au-dessus du formulaire d'activité, qui demeure intact en arrière-plan. */
+.aw-related-party-creator {
+  z-index: 100100 !important;
+}
 .aw-modal {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -936,6 +942,35 @@ body.aw-modal-open {
   border-radius: 13px;
   background: #fff;
   box-shadow: 0 18px 42px rgba(5, 35, 53, 0.18);
+}
+.aw-relation-create-actions {
+  position: sticky;
+  z-index: 2;
+  top: -5px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: -5px -5px 5px;
+  padding: 8px;
+  border-bottom: 1px solid #dbe8eb;
+  background: #f8fcfc;
+}
+.aw-relation-create-actions button {
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid #b8deda;
+  border-radius: 10px;
+  background: #fff;
+  color: #087e73;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.aw-relation-create-actions button:hover,
+.aw-relation-create-actions button:focus {
+  border-color: #19a99a;
+  background: #e9faf7;
 }
 .aw-relation-results > .aw-relation-result {
   display: grid;

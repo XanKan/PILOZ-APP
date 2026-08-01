@@ -312,6 +312,29 @@ check(
     has(script, 'Factures</button>'),
 );
 check(
+  "relations métier avant planification",
+  script.indexOf("<summary>Relations métier</summary>") >= 0 &&
+    script.indexOf("<summary>Relations métier</summary>") <
+      script.indexOf("<h3>Planification</h3>"),
+);
+check(
+  "création client et prospect depuis une activité",
+  has(script, "openActivityPartyCreator") &&
+    has(script, "promoteActivityPartyCreator") &&
+    has(script, "aw-related-party-creator") &&
+    has(script, "Créer un prospect") &&
+    has(script, "Créer un client") &&
+    has(script, 'kind==="client"') &&
+    has(script, "renderRelationRows(name,kind,localRows)"),
+);
+check(
+  "prospect fictif réservé à la formation",
+  has(script, "TRAINING_ACTIVITY_PROSPECT_ID") &&
+    has(script, "piloz-training-activity-prospect") &&
+    has(script, "data-training-activity-prospect") &&
+    has(script, "isActivityTraining"),
+);
+check(
   "une seule commande d'effacement relationnelle",
   has(script, "aw-relation-clear") &&
     !has(css, '.aw-relation-control > input[type="search"]'),
