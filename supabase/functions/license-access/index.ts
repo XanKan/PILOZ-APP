@@ -40,6 +40,19 @@ function accessFor(subscription:any){
  return{allowed:activeStatus&&periodValid,reason:!activeStatus?"manual_license_inactive":!periodValid?"subscription_expired":"licensed"};
 }
 
+async function demoCompanyIdentity(admin:any,companyId:string,userId:string){
+ const [{data:company,error:companyError},{data:authUser,error:authUserError}]=await Promise.all([
+  admin.from("companies").select("id,admin_tags").eq("id",companyId).maybeSingle(),
+  admin.auth.admin.getUserById(userId)
+ ]);
+ if(companyError)throw companyError;
+ if(authUserError)throw authUserError;
+ const metadata=authUser.user?.user_metadata||{};
+ const metadataDemo=metadata.demo_account===true||["true","1","yes"].includes(String(metadata.demo_account||"").toLowerCase());
+ const tags=Array.isArray(company?.admin_tags)?company.admin_tags.map((tag:any)=>String(tag).toLowerCase()):[];
+ return Boolean(company&&(metadataDemo||tags.includes("demo")||tags.includes("seeded")));
+}
+
 async function repairDemoCompany(admin:any,companyId:string,userId:string){
  const {data:company,error:companyError}=await admin.from("companies").select("id,admin_tags").eq("id",companyId).maybeSingle();
  if(companyError)throw companyError;
@@ -47,11 +60,16 @@ async function repairDemoCompany(admin:any,companyId:string,userId:string){
  if(authUserError)throw authUserError;
  const metadata=authUser.user?.user_metadata||{};
  const metadataDemo=metadata.demo_account===true||["true","1","yes"].includes(String(metadata.demo_account||"").toLowerCase());
- const taggedDemo=Boolean(company&&Array.isArray(company.admin_tags)&&company.admin_tags.includes("demo"));
- if(!company||(!taggedDemo&&!metadataDemo))return;
+ const demoTags=Array.isArray(company?.admin_tags)?company.admin_tags.map((tag:any)=>String(tag).toLowerCase()):[];
+ const taggedDemo=Boolean(company&&(demoTags.includes("demo")||demoTags.includes("seeded")));
+ if(!company||(!taggedDemo&&!metadataDemo))return false;
+ if(!metadataDemo){
+  const {error:metadataError}=await admin.auth.admin.updateUserById(userId,{user_metadata:{...metadata,demo_account:true,onboarding_completed:true}});
+  if(metadataError)throw metadataError;
+ }
  if(metadataDemo&&!taggedDemo){
-  const demoTags=Array.from(new Set([...(Array.isArray(company.admin_tags)?company.admin_tags:[]),"demo","seeded"]));
-  const {error:tagError}=await admin.from("companies").update({admin_tags:demoTags}).eq("id",companyId);
+  const repairedTags=Array.from(new Set([...(Array.isArray(company.admin_tags)?company.admin_tags:[]),"demo","seeded"]));
+  const {error:tagError}=await admin.from("companies").update({admin_tags:repairedTags}).eq("id",companyId);
   if(tagError)throw tagError;
  }
  const now=new Date().toISOString();
@@ -99,6 +117,7 @@ async function repairDemoCompany(admin:any,companyId:string,userId:string){
   ]);
   if(activitiesError)throw activitiesError;
  }
+ return true;
 }
 
 Deno.serve(async req=>{
@@ -123,8 +142,12 @@ Deno.serve(async req=>{
  for(const membership of memberships||[]){
   const subscription=(subscriptions||[]).find(row=>row.company_id===membership.company_id),access=accessFor(subscription);
   if(subscription&&access.allowed){
-   try{await repairDemoCompany(admin,membership.company_id,user.id);}catch(error){console.error("[PILOZ Licence] demo repair failed",{companyId:membership.company_id,code:(error as any)?.code||"unknown"});}
-   return response(req,{allowed:true,reason:"licensed",companyId:membership.company_id,role:membership.role,planKey:subscription.plan_key,status:subscription.status,provider:subscription.provider});
+   let demoAccount=false;
+   try{
+    demoAccount=await demoCompanyIdentity(admin,membership.company_id,user.id);
+    if(demoAccount)await repairDemoCompany(admin,membership.company_id,user.id);
+   }catch(error){console.error("[PILOZ Licence] demo repair failed",{companyId:membership.company_id,code:(error as any)?.code||"unknown"});}
+   return response(req,{allowed:true,reason:"licensed",companyId:membership.company_id,role:membership.role,planKey:subscription.plan_key,status:subscription.status,provider:subscription.provider,demoAccount});
   }
  }
  const subscription=(subscriptions||[])[0],access=accessFor(subscription);

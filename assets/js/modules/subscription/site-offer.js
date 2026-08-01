@@ -36,6 +36,7 @@
    const error=new Error('Aucune licence Piloz active n’est associée à ce compte. Souscrivez une offre ou contactez l’administrateur de votre entreprise.');
    error.code=result?.reason||'license_required';throw error;
   }
+  global.PilozLicenseContext=result;
   return result;
  }
  function hasPendingCheckout(){return!!readClaim();}

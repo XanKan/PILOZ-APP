@@ -27,6 +27,10 @@ const identityRepairMigration = fs.readFileSync(
   path.join(root, "supabase", "migrations", "202608010131_repair_demo_account_identity_and_onboarding.sql"),
   "utf8",
 );
+const authMetadataBackfillMigration = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "202608010132_backfill_demo_auth_metadata.sql"),
+  "utf8",
+);
 const licenseSource = fs.readFileSync(
   path.join(root, "supabase", "functions", "license-access", "index.ts"),
   "utf8",
@@ -73,8 +77,14 @@ assert.match(repairSeedMigration, /admin_tags\s*@>\s*array\[['"]demo['"]\]/i);
 assert.match(identityRepairMigration, /raw_user_meta_data->>'demo_account'/i);
 assert.match(identityRepairMigration, /onboarding_step\s*=\s*7/i);
 assert.match(identityRepairMigration, /on conflict\(user_id\) do update/i);
+assert.match(authMetadataBackfillMigration, /update auth\.users/i);
+assert.match(authMetadataBackfillMigration, /company\.admin_tags[\s\S]*demo/i);
+assert.match(authMetadataBackfillMigration, /demo_account['"],true/i);
 assert.match(licenseSource, /repairDemoCompany/);
+assert.match(licenseSource, /demoCompanyIdentity/);
+assert.match(licenseSource, /demoAccount\}/);
 assert.match(licenseSource, /auth\.admin\.getUserById\(userId\)/);
+assert.match(licenseSource, /auth\.admin\.updateUserById\(userId,\{user_metadata:/);
 assert.match(licenseSource, /metadata\.demo_account/);
 assert.match(licenseSource, /user_preferences"\)\.upsert\(\{user_id:userId,company_id:companyId,onboarding_completed:true\}/);
 assert.match(licenseSource, /siret:\s*["']12345678900012["']/);
@@ -86,6 +96,7 @@ assert.match(appShell, /function authSessionIsDemo/);
 assert.match(appShell, /window\.PilozSessionIsDemo=authSessionIsDemo/);
 assert.match(appShell, /user_metadata:j\.user\?\.user_metadata\|\|\{\}/);
 assert.match(phase1Source, /function phase1IsDemoSession/);
+assert.match(phase1Source, /PilozLicenseContext\?\.demoAccount===true/);
 assert.match(phase1Source, /!phase1IsDemoSession\(\)/);
 
 console.log("demo account provisioning static checks passed");

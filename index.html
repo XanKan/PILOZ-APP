@@ -527,7 +527,7 @@ function hydrateSessionIdentity(session){
 }
 function authSessionIsDemo(session=SES){
   const metadata=session?.user_metadata||sessionIdentityFromToken(session?.access_token).user_metadata||{};
-  return metadata.demo_account===true||['true','1','yes'].includes(String(metadata.demo_account||'').toLowerCase());
+  return window.PilozLicenseContext?.demoAccount===true||metadata.demo_account===true||['true','1','yes'].includes(String(metadata.demo_account||'').toLowerCase());
 }
 window.PilozSessionIdentityFromToken=sessionIdentityFromToken;
 window.PilozSessionIsDemo=authSessionIsDemo;
@@ -591,6 +591,7 @@ function legacyStateStorageKey(session=SES){
 function resetAccountScopedRuntime(nextSession=SES){
   S=null;
   window.PilozCurrentUser=null;
+  window.PilozLicenseContext=null;
   if(typeof saveT!=='undefined'&&saveT){clearTimeout(saveT);saveT=null;}
   window.PilozApp?.resetSession?.(nextSession);
   const veil=document.getElementById('veil'),modal=document.getElementById('modal');
@@ -3038,7 +3039,7 @@ async function boActif(uid, actif){
   toast(actif?'Compte réactivé':'Compte suspendu'); render();
 }
 </script>
-<script src="assets/js/phase1-foundation.js?v=20260801.1"></script>
+<script src="assets/js/phase1-foundation.js?v=20260801.2"></script>
 <script src="assets/js/api/erp-api.js?v=20260731.1"></script>
 <script src="assets/js/utils/erp-calculations.js?v=20260721.10"></script>
 <script src="assets/js/domain/fiscal-domain.js?v=20260726.2"></script>
