@@ -66,8 +66,9 @@ assert(
 );
 
 assert(
-  source.includes('document-v2-client-results" onpointerdown="event.stopPropagation()" onmousedown="event.preventDefault();event.stopPropagation()"'),
-  'Les résultats client doivent rester ouverts sans déclencher la fermeture globale pendant le clic.',
+  source.includes('document-v2-client-results" onpointerdown="event.stopPropagation()"') &&
+    !source.includes('document-v2-client-results" onpointerdown="event.stopPropagation()" onmousedown="event.preventDefault();event.stopPropagation()"'),
+  'Les résultats client doivent laisser le clic se terminer puis fermer la liste sans bloquer le focus.',
 );
 
 assert(
@@ -86,10 +87,17 @@ assert(
 
 assert(
   source.includes('function safelyRemoveNode(node)') &&
+    source.includes("node.dataset.destroying='1'") &&
+    source.includes("node.classList.add('is-closing')") &&
     source.includes("removeTransientNodes('.document-v2-suggestions,.document-v2-client-results')") &&
     source.includes("removeTransientNodes('.document-v2-client-results')") &&
     source.includes("removeTransientNodes('.document-v2-suggestions')"),
   'Les listes transitoires client/article doivent être nettoyées de façon différée et sécurisée.',
+);
+
+assert(
+  source.includes("document.addEventListener('pointerdown',event=>{const target=event.target;setTimeout(()=>global.PilozDocumentEditorV2?.dismissTransientUi?.(target),0);},true);"),
+  'La fermeture globale des listes doit être différée pour ne pas supprimer un nœud pendant le blur/pointerdown.',
 );
 
 assert(

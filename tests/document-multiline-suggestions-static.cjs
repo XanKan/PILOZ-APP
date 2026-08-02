@@ -51,8 +51,8 @@ assert(
 );
 assert(
   itemSuggestions.includes('onpointerdown="event.stopPropagation()"') &&
-    itemSuggestions.includes('onmousedown="event.preventDefault();event.stopPropagation()"'),
-  'Le conteneur des suggestions article doit rester ouvert pendant le clic sans casser le focus.',
+    !itemSuggestions.includes('document-v2-suggestions" onpointerdown="event.stopPropagation()" onmousedown="event.preventDefault();event.stopPropagation()"'),
+  'Le conteneur des suggestions article doit laisser le clic se terminer sans bloquer le focus.',
 );
 assert(
   itemSuggestions.includes('PilozDocumentEditorV2.selectItem'),
@@ -73,7 +73,7 @@ assert(
 
 const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 assert(
-  indexHtml.includes('erp-document-editor-v2.js?v=20260802.9'),
+  indexHtml.includes('erp-document-editor-v2.js?v=20260802.10'),
   'Le cache navigateur doit être invalidé pour charger le correctif document.',
 );
 
