@@ -426,10 +426,19 @@ Deno.serve(async req=>{
   if(action==="features.override"){
    requirePermission("subscriptions.write");const {data,error}=await client.rpc("platform_admin_set_feature_override",{target_company_id:uuid(payload.companyId),target_feature_key:text(payload.featureKey,100),target_enabled:Boolean(payload.enabled),target_ends_at:text(payload.endsAt,40)||null,target_reason:text(payload.reason,500)});if(error)throw error;return response(req,{override:data},201);
   }
-  if(action==="profile.update"){
-   const {data,error}=await client.rpc("platform_admin_update_profile",{target_values:record(payload.values)});if(error)throw error;return response(req,{admin:data});
-  }
-  if(action==="admins.list"){
+   if(action==="profile.update"){
+    const {data,error}=await client.rpc("platform_admin_update_profile",{target_values:record(payload.values)});if(error)throw error;return response(req,{admin:data});
+   }
+   if(action==="profile.mfa_reset"){
+    const reason=text(payload.reason,500);
+    if(!reason)throw new Error("Le motif est obligatoire");
+    const authAdmin=privileged(),{data:list,error:listError}=await authAdmin.auth.admin.mfa.listFactors({userId:context.user_id});if(listError)throw listError;
+    const factors=list?.factors||[];
+    for(const factor of factors){const {error}=await authAdmin.auth.admin.mfa.deleteFactor({userId:context.user_id,id:factor.id});if(error)throw error;}
+    const {error:auditError}=await client.rpc("platform_admin_record_auth_action",{target_user_id:context.user_id,target_company_id:null,target_action:"platform_admin.mfa_reset",target_reason:reason,target_new_state:{mfa_reset_required:true,deleted_factor_count:factors.length}});if(auditError)throw auditError;
+    return response(req,{reset:true,deletedFactors:factors.length});
+   }
+   if(action==="admins.list"){
    requirePermission("admin.read");const {data,error}=await client.from("platform_admins").select("id,user_id,role,status,first_name,last_name,email,mfa_required,last_login_at,last_activity_at,created_at").order("created_at",{ascending:false});if(error)throw error;return response(req,{items:data||[]});
   }
   if(action==="admins.invite"){
