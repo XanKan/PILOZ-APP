@@ -66,8 +66,37 @@ assert(
 );
 
 assert(
-  source.includes('document-v2-client-results" onmousedown="event.preventDefault()"'),
-  'Les résultats client doivent empêcher le blur pendant le clic.',
+  source.includes('document-v2-client-results" onpointerdown="event.stopPropagation()" onmousedown="event.preventDefault();event.stopPropagation()"'),
+  'Les résultats client doivent rester ouverts sans déclencher la fermeture globale pendant le clic.',
+);
+
+assert(
+  source.includes('function suggestionAction(action)') &&
+    source.includes('PilozDocumentEditorV2.selectClient') &&
+    source.includes('PilozDocumentEditorV2.selectItem') &&
+    source.includes('onpointerdown="event.preventDefault();event.stopPropagation();${action};"'),
+  'Les choix client/article doivent se valider au pointerdown avant que le blur ne déclenche un rendu.',
+);
+
+assert(
+  source.includes('function setElementHtml(node,html)') &&
+    source.includes('setElementHtml(results,clientSearchResults(state))'),
+  'Les mises à jour HTML internes doivent utiliser le rendu sécurisé.',
+);
+
+assert(
+  source.includes('function safelyRemoveNode(node)') &&
+    source.includes("removeTransientNodes('.document-v2-suggestions,.document-v2-client-results')") &&
+    source.includes("removeTransientNodes('.document-v2-client-results')") &&
+    source.includes("removeTransientNodes('.document-v2-suggestions')"),
+  'Les listes transitoires client/article doivent être nettoyées de façon différée et sécurisée.',
+);
+
+assert(
+  source.includes('function closeTransientDetails(selector)') &&
+    source.includes("closeTransientDetails('.document-v2-line-menu[open]')") &&
+    source.includes("closeTransientDetails('.document-v2-actions[open]')"),
+  'Les menus details transitoires doivent être fermés sans suppression DOM agressive.',
 );
 
 console.log('document-client-selection-static: ok');

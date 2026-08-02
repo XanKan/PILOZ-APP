@@ -25,8 +25,8 @@ assert(
   'La sélection article doit rester asynchrone pour résoudre le tarif avant rendu.',
 );
 assert(
-  select.includes('ui.suggestions=null;renderEditor(state);'),
-  'Après sélection article, l’éditeur doit fermer la suggestion puis effectuer un rendu complet stable.',
+  select.includes('resetTransientUi();renderEditor(state);'),
+  'Après sélection article, l’éditeur doit fermer les menus transitoires puis effectuer un rendu complet stable.',
 );
 assert(
   !select.includes('syncCatalogLineDom') && !select.includes('refreshDocumentCalculations'),
@@ -39,24 +39,30 @@ assert(
 
 const addLine = bodyOf('addLine');
 assert(
-  addLine.includes('lines.push(line)') && addLine.includes('renderEditor(s())'),
-  'Ajouter une ligne doit conserver le rendu complet stable, y compris après sélection client.',
+  addLine.includes('lines.push(line)') && addLine.includes('resetTransientUi();renderEditor(s())'),
+  'Ajouter une ligne doit fermer les menus transitoires et conserver le rendu complet stable, y compris après sélection client.',
 );
 
 const itemSuggestions = bodyOf('itemSuggestions');
 assert(
-  itemSuggestions.includes('onmousedown="event.preventDefault()"'),
-  'Les suggestions article doivent empêcher le blur pendant le clic.',
+  source.includes('function suggestionAction(action)') &&
+    itemSuggestions.includes('suggestionAction(`PilozDocumentEditorV2.selectItem'),
+  'Les suggestions article doivent déclencher la sélection dès pointerdown via le helper sécurisé.',
+);
+assert(
+  itemSuggestions.includes('onpointerdown="event.stopPropagation()"') &&
+    itemSuggestions.includes('onmousedown="event.preventDefault();event.stopPropagation()"'),
+  'Le conteneur des suggestions article doit rester ouvert pendant le clic sans casser le focus.',
 );
 assert(
   itemSuggestions.includes('PilozDocumentEditorV2.selectItem'),
   'Les suggestions article doivent appeler la sélection article standard.',
 );
 
-const render = bodyOf('renderEditor');
+const render = bodyOf('renderEditorNow');
 assert(
-  render.includes("document.getElementById('main').innerHTML"),
-  'Le rendu principal doit rester centralisé dans renderEditor.',
+  render.includes('setMainHtml('),
+  'Le rendu principal doit rester centralisé et passer par le rendu sécurisé.',
 );
 assert(
   !source.includes('target.replaceWith(clone)') &&
@@ -67,7 +73,7 @@ assert(
 
 const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 assert(
-  indexHtml.includes('erp-document-editor-v2.js?v=20260802.6'),
+  indexHtml.includes('erp-document-editor-v2.js?v=20260802.9'),
   'Le cache navigateur doit être invalidé pour charger le correctif document.',
 );
 
