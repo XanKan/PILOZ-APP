@@ -38,6 +38,9 @@ if (source.includes('clone.innerHTML=html') || source.includes('target.replaceWi
 if (source.includes('node.replaceWith(fresh)')) {
   throw new Error('Les suggestions article doivent etre rafraichies sans remplacer le noeud actif.');
 }
+if (source.includes('section.replaceWith(next)')) {
+  throw new Error('La selection client doit rafraichir le bloc client sans remplacer le noeud actif.');
+}
 
 const refresh = bodyOf('refreshItemSuggestions');
 if (!refresh.includes('forceHideTransientLayer(existing)')) {
@@ -98,7 +101,7 @@ if (!css.includes('.document-v2-suggestions:empty') || !css.includes('[aria-hidd
 }
 
 const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-if (!indexHtml.includes('erp-document-editor-v2.js?v=20260802.4')) {
+if (!indexHtml.includes('erp-document-editor-v2.js?v=20260802.5')) {
   throw new Error('Le cache navigateur doit etre invalide pour charger le correctif document.');
 }
 
