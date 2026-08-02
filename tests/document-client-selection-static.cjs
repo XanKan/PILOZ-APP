@@ -19,7 +19,7 @@ assert(
 );
 
 assert(
-  source.includes("document.querySelectorAll('.document-v2-client-results').forEach(node=>node.remove());"),
+  source.includes("document.querySelectorAll('.document-v2-client-results').forEach(hideTransientLayer);"),
   'Les suggestions client doivent être retirées du DOM pour ne plus bloquer les clics.',
 );
 
