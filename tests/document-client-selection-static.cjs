@@ -18,6 +18,11 @@ assert(
   'Le nettoyage ciblé des suggestions client est manquant.',
 );
 
+assert(
+  source.includes("document.querySelectorAll('.document-v2-client-results').forEach(node=>node.remove());"),
+  'Les suggestions client doivent être retirées du DOM pour ne plus bloquer les clics.',
+);
+
 const setDraftStart = source.indexOf('function setDraft');
 const refreshStart = source.indexOf(' function refreshDocumentCalculations', setDraftStart);
 const setDraftSource = source.slice(setDraftStart, refreshStart);
@@ -54,6 +59,20 @@ assert(
 assert(
   !selectClientSource.includes('requestAnimationFrame(()=>{patchClientSection();clearTransientLayers();});'),
   'La sélection client ne doit plus nettoyer les couches temporaires globales.',
+);
+
+const openSuggestionsStart = source.indexOf('function openSuggestions');
+const itemSuggestionsStart = source.indexOf(' function itemSuggestions', openSuggestionsStart);
+const lineSuggestionSource = source.slice(openSuggestionsStart, itemSuggestionsStart);
+
+assert(
+  lineSuggestionSource.includes('function openSuggestions(index){const line=s().draft?.lines?.[index];if(!line||quoteLocked(s().draft))return;closeClientTransientLayers();'),
+  'Ouvrir une recherche article doit fermer les résultats client restants.',
+);
+
+assert(
+  lineSuggestionSource.includes('function searchItem(index,value){closeClientTransientLayers();'),
+  'Saisir une ligne article doit fermer les résultats client restants.',
 );
 
 console.log('document-client-selection-static: ok');
