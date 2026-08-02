@@ -13,66 +13,61 @@ function assert(condition, message) {
   }
 }
 
-assert(
-  source.includes('function closeClientTransientLayers()'),
-  'Le nettoyage ciblé des suggestions client est manquant.',
-);
+const forbiddenFragments = [
+  '__pilozDocumentEditorLineInteractionGuard',
+  '__pilozDocumentEditorSuggestionPointer',
+  'function safeSetHtml',
+  'function safeReplaceChildren',
+  'function refreshDocumentCalculations',
+  'function syncCatalogLineDom',
+  'function patchClientSection',
+  'function forceHideDocumentSuggestions',
+  'function unlockDocumentEditorLayers',
+];
 
-assert(
-  source.includes("document.querySelectorAll('.document-v2-client-results').forEach(hideTransientLayer);"),
-  'Les suggestions client doivent être retirées du DOM pour ne plus bloquer les clics.',
-);
+for (const fragment of forbiddenFragments) {
+  assert(
+    !source.includes(fragment),
+    `Le correctif document ne doit pas réintroduire le garde/fallback instable : ${fragment}`,
+  );
+}
 
 const setDraftStart = source.indexOf('function setDraft');
-const refreshStart = source.indexOf(' function refreshDocumentCalculations', setDraftStart);
-const setDraftSource = source.slice(setDraftStart, refreshStart);
+const setDraftEnd = source.indexOf(' function togglePanel', setDraftStart);
+const setDraftSource = source.slice(setDraftStart, setDraftEnd);
 
 assert(
-  setDraftSource.includes('const clientToken=value'),
-  'La sélection client doit mémoriser le client demandé pour ignorer les réponses obsolètes.',
+  setDraftSource.includes("if(field==='client_id')"),
+  'La sélection client doit encore déclencher le chargement des préférences client.',
 );
 
 assert(
-  setDraftSource.includes('if(s().draft!==d||d.client_id!==clientToken)return;'),
-  'Le chargement asynchrone des préférences client doit ignorer les réponses obsolètes.',
+  setDraftSource.includes('renderEditor(s())'),
+  'La sélection client doit repasser par le rendu complet stable de l’éditeur.',
 );
 
 assert(
-  setDraftSource.includes('patchClientSection();refreshDocumentCalculations();closeClientTransientLayers();'),
-  'Après chargement client, seul le bloc client doit être rafraîchi.',
-);
-
-assert(
-  !setDraftSource.includes('patchClientSection();refreshDocumentCalculations();clearTransientLayers();'),
-  'Après chargement client, il ne faut plus nettoyer les suggestions articles globalement.',
+  !setDraftSource.includes('patchClientSection()'),
+  'La sélection client ne doit pas utiliser le patch partiel du bloc client.',
 );
 
 const selectClientStart = source.indexOf('function selectClient');
-const selectTrainingClientStart = source.indexOf(' function selectTrainingClient', selectClientStart);
-const selectClientSource = source.slice(selectClientStart, selectTrainingClientStart);
+const selectClientEnd = source.indexOf(' function selectTrainingClient', selectClientStart);
+const selectClientSource = source.slice(selectClientStart, selectClientEnd);
 
 assert(
-  selectClientSource.includes('requestAnimationFrame(()=>{patchClientSection();closeClientTransientLayers();});'),
-  'La sélection client doit fermer uniquement la recherche client, sans toucher aux lignes article.',
+  selectClientSource.includes("setDraft('client_id',id)"),
+  'La sélection client doit rester un simple changement de brouillon.',
 );
 
 assert(
-  !selectClientSource.includes('requestAnimationFrame(()=>{patchClientSection();clearTransientLayers();});'),
-  'La sélection client ne doit plus nettoyer les couches temporaires globales.',
-);
-
-const openSuggestionsStart = source.indexOf('function openSuggestions');
-const itemSuggestionsStart = source.indexOf(' function itemSuggestions', openSuggestionsStart);
-const lineSuggestionSource = source.slice(openSuggestionsStart, itemSuggestionsStart);
-
-assert(
-  lineSuggestionSource.includes('function openSuggestions(index){const line=s().draft?.lines?.[index];if(!line||quoteLocked(s().draft))return;closeClientTransientLayers();'),
-  'Ouvrir une recherche article doit fermer les résultats client restants.',
+  !selectClientSource.includes('requestAnimationFrame') && !selectClientSource.includes('runWhenDocumentIdle'),
+  'La sélection client ne doit pas planifier de manipulation DOM différée.',
 );
 
 assert(
-  lineSuggestionSource.includes('function searchItem(index,value){closeClientTransientLayers();'),
-  'Saisir une ligne article doit fermer les résultats client restants.',
+  source.includes('document-v2-client-results" onmousedown="event.preventDefault()"'),
+  'Les résultats client doivent empêcher le blur pendant le clic.',
 );
 
 console.log('document-client-selection-static: ok');
