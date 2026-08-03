@@ -2106,13 +2106,14 @@
     document
       .querySelectorAll("[data-client-document-context]")
       .forEach((section) => section.remove());
-    if (
-      lastDocumentClient !== d.client_id ||
-      (!(d.clientContacts || []).length && !(d.clientAddresses || []).length)
-    ) {
+    if (lastDocumentClient !== d.client_id) {
       lastDocumentClient = d.client_id;
+      const clientId = d.client_id;
       loadDocumentContext(d, state)
-        .then(() => global.PilozDocumentEditorV2?.renderEditor?.(state))
+        .then(() => {
+          if (app()?.getState?.()?.draft?.client_id !== clientId) return;
+          global.PilozDocumentEditorV2?.renderEditor?.(state);
+        })
         .catch((error) => notify(error.message, "error"));
     }
   }
