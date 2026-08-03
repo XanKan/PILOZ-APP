@@ -97,7 +97,7 @@
       check('éditeur grande page',!!document.querySelector('.erp-document-canvas')&&!!document.querySelector('.erp-side-panel'));
       check('dates initialisées',document.querySelector('.erp-side-panel input[type="date"]')?.value===new Date().toISOString().slice(0,10));
       check('unité et coût par ligne',!!document.querySelector('[aria-label="Unité"]')&&!!document.querySelector('[aria-label="Coût d’achat HT"]'));
-      check('lignes riches',document.querySelector('.erp-add-line')?.textContent.includes('Sous-total')&&document.querySelector('.erp-add-line')?.textContent.includes('Saut de page')&&document.querySelector('.erp-add-line')?.textContent.includes('Variante / option'));
+      check('actions de lignes actuelles',document.querySelector('.erp-add-line')?.textContent.includes('Ajouter une ligne')&&document.querySelector('.erp-add-line')?.textContent.includes('Ajouter un titre / sous-total')&&document.querySelector('.erp-add-line')?.textContent.includes('Ajouter un commentaire'));
       check('liaisons document',document.querySelector('.erp-document-metadata')?.textContent.includes('Opportunité')&&document.querySelector('.erp-document-metadata')?.textContent.includes('Commercial responsable'));
       PilozApp.setLine(0,'unit_cost_snapshot',60,true);PilozApp.setLine(0,'unit_price',100,true);await wait(30);
       check('marges de ligne',document.querySelector('.erp-line-total')?.textContent.includes('taux de marge')&&document.querySelector('.erp-line-total')?.textContent.includes('taux de marque'));

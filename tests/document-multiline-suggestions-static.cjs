@@ -41,7 +41,7 @@ const itemSuggestions = bodyOf('itemSuggestions');
 assert(source.includes('async function selectItem'), 'La sélection article doit rester une action explicite.');
 assert(selectItem.includes('ui.suggestions=null;'), 'Après sélection article, les suggestions doivent se fermer.');
 assert(selectItem.includes('ui.suggestionReady=null;'), 'Après sélection article, l’état de recherche doit être réinitialisé.');
-assert(selectItem.includes('renderEditor(state);'), 'Après sélection article, l’éditeur doit être rendu entièrement.');
+assert(selectItem.includes('scheduleDocumentRender(state);'), 'Après sélection article, l’éditeur doit être rendu entièrement puis déverrouillé.');
 assert(!selectItem.includes('syncCatalogLineDom'), 'La sélection article ne doit pas modifier le DOM ligne par ligne.');
 assert(!source.includes('refreshDocumentCalculations'), 'Le recalcul visuel incrémental est désactivé pour éviter le gel après sélection.');
 assert(!source.includes('runWhenDocumentIdle'), 'Le rendu différé idle ne doit pas être utilisé dans l’éditeur document.');
@@ -57,14 +57,14 @@ assert(source.includes("document.addEventListener('pointerdown',event=>{const ta
 assert(addLine.includes('lines.push(line)'), 'Ajouter une ligne doit modifier le modèle de données.');
 assert(addLine.includes('renderEditor(s())'), 'Ajouter une ligne doit effectuer un rendu complet stable.');
 assert(itemSuggestions.includes('PilozDocumentEditorV2.selectItem'), 'Les suggestions doivent appeler la sélection article.');
-assert(itemSuggestions.includes('onmousedown="event.preventDefault()"'), 'Le clic suggestion doit conserver le focus et éviter le blur prématuré.');
-assert(source.includes('function suggestionAction(action)'), 'Les suggestions doivent utiliser pointerdown pour éviter la course blur/click.');
-assert(source.includes('onpointerdown="event.preventDefault();event.stopPropagation();${action};"'), 'La sélection article/client doit se déclencher avant le blur.');
+assert(source.includes('function scheduleDocumentRender'), 'Le rendu après sélection doit être planifié pour éviter les courses blur/click.');
+assert(source.includes('function suggestionAction(action)'), 'Les suggestions doivent passer par un helper d’action centralisé.');
+assert(source.includes('onclick="event.preventDefault();event.stopPropagation();${action};"'), 'La sélection article/client doit bloquer l’événement natif avant de modifier le document.');
 assert(source.includes("removeTransientNodes('.document-v2-suggestions')"), 'Les suggestions article doivent être purgées via le helper sécurisé.');
 assert(source.includes("removeTransientNodes('.document-v2-client-results')"), 'Les suggestions client doivent être purgées via le helper sécurisé.');
 
 assert(source.includes('function looksLikeRegistrationOnly'), 'Le nom client ne doit pas retomber sur un SIRET seul.');
 assert(source.includes('Client sans nom'), 'Le libellé client de secours doit être explicite.');
-assert(index.includes('erp-document-editor-v2.js?v=20260803.freeze6'), 'Le cache navigateur doit être invalidé après correction du gel.');
+assert(index.includes('erp-document-editor-v2.js?v=20260803.revision-editor-v3'), 'Le cache navigateur doit être invalidé après correction des révisions.');
 
 console.log(JSON.stringify({ ok: true, assertions: 25 }));
