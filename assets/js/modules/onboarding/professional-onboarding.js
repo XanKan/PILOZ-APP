@@ -10,7 +10,19 @@
   return true;
  }
  const standardVatRates=[{rate:0,label:'Exonéré · 0 %'},{rate:2.1,label:'Taux particulier · 2,1 %'},{rate:5.5,label:'Taux réduit · 5,5 %'},{rate:10,label:'Taux intermédiaire · 10 %'},{rate:20,label:'Taux normal · 20 %',is_default:true}];
- function availableVatRates(){return(vatRates.length?vatRates:standardVatRates).filter(rate=>rate.active!==false).sort((a,b)=>Number(a.rate)-Number(b.rate));}
+function syncOnboardingLogoWithRuntime(companyId,variant,path,url,file){
+ try{
+  const runtime=global.PilozRuntime;
+  if(!runtime?.state?.data)return;
+  runtime.state.data.logoUrls=runtime.state.data.logoUrls||{};
+  if(url)runtime.state.data.logoUrls[variant]=url;
+  const logos=Array.isArray(runtime.state.data.logos)?runtime.state.data.logos:[];
+  runtime.state.data.logos=logos.filter(row=>row?.variant!==variant);
+  runtime.state.data.logos.unshift({company_id:companyId,variant,storage_path:path,mime_type:file?.type||file?.mime_type||'',size_bytes:file?.size||file?.size_bytes||0,is_active:true});
+ }catch(error){console.warn('[PILOZ Onboarding] Synchronisation du logo indisponible',{message:error?.message||String(error)});}
+ try{global.dispatchEvent?.(new CustomEvent('piloz:company-logo-updated',{detail:{companyId,variant,storagePath:path,url}}));}catch{}
+}
+function availableVatRates(){return(vatRates.length?vatRates:standardVatRates).filter(rate=>rate.active!==false).sort((a,b)=>Number(a.rate)-Number(b.rate));}
  function vatRateOptions(current){return availableVatRates().map(rate=>`<option value="${Number(rate.rate)}" ${Number(current)===Number(rate.rate)?'selected':''}>${e(rate.label||`${Number(rate.rate).toLocaleString('fr-FR')} %`)}</option>`).join('');}
  const fallbackPaymentMethods=[['bank_transfer','Virement bancaire'],['direct_debit','Prélèvement'],['card','Carte bancaire'],['cheque','Chèque'],['cash','Espèces'],['paypal','PayPal'],['other','Autre']],fallbackPaymentTerms=[['cash','Comptant'],['receipt','À réception'],['days_7','7 jours'],['days_15','15 jours'],['days_30','30 jours'],['days_45','45 jours'],['days_60','60 jours'],['end_of_month','Fin de mois'],['days_30_end_of_month','30 jours fin de mois']];
  function activePaymentMethods(){const rows=(paymentMethods.length?paymentMethods:fallbackPaymentMethods.map(([code,label],position)=>({code,label,active:true,is_default:code==='bank_transfer',position:(position+1)*10}))).filter(row=>row.active!==false);return rows.sort((a,b)=>(Number(a.position)||0)-(Number(b.position)||0));}
@@ -88,6 +100,25 @@
  global.professionalAddressSearch=function(value){clearTimeout(timer);controller?.abort();if(trim(value).length<3)return;timer=setTimeout(async()=>{const requestController=new AbortController();controller=requestController;try{const data=await PilozERP.invoke('address-search',{query:value},requestController.signal);addresses=data.results||[];const node=document.getElementById('onboarding-address-results');if(node)node.innerHTML=addresses.map((x,i)=>`<button type="button" onclick="professionalSelectAddress(${i})"><b>${e(x.label)}</b><small>${e([x.postalCode,x.city].filter(Boolean).join(' '))}</small></button>`).join('')||'<p>Aucune adresse trouvée.</p>';}catch(error){if(error?.name==='AbortError'||requestController.signal.aborted)return;toast(error.message);}},300);};
  global.professionalSelectAddress=function(index){const x=addresses[index],target=PilozRuntime.state.entreprise.identity;if(!x)return;Object.assign(target,{addressLine1:x.addressLine1,addressLine2:x.addressLine2,postalCode:x.postalCode,city:x.city,department:x.department,region:x.region,country:'France',latitude:x.latitude,longitude:x.longitude,addressSource:x.source});sauver();phase1RenderSetup();};
  global.professionalUploadLogo=async function(file,variant){if(!file)return;try{const companyId=await PilozERP.companyContext();if(!['light','dark'].includes(variant))throw new Error('Type de logo invalide.');if(!['image/png','image/jpeg','image/svg+xml'].includes(file.type)||file.size>5242880)throw new Error('Logo refusé : PNG, JPEG ou SVG de 5 Mo maximum.');let upload=file;if(file.type==='image/svg+xml'){const raw=await file.text(),doc=new DOMParser().parseFromString(raw,'image/svg+xml');if(doc.querySelector('parsererror'))throw new Error('Le fichier SVG est invalide.');doc.querySelectorAll('script,foreignObject,iframe,object,embed').forEach(node=>node.remove());doc.querySelectorAll('*').forEach(node=>[...node.attributes].forEach(attr=>{const value=attr.value.trim();if(attr.name.toLowerCase().startsWith('on')||/^(javascript:|https?:)/i.test(value)||/url\s*\(/i.test(value))node.removeAttribute(attr.name);}));upload=new File([new XMLSerializer().serializeToString(doc)],file.name,{type:file.type});}const ext=file.type==='image/png'?'png':file.type==='image/jpeg'?'jpg':'svg',path=`${companyId}/logos/${variant}-${Date.now()}.${ext}`;await PilozERP.upload('company-assets',path,upload);await PilozERP.request(`/rest/v1/company_logos?company_id=eq.${companyId}&variant=eq.${variant}&is_active=eq.true`,{method:'PATCH',body:JSON.stringify({is_active:false})});await PilozERP.insert('company_logos',{company_id:companyId,variant,storage_path:path,mime_type:file.type,size_bytes:upload.size});const signed=await PilozERP.signedUrl('company-assets',path,3600);logoPreviews[variant]=signed?.signedURL||signed?.signedUrl||signed?.url||'';logoPreviewNames[variant]=file.name||'';logoPreviewsLoaded=true;if(variant==='light')PilozRuntime.state.entreprise.identity.logoPath=path;PilozRuntime.state.entreprise.identity.logoDeferred=false;sauver('Logo enregistré');phase1RenderSetup();}catch(error){toast(error.message);}};
+ async function refreshOnboardingLogoRuntimeFromSupabase(variant){
+  try{
+   const companyId=await PilozERP.companyContext();
+   const rows=await PilozERP.query('company_logos',`select=variant,storage_path,mime_type,size_bytes&company_id=eq.${encodeURIComponent(companyId)}&variant=eq.${encodeURIComponent(variant)}&is_active=eq.true&order=created_at.desc&limit=1`);
+   const row=Array.isArray(rows)?rows[0]:null;
+   if(!row?.storage_path)return;
+   const signed=await PilozERP.signedUrl('company-assets',row.storage_path,3600),url=signed?.signedURL||signed?.signedUrl||signed?.url||'';
+   if(url){
+    logoPreviews[variant]=url;
+    logoPreviewNames[variant]=String(row.storage_path||'').split('/').pop()||logoPreviewNames[variant]||'';
+   }
+   syncOnboardingLogoWithRuntime(companyId,variant,row.storage_path,url,row);
+   if(variant==='light')PilozRuntime.state.entreprise.identity.logoPath=row.storage_path;
+  }catch(error){console.warn('[PILOZ Onboarding] Logo non synchronise dans les documents',{message:error?.message||String(error)});}
+ }
+ const nativeProfessionalUploadLogo=global.professionalUploadLogo;
+ global.professionalUploadLogo=async function(file,variant){await nativeProfessionalUploadLogo.apply(this,arguments);if(['light','dark'].includes(variant))await refreshOnboardingLogoRuntimeFromSupabase(variant);if(phase1SetupStep===5)phase1RenderSetup();};
+ const nativeProfessionalLoadLogoPreviews=global.professionalLoadLogoPreviews;
+ global.professionalLoadLogoPreviews=async function(force=false){await nativeProfessionalLoadLogoPreviews.apply(this,arguments);await refreshOnboardingLogoRuntimeFromSupabase('light');await refreshOnboardingLogoRuntimeFromSupabase('dark');};
  const professionalRenderSetup=global.phase1RenderSetup,professionalOpenSetup=global.phase1OpenSetup;
  global.phase1RenderSetup=function(){if(demoAccountBypassesOnboarding())return;return professionalRenderSetup.apply(this,arguments);};
  global.phase1OpenSetup=function(){if(demoAccountBypassesOnboarding())return;return professionalOpenSetup.apply(this,arguments);};
