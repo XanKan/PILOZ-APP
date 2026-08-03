@@ -300,9 +300,7 @@ input[type="radio"]{accent-color:var(--ios-teal-deep)}
 .modern-kpi{
   min-height:126px!important;
   border-radius:20px!important;
-  background:
-    radial-gradient(130px 100px at 105% -5%,rgba(10,107,203,.11),transparent 70%),
-    rgba(255,255,255,.92)!important;
+  background:rgba(255,255,255,.92)!important;
 }
 .cockpit-kpi strong,
 .modern-kpi strong,

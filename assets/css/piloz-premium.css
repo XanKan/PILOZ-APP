@@ -296,8 +296,7 @@ input[type="checkbox"],input[type="radio"]{accent-color:var(--piloz-signal-deep)
   box-shadow:none;
 }
 .modern-kpi::after{
-  content:"";position:absolute;z-index:-1;right:-36px;bottom:-52px;width:112px;height:112px;border-radius:50%;
-  background:radial-gradient(circle,rgba(17,98,191,.13),transparent 68%);
+  content:none;
 }
 .modern-kpi span{font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:#7890a1}
 .modern-kpi strong{font-size:1.6rem;letter-spacing:-.045em;font-variant-numeric:tabular-nums;color:var(--piloz-navy)}
