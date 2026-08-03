@@ -67,7 +67,7 @@ input[type="range"] {
   border: 0 !important;
   border-radius: 0 !important;
   background: transparent !important;
-  box-shadow: none !important;
+  box-shadow:none !important;
   color: transparent !important;
 }
 
@@ -148,11 +148,11 @@ input[type="range"] {
 }
 
 .commercial-dashboard-block.is-drop-before {
-  box-shadow: 0 -4px 0 var(--brand-turquoise), var(--shadow-sm) !important;
+  box-shadow:none !important;
 }
 
 .commercial-dashboard-block.is-drop-after {
-  box-shadow: 0 4px 0 var(--brand-turquoise), var(--shadow-sm) !important;
+  box-shadow:none !important;
 }
 
 .document-v2-line.drop-target,

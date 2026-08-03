@@ -112,14 +112,14 @@
 .aw-pagination button:hover:not(:disabled) {
   transform: translateY(-1px);
   border-color: #9eb9d8;
-  box-shadow: 0 8px 20px rgba(15,23,78, 0.09);
+  box-shadow:none;
 }
 .aw-button.primary,
 .aw-button.success {
   border-color: transparent;
   background: linear-gradient(135deg, #1260b7, #0a458d);
   color: #fff;
-  box-shadow: 0 10px 22px rgba(15,82,159, 0.22);
+  box-shadow:none;
 }
 .aw-button.danger {
   color: #a52b2b;
@@ -155,13 +155,13 @@
   border: 1px solid rgba(210,213,229, 0.9);
   border-radius: 15px;
   background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 12px 26px rgba(15, 54, 74, 0.06);
+  box-shadow:none;
   color: var(--aw-ink);
   cursor: pointer;
 }
 .aw-metric.active {
   border-color: #77a5d8;
-  box-shadow: 0 14px 30px rgba(15,82,159, 0.13);
+  box-shadow:none;
 }
 .aw-metric span {
   display: block;
@@ -195,7 +195,7 @@
   border: 1px solid var(--aw-line);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 10px 24px rgba(15, 54, 74, 0.05);
+  box-shadow:none;
 }
 .aw-toolbar-top {
   display: flex;
@@ -230,7 +230,7 @@
 .aw-view-tabs button.active {
   color: var(--aw-navy);
   background: #fff;
-  box-shadow: 0 3px 10px rgba(10, 48, 70, 0.09);
+  box-shadow:none;
 }
 .aw-filters {
   display: flex;
@@ -278,7 +278,7 @@
 .aw-form select:focus,
 .aw-form textarea:focus {
   border-color: #296ab7;
-  box-shadow: 0 0 0 3px rgba(19,99,187, 0.12);
+  box-shadow:none;
 }
 .aw-shell button:focus-visible,
 .aw-shell input:focus-visible,
@@ -342,7 +342,7 @@
   border: 1px solid var(--aw-line);
   border-radius: 18px 18px 0 0;
   background: #fff;
-  box-shadow: 0 12px 28px rgba(15, 54, 74, 0.055);
+  box-shadow:none;
 }
 .aw-table {
   width: 100%;
@@ -374,7 +374,7 @@
   background: #f5f8fb;
 }
 .aw-table tbody tr.is-overdue {
-  box-shadow: inset 3px 0 #e66a6a;
+  box-shadow:none;
 }
 .aw-table td small,
 .aw-related small {
@@ -806,7 +806,7 @@ body.aw-modal-open {
   border: 1px solid rgba(255, 255, 255, 0.65);
   border-radius: 22px;
   background: #fff;
-  box-shadow: 0 30px 80px rgba(2, 25, 41, 0.28);
+  box-shadow:none;
 }
 .aw-modal.wide {
   width: min(1050px, calc(100vw - 30px));
@@ -898,7 +898,7 @@ body.aw-modal-open {
 }
 .aw-input-suffix input {
   border: 0 !important;
-  box-shadow: none !important;
+  box-shadow:none !important;
 }
 .aw-input-suffix span {
   padding: 0 12px;
@@ -941,7 +941,7 @@ body.aw-modal-open {
   border: 1px solid #cfd3e4;
   border-radius: 13px;
   background: #fff;
-  box-shadow: 0 18px 42px rgba(5, 35, 53, 0.18);
+  box-shadow:none;
 }
 .aw-relation-create-actions {
   position: sticky;
@@ -1231,7 +1231,7 @@ body.aw-modal-open {
   border: 2px solid #fff;
   border-radius: 50%;
   background: var(--aw-teal);
-  box-shadow: 0 0 0 1px #9fbad8;
+  box-shadow:none;
 }
 .aw-events li div {
   display: grid;
@@ -1413,7 +1413,7 @@ body.aw-modal-open {
 .aw-shell {
   --aw-canvas: #f3f4f8;
   --aw-surface: rgba(255, 255, 255, 0.94);
-  --aw-shadow: 0 18px 46px rgba(10, 42, 63, 0.07);
+  --aw-shadow: none;
   padding: 24px clamp(18px, 2.25vw, 36px) 38px;
   background:
     radial-gradient(circle at 96% -10%, rgba(25,107,199, 0.12), transparent 30rem),
@@ -1455,7 +1455,7 @@ body.aw-modal-open {
   height: 7px;
   border-radius: 50%;
   background: #16ad79;
-  box-shadow: 0 0 0 4px rgba(22, 173, 121, 0.12);
+  box-shadow:none;
 }
 
 .aw-metrics {
@@ -1476,7 +1476,7 @@ body.aw-modal-open {
   border: 1px solid rgba(211,214,229, 0.9);
   border-radius: 20px;
   background: var(--aw-surface);
-  box-shadow: var(--aw-shadow);
+  box-shadow:none;
 }
 .aw-metric::after {
   content: "";
@@ -1538,22 +1538,22 @@ body.aw-modal-open {
   height: 8px;
   border-radius: 50%;
   background: #2062ad;
-  box-shadow: 0 0 0 4px rgba(32,98,173, 0.1);
+  box-shadow:none;
 }
 .aw-metric.danger .aw-metric-dot {
   background: #db5d64;
-  box-shadow: 0 0 0 4px rgba(219, 93, 100, 0.1);
+  box-shadow:none;
 }
 .aw-metric.warning .aw-metric-dot {
   background: #e5a23d;
-  box-shadow: 0 0 0 4px rgba(229, 162, 61, 0.12);
+  box-shadow:none;
 }
 .aw-metric.success .aw-metric-dot {
   background: #1d9a66;
 }
 .aw-metric.active {
   border-color: rgba(15,82,159, 0.7);
-  box-shadow: 0 18px 42px rgba(15,82,159, 0.13);
+  box-shadow:none;
 }
 .aw-progress {
   position: absolute;
@@ -1587,7 +1587,7 @@ body.aw-modal-open {
   border: 1px solid var(--aw-line);
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.87);
-  box-shadow: var(--aw-shadow);
+  box-shadow:none;
   backdrop-filter: blur(14px);
 }
 .aw-rail-title {
@@ -1649,7 +1649,7 @@ body.aw-modal-open {
   border: 0;
   background: linear-gradient(135deg, #e3eef8, #eef3fa);
   color: #084f99;
-  box-shadow: inset 0 0 0 1px #b9cfe8;
+  box-shadow:none;
 }
 .aw-quick button > span,
 .aw-saved-views button > span {
@@ -1732,7 +1732,7 @@ body.aw-modal-open {
   border: 1px solid var(--aw-line);
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.76);
-  box-shadow: var(--aw-shadow);
+  box-shadow:none;
 }
 .aw-toolbar {
   gap: 11px;
@@ -1762,7 +1762,7 @@ body.aw-modal-open {
 }
 .aw-view-tabs button.active {
   color: #083b7b;
-  box-shadow: 0 3px 12px rgba(10, 48, 70, 0.08);
+  box-shadow:none;
 }
 .aw-toolbar-tools {
   align-self: flex-end;
@@ -1803,7 +1803,7 @@ body.aw-modal-open {
   min-height: 42px;
   border-color: #d7dae5;
   border-radius: 11px;
-  box-shadow: 0 1px 2px rgba(20, 49, 66, 0.02);
+  box-shadow:none;
   font-size: 12px;
 }
 .aw-search input {

@@ -63,8 +63,8 @@ h1,h2,.disp{font-family:var(--font-sans);font-weight:800;letter-spacing:-.02em}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
 .btn{border:none;border-radius:10px;padding:10px 16px;font:700 .88rem var(--font-sans);cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:transform .12s, box-shadow .12s}
 .btn:active{transform:scale(.97)}
-.btn-p{background:var(--flamme);color:#fff;box-shadow:0 3px 0 var(--flamme-2)}
-.btn-p:hover{box-shadow:0 4px 0 var(--flamme-2);transform:translateY(-1px)}
+.btn-p{background:var(--flamme);color:#fff;box-shadow:none;}
+.btn-p:hover{box-shadow:none;transform:translateY(-1px)}
 .btn-o{background:var(--carte);color:var(--carbone);border:1.5px solid var(--trait)}
 .btn-o:hover{border-color:var(--encre)}
 .btn-ghost{background:none;color:var(--gris);padding:8px 10px}
@@ -156,7 +156,7 @@ canvas{max-height:260px}
 .wbar .wfl{margin-left:auto;display:flex;gap:4px}
 /* ---------- Recherche globale ---------- */
 #palette{position:fixed;inset:0;background:rgba(9,29,53,.6);z-index:170;display:flex;align-items:flex-start;justify-content:center;padding:9vh 16px}
-.palcard{background:var(--carte);border-radius:14px;width:100%;max-width:560px;box-shadow:0 24px 70px rgba(0,0,0,.4);overflow:hidden}
+.palcard{background:var(--carte);border-radius:14px;width:100%;max-width:560px;box-shadow:none;overflow:hidden}
 .palcard input{width:100%;border:none;padding:16px 18px;font:600 1.05rem var(--font-sans);background:var(--carte);color:var(--carbone);border-bottom:1px solid var(--trait)}
 .palcard input:focus{outline:none}
 .palres{max-height:52vh;overflow:auto}
@@ -194,8 +194,8 @@ body.auth-checking #auth-loading{display:flex}
 @keyframes auth-spin{to{transform:rotate(360deg)}}
 #app[aria-hidden="true"]{display:none}
 #auth{position:fixed;inset:0;z-index:180;background:linear-gradient(160deg,var(--encre-2),var(--encre) 60%,#5B21A8);display:flex;align-items:stretch;justify-content:center;padding:18px;overflow:auto}
-.authcard{background:var(--carte);border-radius:18px;width:100%;max-width:400px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
-.auth-shell{display:grid;grid-template-columns:minmax(280px,360px) minmax(0,560px);width:min(1080px,100%);margin:auto;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:28px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.28)}
+.authcard{background:var(--carte);border-radius:18px;width:100%;max-width:400px;padding:28px;box-shadow:none;}
+.auth-shell{display:grid;grid-template-columns:minmax(280px,360px) minmax(0,560px);width:min(1080px,100%);margin:auto;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:28px;overflow:hidden;box-shadow:none;}
 .auth-aside{padding:34px 28px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));color:#F6F1FF;display:flex;flex-direction:column;gap:20px}
 .auth-brand{display:flex;align-items:center;gap:12px}
 .auth-brand strong{display:block;font-size:1.15rem}
@@ -224,7 +224,7 @@ body.auth-checking #auth-loading{display:flex}
 .auth-field label,.auth-check legend{font-size:.78rem;font-weight:800;color:var(--gris);letter-spacing:.04em;text-transform:uppercase}
 .auth-field input,.auth-field select{border:1.5px solid var(--trait);border-radius:12px;padding:13px 14px;font:600 .95rem var(--font-sans);background:var(--champ);color:var(--carbone)}
 .auth-field input::placeholder{color:#9E95B6}
-.auth-field input:focus,.auth-field select:focus{outline:none;border-color:var(--flamme);box-shadow:0 0 0 4px rgba(17,191,174,.14)}
+.auth-field input:focus,.auth-field select:focus{outline:none;border-color:var(--flamme);box-shadow:none;}
 .auth-field-error{min-height:1.1em;color:var(--brique);font-size:.82rem}
 .auth-help{color:var(--gris);font-size:.82rem;line-height:1.5}
 .auth-check{border:none;padding:0;display:grid;gap:8px}
@@ -265,7 +265,7 @@ body.auth-checking #auth-loading{display:flex}
 }
 /* ---------- Autocomplétion client ---------- */
 .sugwrap{position:relative}
-.sug{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--carte);border:1.5px solid var(--encre);border-radius:10px;box-shadow:0 8px 24px rgba(14,26,66,.18);z-index:60;max-height:230px;overflow:auto}
+.sug{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--carte);border:1.5px solid var(--encre);border-radius:10px;box-shadow:none;z-index:60;max-height:230px;overflow:auto}
 .sug button{display:block;width:100%;text-align:left;background:none;border:none;padding:10px 13px;cursor:pointer;font:500 .9rem var(--font-sans);border-bottom:1px solid var(--trait)}
 .sug button:last-child{border-bottom:none}
 .sug button:hover,.sug button.hl{background:var(--bleu-p)}
@@ -320,21 +320,21 @@ body.auth-checking #auth-loading{display:flex}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
-<link rel="stylesheet" href="assets/css/phase1-foundation.css?v=20260803.3">
-<link rel="stylesheet" href="assets/css/modern-erp.css?v=20260803.3">
-<link rel="stylesheet" href="assets/css/erp-access-control.css?v=20260803.3">
-<link rel="stylesheet" href="assets/css/piloz-help-support.css?v=20260803.2">
-<link rel="stylesheet" href="assets/css/dashboard-cockpit.css?v=20260803.1">
-<link rel="stylesheet" href="assets/css/crm-command-center.css?v=20260803.1">
-<link rel="stylesheet" href="assets/css/crm-rework.css?v=20260803.1">
-<link rel="stylesheet" href="assets/css/activities-workspace.css?v=20260803.3">
-<link rel="stylesheet" href="assets/css/document-viewer-v2.css?v=20260803.1">
-<link rel="stylesheet" href="assets/css/clients-workspace.css?v=20260803.1">
-<link rel="stylesheet" href="assets/css/catalog-workspace.css?v=20260803.3">
-<link rel="stylesheet" href="assets/css/piloz-brand.css?v=20260803.2">
-<link rel="stylesheet" href="assets/css/piloz-premium.css?v=20260803.2">
-<link rel="stylesheet" href="assets/css/accounting-extensions.css?v=20260803.1">
-<link rel="stylesheet" href="assets/css/piloz-ios.css?v=20260803.3">
+<link rel="stylesheet" href="assets/css/phase1-foundation.css?v=20260803.4">
+<link rel="stylesheet" href="assets/css/modern-erp.css?v=20260803.4">
+<link rel="stylesheet" href="assets/css/erp-access-control.css?v=20260803.4">
+<link rel="stylesheet" href="assets/css/piloz-help-support.css?v=20260803.3">
+<link rel="stylesheet" href="assets/css/dashboard-cockpit.css?v=20260803.2">
+<link rel="stylesheet" href="assets/css/crm-command-center.css?v=20260803.2">
+<link rel="stylesheet" href="assets/css/crm-rework.css?v=20260803.2">
+<link rel="stylesheet" href="assets/css/activities-workspace.css?v=20260803.4">
+<link rel="stylesheet" href="assets/css/document-viewer-v2.css?v=20260803.2">
+<link rel="stylesheet" href="assets/css/clients-workspace.css?v=20260803.2">
+<link rel="stylesheet" href="assets/css/catalog-workspace.css?v=20260803.4">
+<link rel="stylesheet" href="assets/css/piloz-brand.css?v=20260803.3">
+<link rel="stylesheet" href="assets/css/piloz-premium.css?v=20260803.3">
+<link rel="stylesheet" href="assets/css/accounting-extensions.css?v=20260803.2">
+<link rel="stylesheet" href="assets/css/piloz-ios.css?v=20260803.4">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/images/piloz-favicon.png?v=20260723.1">
 <link rel="shortcut icon" type="image/png" href="assets/images/piloz-favicon.png?v=20260723.1">
 <link rel="apple-touch-icon" sizes="180x180" href="assets/images/piloz-apple-touch-icon.png?v=20260723.1">
