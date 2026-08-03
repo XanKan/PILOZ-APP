@@ -1,11 +1,11 @@
 .aw-shell {
-  --aw-ink: #102a43;
-  --aw-muted: #6b7f93;
-  --aw-line: #dce7ea;
-  --aw-soft: #f4f9f9;
-  --aw-teal: #0f9f91;
-  --aw-teal-dark: #08766d;
-  --aw-navy: #0b2742;
+  --aw-ink: var(--text-primary, #102a43);
+  --aw-muted: var(--text-secondary, #6b7f93);
+  --aw-line: var(--border, #dce7ea);
+  --aw-soft: var(--surface-secondary, #f4f9f9);
+  --aw-teal: var(--primary, #0f9f91);
+  --aw-teal-dark: var(--primary-hover, #08766d);
+  --aw-navy: var(--text-primary, #0b2742);
   min-height: 100%;
   padding: 28px clamp(18px, 3vw, 42px) 44px;
   color: var(--aw-ink);

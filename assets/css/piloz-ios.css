@@ -27,6 +27,7 @@ body[data-theme="dark"]{
   --ios-radius-md:18px;
   --ios-radius-lg:24px;
   --ios-ease:cubic-bezier(.22,1,.36,1);
+  --font-sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   --page-background:var(--ios-canvas);
   --surface:var(--ios-surface-solid);
   --surface-secondary:#f6f9fa;

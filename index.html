@@ -15,7 +15,7 @@
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Albert+Sans:wght@400;500;600;700&family=Spline+Sans+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans+Mono:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -29,9 +29,9 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{font-size:16px}
-body{font-family:'Albert Sans',sans-serif;background:var(--papier);color:var(--carbone);min-height:100vh}
+body{font-family:var(--font-sans),sans-serif;background:var(--papier);color:var(--carbone);min-height:100vh}
 .mono{font-family:'Spline Sans Mono',monospace}
-h1,h2,.disp{font-family:'Archivo Black',sans-serif;letter-spacing:.01em}
+h1,h2,.disp{font-family:var(--font-sans);font-weight:800;letter-spacing:-.02em}
 
 /* ---------- Coque : rail intercalaires + contenu ---------- */
 .app{display:flex;min-height:100vh}
@@ -40,7 +40,7 @@ h1,h2,.disp{font-family:'Archivo Black',sans-serif;letter-spacing:.01em}
 .app.mini .brand>div:not(.plogo),.app.mini .tab .lbl,.app.mini .tab .badge,.app.mini .rail-foot{display:none}
 .app.mini .brand{padding:16px 12px;justify-content:center}
 .app.mini .tab{justify-content:center;padding:13px 0}
-.plier{background:none;border:none;color:#C6EDE9;cursor:pointer;font:600 .8rem 'Albert Sans';padding:10px 16px;text-align:left;display:flex;align-items:center;gap:10px}
+.plier{background:none;border:none;color:#C6EDE9;cursor:pointer;font:600 .8rem var(--font-sans);padding:10px 16px;text-align:left;display:flex;align-items:center;gap:10px}
 .plier:hover{color:#fff}
 .app.mini .plier{justify-content:center;padding:10px 0}
 .brand{padding:22px 18px 16px}
@@ -48,7 +48,7 @@ h1,h2,.disp{font-family:'Archivo Black',sans-serif;letter-spacing:.01em}
 .brand small{display:block;color:#C9A9F0;font-weight:500;margin-top:4px;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase}
 .tabs{display:flex;flex-direction:column;gap:2px;margin-top:8px}
 .rail{justify-content:flex-start}
-.tab{display:flex;align-items:center;gap:10px;padding:12px 16px;color:#C6EDE9;background:none;border:none;font:600 .92rem 'Albert Sans';cursor:pointer;text-align:left;border-left:5px solid transparent;transition:background .15s}
+.tab{display:flex;align-items:center;gap:10px;padding:12px 16px;color:#C6EDE9;background:none;border:none;font:600 .92rem var(--font-sans);cursor:pointer;text-align:left;border-left:5px solid transparent;transition:background .15s}
 .tab:hover{background:rgba(255,255,255,.07)}
 .tab.on{background:var(--papier);color:var(--encre);border-left-color:var(--flamme);border-radius:0 var(--r) var(--r) 0;margin-right:-1px}
 .tab .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
@@ -61,7 +61,7 @@ h1,h2,.disp{font-family:'Archivo Black',sans-serif;letter-spacing:.01em}
 .topbar h1{font-size:1.5rem;color:var(--encre)}
 .topbar .date{color:var(--gris);font-weight:500}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
-.btn{border:none;border-radius:10px;padding:10px 16px;font:700 .88rem 'Albert Sans';cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:transform .12s, box-shadow .12s}
+.btn{border:none;border-radius:10px;padding:10px 16px;font:700 .88rem var(--font-sans);cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:transform .12s, box-shadow .12s}
 .btn:active{transform:scale(.97)}
 .btn-p{background:var(--flamme);color:#fff;box-shadow:0 3px 0 var(--flamme-2)}
 .btn-p:hover{box-shadow:0 4px 0 var(--flamme-2);transform:translateY(-1px)}
@@ -80,14 +80,14 @@ h1,h2,.disp{font-family:'Archivo Black',sans-serif;letter-spacing:.01em}
 
 /* ---------- Filtres 1-clic ---------- */
 .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
-.chip{border:1.5px solid var(--trait);background:var(--carte);color:var(--carbone);border-radius:99px;padding:8px 15px;font:600 .85rem 'Albert Sans';cursor:pointer;display:inline-flex;gap:7px;align-items:center}
+.chip{border:1.5px solid var(--trait);background:var(--carte);color:var(--carbone);border-radius:99px;padding:8px 15px;font:600 .85rem var(--font-sans);cursor:pointer;display:inline-flex;gap:7px;align-items:center}
 .chip .n{font-family:'Spline Sans Mono';font-weight:700;font-size:.78rem;color:var(--gris)}
 .chip.on{border-color:var(--encre);background:var(--encre);color:#fff}
 .chip.on .n{color:#DCF7F3}
 .chip.c-enc.on{background:var(--flamme);border-color:var(--flamme)}
 .chip.c-sig.on{background:var(--sapin);border-color:var(--sapin)}
 .chip.c-per.on{background:var(--brique);border-color:var(--brique)}
-.search{margin-left:auto;border:1.5px solid var(--trait);border-radius:10px;padding:9px 13px;font:500 .9rem 'Albert Sans';min-width:200px;background:var(--champ);color:var(--carbone)}
+.search{margin-left:auto;border:1.5px solid var(--trait);border-radius:10px;padding:9px 13px;font:500 .9rem var(--font-sans);min-width:200px;background:var(--champ);color:var(--carbone)}
 .search:focus{outline:2px solid var(--encre);outline-offset:1px}
 
 /* ---------- Lignes-dossiers ---------- */
@@ -100,7 +100,7 @@ h1,h2,.disp{font-family:'Archivo Black',sans-serif;letter-spacing:.01em}
 .row .prod{font-size:.88rem}
 .row .prod small{display:block;color:var(--gris)}
 .row .amt{font-family:'Spline Sans Mono';font-weight:700;font-size:.95rem}
-.row .amt small{display:block;color:var(--gris);font-weight:500;font-size:.72rem;font-family:'Albert Sans'}
+.row .amt small{display:block;color:var(--gris);font-weight:500;font-size:.72rem;font-family:var(--font-sans)}
 .st{display:inline-block;border-radius:7px;padding:4px 10px;font-size:.76rem;font-weight:700}
 .st-enc{background:var(--bleu-p);color:var(--encre)} .st-env{background:var(--ambre-p);color:var(--ambre)}
 .st-sig{background:var(--sapin-p);color:var(--sapin)} .st-per{background:var(--brique-p);color:var(--brique)}
@@ -143,7 +143,7 @@ tr.total td.num{color:#fff}
 .bar.low i{background:var(--brique)} .bar.mid i{background:var(--ambre)}
 input.cell{width:80px;border:1.5px solid var(--trait);border-radius:8px;padding:6px 8px;font:600 .85rem 'Spline Sans Mono';text-align:right;background:var(--champ);color:var(--carbone)}
 input.cell:focus{outline:2px solid var(--encre)}
-select.annee{border:1.5px solid var(--trait);border-radius:10px;padding:8px 12px;font:700 .9rem 'Albert Sans';background:var(--champ);color:var(--carbone)}
+select.annee{border:1.5px solid var(--trait);border-radius:10px;padding:8px 12px;font:700 .9rem var(--font-sans);background:var(--champ);color:var(--carbone)}
 canvas{max-height:260px}
 
 .plogo{width:42px;height:42px;display:grid;place-items:center;flex-shrink:0;background:transparent}.plogo img{display:block;width:100%;height:100%;object-fit:contain}
@@ -157,10 +157,10 @@ canvas{max-height:260px}
 /* ---------- Recherche globale ---------- */
 #palette{position:fixed;inset:0;background:rgba(9,29,53,.6);z-index:170;display:flex;align-items:flex-start;justify-content:center;padding:9vh 16px}
 .palcard{background:var(--carte);border-radius:14px;width:100%;max-width:560px;box-shadow:0 24px 70px rgba(0,0,0,.4);overflow:hidden}
-.palcard input{width:100%;border:none;padding:16px 18px;font:600 1.05rem 'Albert Sans';background:var(--carte);color:var(--carbone);border-bottom:1px solid var(--trait)}
+.palcard input{width:100%;border:none;padding:16px 18px;font:600 1.05rem var(--font-sans);background:var(--carte);color:var(--carbone);border-bottom:1px solid var(--trait)}
 .palcard input:focus{outline:none}
 .palres{max-height:52vh;overflow:auto}
-.palres button{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:none;padding:11px 16px;cursor:pointer;font:500 .9rem 'Albert Sans';color:var(--carbone);border-bottom:1px solid var(--trait)}
+.palres button{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:none;padding:11px 16px;cursor:pointer;font:500 .9rem var(--font-sans);color:var(--carbone);border-bottom:1px solid var(--trait)}
 .palres button:hover,.palres button.hl{background:var(--bleu-p)}
 .palres .typ{font-size:.68rem;font-weight:700;padding:3px 8px;border-radius:6px;flex-shrink:0}
 .palres small{color:var(--gris);display:block}
@@ -180,7 +180,7 @@ canvas{max-height:260px}
 .kcard .feu{color:var(--brique);font-weight:700;font-size:.74rem}
 .kvide{color:var(--gris);font-size:.78rem;text-align:center;padding:14px 4px}
 .modebtns{display:inline-flex;background:var(--carte2);border-radius:10px;padding:3px;gap:2px}
-.modebtns button{border:none;background:none;padding:7px 13px;border-radius:8px;font:700 .82rem 'Albert Sans';color:var(--gris);cursor:pointer}
+.modebtns button{border:none;background:none;padding:7px 13px;border-radius:8px;font:700 .82rem var(--font-sans);color:var(--gris);cursor:pointer}
 .modebtns button.on{background:var(--flamme);color:#fff}
 /* ---------- Page de connexion ---------- */
 body.auth-only{overflow:hidden}
@@ -222,7 +222,7 @@ body.auth-checking #auth-loading{display:flex}
 .auth-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
 .auth-field{display:flex;flex-direction:column;gap:6px}
 .auth-field label,.auth-check legend{font-size:.78rem;font-weight:800;color:var(--gris);letter-spacing:.04em;text-transform:uppercase}
-.auth-field input,.auth-field select{border:1.5px solid var(--trait);border-radius:12px;padding:13px 14px;font:600 .95rem 'Albert Sans';background:var(--champ);color:var(--carbone)}
+.auth-field input,.auth-field select{border:1.5px solid var(--trait);border-radius:12px;padding:13px 14px;font:600 .95rem var(--font-sans);background:var(--champ);color:var(--carbone)}
 .auth-field input::placeholder{color:#9E95B6}
 .auth-field input:focus,.auth-field select:focus{outline:none;border-color:var(--flamme);box-shadow:0 0 0 4px rgba(17,191,174,.14)}
 .auth-field-error{min-height:1.1em;color:var(--brique);font-size:.82rem}
@@ -266,7 +266,7 @@ body.auth-checking #auth-loading{display:flex}
 /* ---------- Autocomplétion client ---------- */
 .sugwrap{position:relative}
 .sug{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--carte);border:1.5px solid var(--encre);border-radius:10px;box-shadow:0 8px 24px rgba(14,26,66,.18);z-index:60;max-height:230px;overflow:auto}
-.sug button{display:block;width:100%;text-align:left;background:none;border:none;padding:10px 13px;cursor:pointer;font:500 .9rem 'Albert Sans';border-bottom:1px solid var(--trait)}
+.sug button{display:block;width:100%;text-align:left;background:none;border:none;padding:10px 13px;cursor:pointer;font:500 .9rem var(--font-sans);border-bottom:1px solid var(--trait)}
 .sug button:last-child{border-bottom:none}
 .sug button:hover,.sug button.hl{background:var(--bleu-p)}
 .sug b{color:var(--encre)}
@@ -281,7 +281,7 @@ body.auth-checking #auth-loading{display:flex}
 .f{display:flex;flex-direction:column;gap:5px}
 .f.full{grid-column:1/-1}
 .f label{font-size:.75rem;font-weight:700;color:var(--gris);letter-spacing:.04em;text-transform:uppercase}
-.f input,.f select,.f textarea{border:1.5px solid var(--trait);border-radius:10px;padding:10px 12px;font:500 .92rem 'Albert Sans';background:var(--champ);color:var(--carbone)}
+.f input,.f select,.f textarea{border:1.5px solid var(--trait);border-radius:10px;padding:10px 12px;font:500 .92rem var(--font-sans);background:var(--champ);color:var(--carbone)}
 .f input:focus,.f select:focus,.f textarea:focus{outline:2px solid var(--encre)}
 .mfoot{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 
@@ -291,7 +291,7 @@ body.auth-checking #auth-loading{display:flex}
 .pitem span{flex:1;font-weight:500}
 .pitem input{width:70px;border:1.5px solid var(--trait);border-radius:7px;padding:5px;font:600 .85rem 'Spline Sans Mono';text-align:right;background:var(--champ);color:var(--carbone)}
 .padd{display:flex;gap:8px;margin-top:10px}
-.padd input{flex:1;border:1.5px solid var(--trait);border-radius:9px;padding:9px 12px;font:500 .9rem 'Albert Sans';background:var(--champ);color:var(--carbone)}
+.padd input{flex:1;border:1.5px solid var(--trait);border-radius:9px;padding:9px 12px;font:500 .9rem var(--font-sans);background:var(--champ);color:var(--carbone)}
 .note{background:var(--bleu-p);border-radius:10px;padding:12px 14px;font-size:.83rem;color:var(--encre);margin-bottom:14px}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--carbone);color:#fff;border-radius:10px;padding:12px 20px;font-weight:600;transition:transform .25s;z-index:99}
 .toast.on{transform:translateX(-50%) translateY(0)}
@@ -320,21 +320,21 @@ body.auth-checking #auth-loading{display:flex}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
-<link rel="stylesheet" href="assets/css/phase1-foundation.css?v=20260731.6">
-<link rel="stylesheet" href="assets/css/modern-erp.css?v=20260802.1">
-<link rel="stylesheet" href="assets/css/erp-access-control.css?v=20260726.2">
+<link rel="stylesheet" href="assets/css/phase1-foundation.css?v=20260803.1">
+<link rel="stylesheet" href="assets/css/modern-erp.css?v=20260803.1">
+<link rel="stylesheet" href="assets/css/erp-access-control.css?v=20260803.1">
 <link rel="stylesheet" href="assets/css/piloz-help-support.css?v=20260731.9">
 <link rel="stylesheet" href="assets/css/dashboard-cockpit.css?v=20260731.4">
 <link rel="stylesheet" href="assets/css/crm-command-center.css?v=20260731.4">
 <link rel="stylesheet" href="assets/css/crm-rework.css?v=20260727.1">
-<link rel="stylesheet" href="assets/css/activities-workspace.css?v=20260731.7">
+<link rel="stylesheet" href="assets/css/activities-workspace.css?v=20260803.1">
 <link rel="stylesheet" href="assets/css/document-viewer-v2.css?v=20260727.2">
 <link rel="stylesheet" href="assets/css/clients-workspace.css?v=20260731.1">
-<link rel="stylesheet" href="assets/css/catalog-workspace.css?v=20260725.1">
+<link rel="stylesheet" href="assets/css/catalog-workspace.css?v=20260803.1">
 <link rel="stylesheet" href="assets/css/piloz-brand.css?v=20260723.1">
 <link rel="stylesheet" href="assets/css/piloz-premium.css?v=20260728.1">
 <link rel="stylesheet" href="assets/css/accounting-extensions.css?v=20260727.3">
-<link rel="stylesheet" href="assets/css/piloz-ios.css?v=20260731.2">
+<link rel="stylesheet" href="assets/css/piloz-ios.css?v=20260803.1">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/images/piloz-favicon.png?v=20260723.1">
 <link rel="shortcut icon" type="image/png" href="assets/images/piloz-favicon.png?v=20260723.1">
 <link rel="apple-touch-icon" sizes="180x180" href="assets/images/piloz-apple-touch-icon.png?v=20260723.1">
@@ -3053,7 +3053,7 @@ async function boActif(uid, actif){
 <script src="assets/js/modules/onboarding/company-search.js?v=20260721.10"></script>
 <script src="assets/js/modules/onboarding/professional-onboarding.js?v=20260801.1"></script>
 <script src="assets/js/modules/erp/erp-app.js?v=20260803.revision-editor-v4"></script>
-<script src="assets/js/modules/erp/erp-modern.js?v=20260803.freeze6"></script>
+<script src="assets/js/modules/erp/erp-modern.js?v=20260803.freeze7"></script>
 <script src="assets/js/modules/erp/erp-compliance.js?v=20260731.1"></script>
 <script src="assets/js/modules/erp/erp-commercial-v2.js?v=20260729.3"></script>
 <script src="assets/js/modules/erp/erp-dashboard-cockpit.js?v=20260731.6"></script>
