@@ -4,20 +4,20 @@ body,
 body[data-theme="dark"] {
   --brand-navy: #102c50;
   --brand-navy-deep: #091d35;
-  --brand-turquoise: #11bfae;
-  --brand-turquoise-hover: #0b9d91;
-  --brand-turquoise-soft: #dcf7f3;
-  --page-background: #f3f9f8;
+  --brand-turquoise: #0a6bcb;
+  --brand-turquoise-hover: #084f99;
+  --brand-turquoise-soft: #e4f0ff;
+  --page-background: #f1f6fc;
   --bg-page: var(--page-background);
   --papier: var(--page-background);
   --surface: #fff;
-  --surface-secondary: #f7fbfa;
-  --surface-hover: #e8f6f4;
+  --surface-secondary: #f6f9fd;
+  --surface-hover: #e9f3fc;
   --text-primary: var(--brand-navy);
   --text-secondary: #435b70;
   --text-muted: #687d8d;
-  --border: #d6e7e5;
-  --border-strong: #a9cac6;
+  --border: #dce6f0;
+  --border-strong: #a9c3e0;
   --primary: var(--brand-turquoise);
   --primary-hover: var(--brand-turquoise-hover);
   --primary-soft: var(--brand-turquoise-soft);

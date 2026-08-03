@@ -11,10 +11,10 @@ body[data-theme="dark"]{
   --ios-navy-900:#0a213c;
   --ios-navy-800:#123658;
   --ios-ink:#102b4e;
-  --ios-teal:#14b8aa;
-  --ios-teal-deep:#087f78;
-  --ios-teal-soft:#e4f8f5;
-  --ios-canvas:#f2f7f8;
+  --ios-teal:#0a6bcb;
+  --ios-teal-deep:#084f99;
+  --ios-teal-soft:#e4f0ff;
+  --ios-canvas:#f1f6fc;
   --ios-surface:rgba(255,255,255,.88);
   --ios-surface-solid:#fff;
   --ios-line:rgba(16,43,78,.10);
@@ -30,8 +30,8 @@ body[data-theme="dark"]{
   --font-sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   --page-background:var(--ios-canvas);
   --surface:var(--ios-surface-solid);
-  --surface-secondary:#f6f9fa;
-  --surface-hover:#edf8f6;
+  --surface-secondary:#f5f8fc;
+  --surface-hover:#e9f3fc;
   --text-primary:var(--ios-ink);
   --text-secondary:#496278;
   --text-muted:#718599;
@@ -64,17 +64,17 @@ body[data-theme="dark"]{
   cursor:pointer;transition:background .16s ease,border-color .16s ease,transform .16s ease,box-shadow .16s ease;
 }
 .rail-help-button svg,.rail-logout-button svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.rail-help-button:hover,.rail-logout-button:hover,.rail-help-button.active{background:rgba(70,207,192,.14);border-color:rgba(70,207,192,.38);color:#fff;box-shadow:0 8px 20px rgba(0,0,0,.12);transform:translateY(-1px)}
-.rail-help-button.active{color:#7ee7dc}
-.rail-help-button:focus-visible,.rail-logout-button:focus-visible{outline:2px solid #46cfc0;outline-offset:2px}
+.rail-help-button:hover,.rail-logout-button:hover,.rail-help-button.active{background:rgba(75,160,235,.14);border-color:rgba(75,160,235,.38);color:#fff;box-shadow:0 8px 20px rgba(0,0,0,.12);transform:translateY(-1px)}
+.rail-help-button.active{color:#a8d4ff}
+.rail-help-button:focus-visible,.rail-logout-button:focus-visible{outline:2px solid #5bb8ff;outline-offset:2px}
 
 html{background:var(--ios-canvas)}
 body,
 body[data-theme="dark"]{
   background:
-    radial-gradient(900px 540px at 88% -8%,rgba(24,190,176,.09),transparent 65%),
+    radial-gradient(900px 540px at 88% -8%,rgba(10,107,203,.09),transparent 65%),
     radial-gradient(720px 520px at 10% 105%,rgba(21,87,136,.055),transparent 68%),
-    linear-gradient(135deg,#f5f9fa 0%,#eef5f6 100%)!important;
+    linear-gradient(135deg,#f5f9fa 0%,#eef4fb 100%)!important;
 }
 
 /* Stable dark navigation, inspired by the generated reference. */
@@ -102,9 +102,9 @@ body[data-theme="dark"]{
 .modern-primary-item.active,
 .modern-primary-item.is-active{
   color:#fff!important;
-  background:linear-gradient(100deg,rgba(20,184,170,.25),rgba(20,184,170,.08))!important;
-  border-color:rgba(83,229,217,.23)!important;
-  box-shadow:inset 3px 0 #35d3c5,0 10px 26px rgba(0,0,0,.13)!important;
+  background:linear-gradient(100deg,rgba(10,107,203,.25),rgba(10,107,203,.08))!important;
+  border-color:rgba(91,184,255,.23)!important;
+  box-shadow:inset 3px 0 #5bb8ff,0 10px 26px rgba(0,0,0,.13)!important;
 }
 .modern-secondary-panel{
   border:1px solid rgba(255,255,255,.72)!important;
@@ -117,7 +117,7 @@ body[data-theme="dark"]{
 }
 .modern-secondary-item{border-radius:12px!important}
 .modern-secondary-item.active{
-  background:linear-gradient(90deg,rgba(20,184,170,.16),rgba(20,184,170,.055))!important;
+  background:linear-gradient(90deg,rgba(10,107,203,.16),rgba(10,107,203,.055))!important;
   box-shadow:inset 3px 0 var(--ios-teal)!important;
 }
 
@@ -179,10 +179,10 @@ body[data-theme="dark"]{
 .access-btn.primary,
 .erp-primary-btn,
 .modern-primary-button{
-  border-color:#07877f!important;
-  background:linear-gradient(180deg,#1ac0b2 0%,#0a9087 100%)!important;
+  border-color:#063d6e!important;
+  background:linear-gradient(180deg,#1878d9 0%,#0856a8 100%)!important;
   color:#fff!important;
-  box-shadow:0 8px 20px rgba(8,127,120,.2),inset 0 1px rgba(255,255,255,.24)!important;
+  box-shadow:0 8px 20px rgba(6,61,110,.2),inset 0 1px rgba(255,255,255,.24)!important;
 }
 .btn-p:hover:not(:disabled),
 .btn.primary:hover:not(:disabled),
@@ -190,9 +190,9 @@ body[data-theme="dark"]{
 .access-btn.primary:hover:not(:disabled),
 .erp-primary-btn:hover:not(:disabled),
 .modern-primary-button:hover:not(:disabled){
-  background:linear-gradient(180deg,#13b4a7 0%,#087d76 100%)!important;
+  background:linear-gradient(180deg,#0f5fb8 0%,#063d6e 100%)!important;
   color:#fff!important;
-  box-shadow:0 11px 25px rgba(8,127,120,.25),inset 0 1px rgba(255,255,255,.25)!important;
+  box-shadow:0 11px 25px rgba(6,61,110,.25),inset 0 1px rgba(255,255,255,.25)!important;
 }
 .btn-danger,
 .access-btn.danger{
@@ -231,7 +231,7 @@ select:focus,
 textarea:focus,
 .access-search:focus-within{
   border-color:var(--ios-teal)!important;
-  box-shadow:0 0 0 4px rgba(20,184,170,.11)!important;
+  box-shadow:0 0 0 4px rgba(10,107,203,.11)!important;
   outline:0!important;
 }
 input[type="checkbox"],
@@ -269,7 +269,7 @@ input[type="radio"]{accent-color:var(--ios-teal-deep)}
   .ops-extension-card,.ops-settings-dashboard>button,.catalog-settings-action
 ):hover{
   transform:translateY(-3px)!important;
-  border-color:rgba(20,184,170,.28)!important;
+  border-color:rgba(10,107,203,.28)!important;
   box-shadow:0 18px 46px rgba(7,29,52,.095)!important;
 }
 
@@ -279,7 +279,7 @@ input[type="radio"]{accent-color:var(--ios-teal-deep)}
   border:1px solid rgba(255,255,255,.78)!important;
   border-radius:26px!important;
   background:
-    radial-gradient(520px 210px at 100% 0,rgba(20,184,170,.17),transparent 64%),
+    radial-gradient(520px 210px at 100% 0,rgba(10,107,203,.17),transparent 64%),
     linear-gradient(145deg,rgba(255,255,255,.97),rgba(245,250,251,.88))!important;
   box-shadow:0 18px 55px rgba(7,29,52,.085)!important;
 }
@@ -301,7 +301,7 @@ input[type="radio"]{accent-color:var(--ios-teal-deep)}
   min-height:126px!important;
   border-radius:20px!important;
   background:
-    radial-gradient(130px 100px at 105% -5%,rgba(20,184,170,.11),transparent 70%),
+    radial-gradient(130px 100px at 105% -5%,rgba(10,107,203,.11),transparent 70%),
     rgba(255,255,255,.92)!important;
 }
 .cockpit-kpi strong,
@@ -345,7 +345,7 @@ input[type="radio"]{accent-color:var(--ios-teal-deep)}
 }
 :is(.modern-table,.phase1-table,.crm-table,.access-table,.ops-table,.ops-export-table) th{
   border-color:var(--ios-line)!important;
-  background:#f3f7f8!important;
+  background:#f3f7fc!important;
   color:#60768a!important;
   font-size:.66rem!important;
   letter-spacing:.075em!important;
@@ -354,12 +354,12 @@ input[type="radio"]{accent-color:var(--ios-teal-deep)}
   border-color:rgba(16,43,78,.07)!important;
 }
 :is(.modern-table,.phase1-table,.crm-table,.access-table,.ops-table,.ops-export-table) tbody tr:hover td{
-  background:rgba(227,248,245,.42)!important;
+  background:rgba(228,240,255,.42)!important;
 }
 .ops-export-piece th{
-  background:#e5f3f5!important;
+  background:#e6f1fc!important;
   color:var(--ios-ink)!important;
-  border-color:#c7e0e3!important;
+  border-color:#c9dcf0!important;
 }
 .ops-export-table thead th{
   background:var(--ios-navy-800)!important;
@@ -388,7 +388,7 @@ input[type="radio"]{accent-color:var(--ios-teal-deep)}
   box-shadow:none!important;
 }
 :is(.modern-view-tab,.crm-view-switch button,.ops-filterbar button,.ops-tabs button,.access-quick-tabs button).active{
-  border-color:rgba(20,184,170,.2)!important;
+  border-color:rgba(10,107,203,.2)!important;
   background:#fff!important;
   color:var(--ios-teal-deep)!important;
   box-shadow:0 4px 14px rgba(7,29,52,.075)!important;
@@ -416,9 +416,9 @@ input[type="radio"]{accent-color:var(--ios-teal-deep)}
 .catalog-settings-icon,
 .access-role-icon,
 .ops-extension-logo{
-  border:1px solid rgba(20,184,170,.11)!important;
+  border:1px solid rgba(10,107,203,.11)!important;
   border-radius:14px!important;
-  background:linear-gradient(145deg,#ebfaf8,#dff5f2)!important;
+  background:linear-gradient(145deg,#ebf5fd,#dfeefd)!important;
   color:var(--ios-teal-deep)!important;
   box-shadow:inset 0 1px rgba(255,255,255,.75)!important;
 }
@@ -479,7 +479,7 @@ input[type="radio"]{accent-color:var(--ios-teal-deep)}
 
 /* Document workspaces: modern chrome, untouched printable paper. */
 .erp-editor{
-  background:linear-gradient(145deg,#eaf4f3,#f4f8f9)!important;
+  background:linear-gradient(145deg,#eaf2fb,#f4f8fc)!important;
 }
 .erp-editor-bar{
   background:rgba(255,255,255,.88)!important;

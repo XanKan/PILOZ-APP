@@ -7,7 +7,7 @@
 <meta name="description" content="Espace sécurisé Piloz pour piloter la gestion commerciale de votre entreprise.">
 <meta name="author" content="LOGICIEL PILOZ">
 <meta name="application-name" content="Piloz">
-<meta name="theme-color" content="#11BFAE">
+<meta name="theme-color" content="#0A6BCB">
 <meta name="robots" content="noindex, nofollow">
 <meta name="google" content="notranslate">
 <meta name="referrer" content="strict-origin-when-cross-origin">
@@ -20,11 +20,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
-  --encre:#102C50; --encre-2:#091D35; --flamme:#11BFAE; --flamme-2:#0B9D91;
-  --papier:#F3F9F8; --carte:#FFFFFF; --carte2:#F7FBFA; --carbone:#102C50; --gris:#52677A; --trait:#D6E7E5;
+  --encre:#102C50; --encre-2:#091D35; --flamme:#0A6BCB; --flamme-2:#084F99;
+  --papier:#F3F8FD; --carte:#FFFFFF; --carte2:#F6F9FD; --carbone:#102C50; --gris:#52677A; --trait:#DCE6F0;
   --sapin:#1E7A46; --sapin-p:#E4F3E9; --brique:#B3261E; --brique-p:#FBEAE8;
-  --ambre:#B45D0C; --ambre-p:#FDF0DF; --bleu-p:#DCF7F3;
-  --champ:#FFFFFF; --accent-clair:#C6F3EC;
+  --ambre:#B45D0C; --ambre-p:#FDF0DF; --bleu-p:#E4F0FF;
+  --champ:#FFFFFF; --accent-clair:#CFE6FF;
   --r:12px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -83,7 +83,7 @@ h1,h2,.disp{font-family:var(--font-sans);font-weight:800;letter-spacing:-.02em}
 .chip{border:1.5px solid var(--trait);background:var(--carte);color:var(--carbone);border-radius:99px;padding:8px 15px;font:600 .85rem var(--font-sans);cursor:pointer;display:inline-flex;gap:7px;align-items:center}
 .chip .n{font-family:'Spline Sans Mono';font-weight:700;font-size:.78rem;color:var(--gris)}
 .chip.on{border-color:var(--encre);background:var(--encre);color:#fff}
-.chip.on .n{color:#DCF7F3}
+.chip.on .n{color:#CFE6FF}
 .chip.c-enc.on{background:var(--flamme);border-color:var(--flamme)}
 .chip.c-sig.on{background:var(--sapin);border-color:var(--sapin)}
 .chip.c-per.on{background:var(--brique);border-color:var(--brique)}
@@ -210,14 +210,14 @@ body.auth-checking #auth-loading{display:flex}
 .auth-panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
 .auth-panel-head h2{font-size:clamp(1.4rem,2.6vw,2rem);color:var(--encre);letter-spacing:0}
 .auth-panel-head p{color:var(--gris);font-size:.95rem;line-height:1.5}
-.auth-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#DCF7F3;color:var(--flamme);font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.auth-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#E4F0FF;color:var(--flamme);font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
 .auth-switch{margin-left:auto;text-align:right;color:var(--gris);font-size:.9rem}
 .auth-link{color:var(--flamme-2);font-weight:700;text-decoration:none}
 .auth-link:hover{text-decoration:underline}
 .auth-progress{display:grid;gap:8px}
 .auth-progress-top{display:flex;justify-content:space-between;align-items:center;font-size:.82rem;color:var(--gris);font-weight:700}
 .auth-progress-track{height:10px;background:var(--trait);border-radius:999px;overflow:hidden}
-.auth-progress-fill{height:100%;background:linear-gradient(90deg,var(--flamme),#46CFC0);border-radius:999px;transition:width .2s ease}
+.auth-progress-fill{height:100%;background:linear-gradient(90deg,var(--flamme),#5BB8FF);border-radius:999px;transition:width .2s ease}
 .auth-grid{display:grid;gap:14px}
 .auth-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
 .auth-field{display:flex;flex-direction:column;gap:6px}
@@ -245,7 +245,7 @@ body.auth-checking #auth-loading{display:flex}
 .auth-summary-item{display:flex;justify-content:space-between;gap:12px;font-size:.9rem}
 .auth-summary-item span{color:var(--gris)}
 .auth-summary-item b{text-align:right;color:var(--carbone)}
-.auth-cta-note{padding:12px 14px;border-radius:14px;background:#DCF7F3;color:var(--encre);font-size:.88rem;line-height:1.5}
+.auth-cta-note{padding:12px 14px;border-radius:14px;background:#E4F0FF;color:var(--encre);font-size:.88rem;line-height:1.5}
 .souvenir{display:flex;align-items:flex-start;gap:10px;margin:4px 0;font-size:.92rem;color:var(--carbone);line-height:1.5}
 .souvenir input{width:17px;height:17px;margin-top:2px;accent-color:var(--flamme)}
 .btn:focus-visible,.tab:focus-visible,.chip:focus-visible,.search:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid rgba(17,191,174,.45);outline-offset:3px}
@@ -320,21 +320,21 @@ body.auth-checking #auth-loading{display:flex}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
-<link rel="stylesheet" href="assets/css/phase1-foundation.css?v=20260803.1">
-<link rel="stylesheet" href="assets/css/modern-erp.css?v=20260803.1">
-<link rel="stylesheet" href="assets/css/erp-access-control.css?v=20260803.1">
-<link rel="stylesheet" href="assets/css/piloz-help-support.css?v=20260731.9">
+<link rel="stylesheet" href="assets/css/phase1-foundation.css?v=20260803.2">
+<link rel="stylesheet" href="assets/css/modern-erp.css?v=20260803.2">
+<link rel="stylesheet" href="assets/css/erp-access-control.css?v=20260803.2">
+<link rel="stylesheet" href="assets/css/piloz-help-support.css?v=20260803.1">
 <link rel="stylesheet" href="assets/css/dashboard-cockpit.css?v=20260731.4">
 <link rel="stylesheet" href="assets/css/crm-command-center.css?v=20260731.4">
 <link rel="stylesheet" href="assets/css/crm-rework.css?v=20260727.1">
-<link rel="stylesheet" href="assets/css/activities-workspace.css?v=20260803.1">
+<link rel="stylesheet" href="assets/css/activities-workspace.css?v=20260803.2">
 <link rel="stylesheet" href="assets/css/document-viewer-v2.css?v=20260727.2">
 <link rel="stylesheet" href="assets/css/clients-workspace.css?v=20260731.1">
-<link rel="stylesheet" href="assets/css/catalog-workspace.css?v=20260803.1">
-<link rel="stylesheet" href="assets/css/piloz-brand.css?v=20260723.1">
-<link rel="stylesheet" href="assets/css/piloz-premium.css?v=20260728.1">
+<link rel="stylesheet" href="assets/css/catalog-workspace.css?v=20260803.2">
+<link rel="stylesheet" href="assets/css/piloz-brand.css?v=20260803.1">
+<link rel="stylesheet" href="assets/css/piloz-premium.css?v=20260803.1">
 <link rel="stylesheet" href="assets/css/accounting-extensions.css?v=20260727.3">
-<link rel="stylesheet" href="assets/css/piloz-ios.css?v=20260803.1">
+<link rel="stylesheet" href="assets/css/piloz-ios.css?v=20260803.2">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/images/piloz-favicon.png?v=20260723.1">
 <link rel="shortcut icon" type="image/png" href="assets/images/piloz-favicon.png?v=20260723.1">
 <link rel="apple-touch-icon" sizes="180x180" href="assets/images/piloz-apple-touch-icon.png?v=20260723.1">
@@ -389,17 +389,17 @@ function assombrir(hex, f){
   return '#' + [v(0),v(2),v(4)].map(x=>x.toString(16).padStart(2,'0')).join('');
 }
 function appliquerAccent(){
-  const palettePiloz = new Set(['#11BFAE','#0B9D91','#102C50','#2D5B7F','#46CFC0','#087D75','#7BCFC5']);
-  let a = String(S && S.accent || '#11BFAE').toUpperCase();
+  const palettePiloz = new Set(['#0A6BCB','#084F99','#102C50','#2D5B7F','#1E77C9','#063D6E','#5B9BDB']);
+  let a = String(S && S.accent || '#0A6BCB').toUpperCase();
   if(!palettePiloz.has(a)){
-    a = '#11BFAE';
+    a = '#0A6BCB';
     if(S) S.accent = a;
   }
   const st = document.body.style;
   st.setProperty('--flamme', a);
   st.setProperty('--flamme-2', assombrir(a,.2));
 }
-function choisirAccent(c){ S.accent = c||'#11BFAE'; appliquerAccent(); sauver('Couleur enregistrée'); render(); }
+function choisirAccent(c){ S.accent = c||'#0A6BCB'; appliquerAccent(); sauver('Couleur enregistrée'); render(); }
 function appliquerTheme(t){
   document.body.dataset.theme = 'light';
   lsSet('piloz_theme', 'light');
@@ -718,7 +718,7 @@ function normaliserEtat(){
   if(!S.params) S.params = structuredClone(DEFAUT.params);
   if(S.params.plMarqueur===undefined) S.params.plMarqueur = '';
   if(!S.params.relance) S.params.relance = {premiere:7, repondeur:2, discussion:5, positif:3, standard:7};
-  if(S.accent===undefined) S.accent = '#11BFAE';
+  if(S.accent===undefined) S.accent = '#0A6BCB';
   if(!S.factu) S.factu = {
     docs: [], next: {D:1, F:1},
     societe: {nom:'', adresse:'', siret:'', tvaIntra:'', email:'', tel:'', iban:'', mentions:"TVA non applicable, art. 293 B du CGI (à adapter). Pénalités de retard : 3 fois le taux d'intérêt légal. Indemnité forfaitaire de recouvrement : 40 €."},
@@ -1930,10 +1930,10 @@ function vParams(){
     <div class="card"><h2>🎨 COULEUR D'ACCENT</h2>
       <p style="font-size:.82rem;color:var(--gris);margin-bottom:10px">La couleur des boutons, badges et accents. Synchronisée avec votre compte.</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-        ${['#11BFAE','#0B9D91','#102C50','#2D5B7F','#46CFC0','#087D75','#7BCFC5'].map(c=>`
-          <button title="${c}" onclick="choisirAccent('${c}')" style="width:36px;height:36px;border-radius:50%;border:${(S.accent||'#11BFAE')===c?'3px solid var(--carbone)':'2px solid var(--trait)'};background:${c};cursor:pointer"></button>`).join('')}
+        ${['#0A6BCB','#084F99','#102C50','#2D5B7F','#1E77C9','#063D6E','#5B9BDB'].map(c=>`
+          <button title="${c}" onclick="choisirAccent('${c}')" style="width:36px;height:36px;border-radius:50%;border:${(S.accent||'#0A6BCB')===c?'3px solid var(--carbone)':'2px solid var(--trait)'};background:${c};cursor:pointer"></button>`).join('')}
         <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--gris)">Perso :
-          <input type="color" value="${S.accent||'#11BFAE'}" onchange="choisirAccent(this.value)" style="width:42px;height:36px;border:none;background:none;cursor:pointer"></label>
+          <input type="color" value="${S.accent||'#0A6BCB'}" onchange="choisirAccent(this.value)" style="width:42px;height:36px;border:none;background:none;cursor:pointer"></label>
         ${S.accent?`<button class="btn btn-ghost" onclick="choisirAccent('')">Réinitialiser</button>`:''}
       </div>
     </div>
