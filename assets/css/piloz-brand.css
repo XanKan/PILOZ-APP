@@ -39,7 +39,7 @@ body[data-theme="dark"] {
 }
 
 ::selection {
-  background: #9be7df;
+  background: #9bbfe7;
   color: var(--brand-navy-deep);
 }
 
@@ -101,7 +101,7 @@ input[type="range"] {
 }
 
 .auth-aside {
-  background: linear-gradient(145deg, #effbf9, #dff7f3) !important;
+  background: linear-gradient(145deg, #eff5fb, #dfecf7) !important;
 }
 
 .auth-progress-fill,
@@ -118,7 +118,7 @@ input[type="range"] {
 .company-subnav-item.active,
 .commercial-view-switch button.active,
 .commercial-tabs.filters button.active {
-  border-color: #aee7e1 !important;
+  border-color: #aec9e7 !important;
   background: var(--brand-turquoise-soft) !important;
   color: var(--brand-turquoise-hover) !important;
 }
@@ -158,7 +158,7 @@ input[type="range"] {
 .document-v2-line.drop-target,
 .document-v2-structural.drop-target {
   border-top-color: var(--brand-turquoise) !important;
-  background: #edfaf8 !important;
+  background: #edf4fa !important;
 }
 
 .catalog-workspace,
@@ -173,7 +173,7 @@ input[type="range"] {
   --viewer-ink: var(--brand-navy);
   --viewer-accent: var(--brand-turquoise-hover);
   --viewer-accent-soft: var(--brand-turquoise-soft);
-  --viewer-canvas: #eef7f6;
+  --viewer-canvas: #eef2f7;
 }
 
 .rail-foot a,

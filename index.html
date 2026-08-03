@@ -320,21 +320,21 @@ body.auth-checking #auth-loading{display:flex}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
-<link rel="stylesheet" href="assets/css/phase1-foundation.css?v=20260803.2">
-<link rel="stylesheet" href="assets/css/modern-erp.css?v=20260803.2">
-<link rel="stylesheet" href="assets/css/erp-access-control.css?v=20260803.2">
-<link rel="stylesheet" href="assets/css/piloz-help-support.css?v=20260803.1">
-<link rel="stylesheet" href="assets/css/dashboard-cockpit.css?v=20260731.4">
-<link rel="stylesheet" href="assets/css/crm-command-center.css?v=20260731.4">
-<link rel="stylesheet" href="assets/css/crm-rework.css?v=20260727.1">
-<link rel="stylesheet" href="assets/css/activities-workspace.css?v=20260803.2">
-<link rel="stylesheet" href="assets/css/document-viewer-v2.css?v=20260727.2">
-<link rel="stylesheet" href="assets/css/clients-workspace.css?v=20260731.1">
-<link rel="stylesheet" href="assets/css/catalog-workspace.css?v=20260803.2">
-<link rel="stylesheet" href="assets/css/piloz-brand.css?v=20260803.1">
-<link rel="stylesheet" href="assets/css/piloz-premium.css?v=20260803.1">
-<link rel="stylesheet" href="assets/css/accounting-extensions.css?v=20260727.3">
-<link rel="stylesheet" href="assets/css/piloz-ios.css?v=20260803.2">
+<link rel="stylesheet" href="assets/css/phase1-foundation.css?v=20260803.3">
+<link rel="stylesheet" href="assets/css/modern-erp.css?v=20260803.3">
+<link rel="stylesheet" href="assets/css/erp-access-control.css?v=20260803.3">
+<link rel="stylesheet" href="assets/css/piloz-help-support.css?v=20260803.2">
+<link rel="stylesheet" href="assets/css/dashboard-cockpit.css?v=20260803.1">
+<link rel="stylesheet" href="assets/css/crm-command-center.css?v=20260803.1">
+<link rel="stylesheet" href="assets/css/crm-rework.css?v=20260803.1">
+<link rel="stylesheet" href="assets/css/activities-workspace.css?v=20260803.3">
+<link rel="stylesheet" href="assets/css/document-viewer-v2.css?v=20260803.1">
+<link rel="stylesheet" href="assets/css/clients-workspace.css?v=20260803.1">
+<link rel="stylesheet" href="assets/css/catalog-workspace.css?v=20260803.3">
+<link rel="stylesheet" href="assets/css/piloz-brand.css?v=20260803.2">
+<link rel="stylesheet" href="assets/css/piloz-premium.css?v=20260803.2">
+<link rel="stylesheet" href="assets/css/accounting-extensions.css?v=20260803.1">
+<link rel="stylesheet" href="assets/css/piloz-ios.css?v=20260803.3">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/images/piloz-favicon.png?v=20260723.1">
 <link rel="shortcut icon" type="image/png" href="assets/images/piloz-favicon.png?v=20260723.1">
 <link rel="apple-touch-icon" sizes="180x180" href="assets/images/piloz-apple-touch-icon.png?v=20260723.1">
@@ -1103,7 +1103,7 @@ function vDossier(){
           <div class="pitem"><span style="cursor:pointer" onclick="ouvrirFichier(${d.id},${i})">📄 <b>${esc(f.nom)}</b><br><small style="color:var(--gris)">${fmtD(f.d)} · ${Math.round((f.taille||0)/1024)} Ko</small></span>
           <button class="ic x" style="width:26px;height:26px" onclick="supprimerFichier(${d.id},${i})">✕</button></div>`).join('')}</div>`
         :'<p style="font-size:.85rem;color:var(--gris);margin-bottom:10px">Bon de commande, échange, capture… tout ce qui documente le dossier.</p>'}
-        <label class="btn btn-o" style="cursor:pointer">＋ Ajouter un fichier<input type="file" style="display:none" onchange="uploaderFichier(${d.id}, this)"></label>
+        <label class="btn btn-o" style="cursor:pointer"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Ajouter un fichier<input type="file" style="display:none" onchange="uploaderFichier(${d.id}, this)"></label>
       </div>
     </div>
     <div>
@@ -1113,7 +1113,7 @@ function vDossier(){
         <div class="padd" style="margin:0 0 10px">
           <input id="note_in" placeholder="Ajouter une note (appel, info, décision…)" onkeydown="if(event.key==='Enter')ajouterNote(${d.id})">
           <button class="ic" id="micbtn" title="Dicter la note à la voix" onclick="dicterNote()">🎤</button>
-          <button class="btn btn-p" onclick="ajouterNote(${d.id})">＋</button></div>
+          <button class="btn btn-p" onclick="ajouterNote(${d.id})"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>
         ${jr.length?`<div style="max-height:420px;overflow:auto;font-size:.85rem">${jr.map(e=>`
           <div style="padding:7px 0;border-bottom:1px solid var(--trait);display:flex;gap:8px;align-items:flex-start">
             <span class="mono" style="color:var(--gris);flex-shrink:0;font-size:.75rem;padding-top:2px">${fmtD(e.d)}<br>${e.h||''}</span>
@@ -1144,7 +1144,7 @@ function vClientPage(){
     <div class="actions">
       ${c.email?`<a class="btn btn-o" href="mailto:${esc(c.email)}" style="text-decoration:none">✉ Email</a>`:''}
       <button class="btn btn-o" onclick="formClient(${c.id})">✏️ Modifier</button>
-      <button class="btn btn-p" onclick="devisPourClient(${c.id})">＋ Nouveau devis</button>
+      <button class="btn btn-p" onclick="devisPourClient(${c.id})"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Nouveau devis</button>
     </div></div>
   <div class="kpis">
     <div class="kpi"><label>Devis au total</label><div class="v">${s.nb}</div></div>
@@ -1216,7 +1216,7 @@ function vSuivi(){
     </select>
     <button class="btn btn-o" onclick="exporterCSV()">⬇ CSV</button>
     <button class="btn btn-o" onclick="window.print()">🖨 PDF</button>
-    <button class="btn btn-p" onclick="ouvrirForm()">＋ Nouveau devis</button></div></div>
+    <button class="btn btn-p" onclick="ouvrirForm()"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Nouveau devis</button></div></div>
   ${bandeauRelances()}
   <div class="kpis">
     <div class="kpi"><label>En cours</label><div class="v orange">${st.enc.length}</div><small>${eur(st.pipelineM)}/mois + ${eur(st.pipelineU)}</small></div>
@@ -1232,7 +1232,7 @@ function vSuivi(){
     ${STATUTS_ENCOURS.map(s=>`<button class="chip ${sousFiltre===s?'on':''}" onclick="filtre='tous';sousFiltre=sousFiltre==='${s}'?'':'${s}';render()">${s}</button>`).join('')}
     <input class="search" placeholder="Rechercher un client, produit…" value="${esc(recherche)}" oninput="recherche=this.value;render();this.focus();this.setSelectionRange(this.value.length,this.value.length)">
   </div>
-  ${modeSuivi==='pipeline' ? vueKanban() : (list.length?`<div class="rows">${list.map(ligneDeal).join('')}</div>`:`<div class="vide"><b>Aucun dossier ici.</b><br>Ajoutez votre premier devis avec le bouton « ＋ Nouveau devis ».</div>`)}`;
+  ${modeSuivi==='pipeline' ? vueKanban() : (list.length?`<div class="rows">${list.map(ligneDeal).join('')}</div>`:`<div class="vide"><b>Aucun dossier ici.</b><br>Ajoutez votre premier devis avec le bouton « <svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Nouveau devis ».</div>`)}`;
 }
 
 /* ================= ACTIONS ================= */
@@ -1480,8 +1480,8 @@ function vFactu(){
   <div class="topbar"><h1>Devis & Factures</h1>
   <div class="actions">
     <button class="btn btn-o" onclick="exportCompta()">⬇ Export comptable</button>
-    <button class="btn btn-o" onclick="formDoc(null,'D')">＋ Devis</button>
-    <button class="btn btn-p" onclick="formDoc(null,'F')">＋ Facture</button></div></div>
+    <button class="btn btn-o" onclick="formDoc(null,'D')"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Devis</button>
+    <button class="btn btn-p" onclick="formDoc(null,'F')"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Facture</button></div></div>
   <div class="kpis">
     <div class="kpi"><label>Encaissé (payées)</label><div class="v vert">${eur(Math.round(enc))}</div></div>
     <div class="kpi"><label>En attente de paiement</label><div class="v orange">${eur(Math.round(att))}</div></div>
@@ -1551,7 +1551,7 @@ function formDoc(id, type){
     <div style="overflow-x:auto;margin-top:12px"><table>
       <tr><th>Désignation</th><th>Qté</th><th>PU HT (€)</th><th>TVA %</th><th style="text-align:right">Total HT</th><th></th></tr>
       <tbody id="doc_lignes">${docEnCours.lignes.map((l,i)=>ligneHtml(l,i)).join('')}</tbody></table></div>
-    <div class="actions" style="margin-top:8px"><button class="btn btn-o" onclick="ajouterLigne()">＋ Ajouter une ligne</button>
+    <div class="actions" style="margin-top:8px"><button class="btn btn-o" onclick="ajouterLigne()"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Ajouter une ligne</button>
       <span id="doc_tot" style="margin-left:auto;font-size:.95rem"></span></div>
     <div class="f full" style="margin-top:10px"><label>Notes (visibles sur le document)</label><textarea id="doc_notes" rows="2">${esc(docEnCours.notes||'')}</textarea></div>
   `, ()=>{
@@ -1889,7 +1889,7 @@ function listeEditable(titre, key){
     ${arr.map((v,i)=>`<div class="pitem"><span>${esc(v)}</span>
       <button class="ic x" title="Supprimer" onclick="S.params.${key}.splice(${i},1);sauver('Liste mise à jour');render()">✕</button></div>`).join('')}
     </div><div class="padd"><input id="add_${key}" placeholder="Ajouter…" onkeydown="if(event.key==='Enter')ajouterParam('${key}')">
-    <button class="btn btn-p" onclick="ajouterParam('${key}')">＋</button></div></div>`;
+    <button class="btn btn-p" onclick="ajouterParam('${key}')"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div></div>`;
 }
 function ajouterParam(key){
   const inp=document.getElementById('add_'+key); const v=inp.value.trim();
@@ -2015,7 +2015,7 @@ function suggererClients(q){
   const exact = q && S.clients.some(c=>c.nom.toLowerCase()===q);
   if(!list.length && !q){ box.style.display='none'; return; }
   box.innerHTML = list.map(c=>`<button type="button" onclick="choisirClient(${c.id})"><b>${surligner(c.nom,q)}</b><small>${esc([c.contact,c.email,c.tel].filter(Boolean).join(' · ')||'—')}</small></button>`).join('')
-    + (q && !exact ? `<button type="button" class="new" onclick="fermerSug()">＋ Créer le nouveau client « ${esc(q)} »</button>` : '');
+    + (q && !exact ? `<button type="button" class="new" onclick="fermerSug()"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Créer le nouveau client « ${esc(q)} »</button>` : '');
   box.style.display = box.innerHTML ? 'block' : 'none';
 }
 function surligner(txt,q){
@@ -2085,8 +2085,8 @@ function vAccueil(){
   const on = id => S.accueil[id]!==false;
   const W = {
     raccourcis: `<div class="card"><h2>RACCOURCIS</h2><div class="actions">
-      <button class="btn btn-p" onclick="ouvrirForm()">＋ Nouveau devis</button>
-      <button class="btn btn-o" onclick="formClient()">＋ Nouveau client</button>
+      <button class="btn btn-p" onclick="ouvrirForm()"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Nouveau devis</button>
+      <button class="btn btn-o" onclick="formClient()"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Nouveau client</button>
       <button class="btn btn-o" onclick="vue='semaine';render()">🗓 Ma semaine</button>
       <button class="btn btn-o" onclick="vue='pilotage';render()">📊 Voir le pilotage</button>
       <button class="btn btn-o" onclick="window.print()">🖨 Export PDF</button></div></div>`,
@@ -2147,7 +2147,7 @@ function vClients(){
   <div class="actions">
     <button class="btn btn-o" onclick="ecranDoublons()">🧬 Doublons</button>
     <label class="btn btn-o" style="cursor:pointer">⬆ Importer Excel / CSV<input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importerClients(this)"></label>
-    <button class="btn btn-p" onclick="formClient()">＋ Nouveau client</button></div></div>
+    <button class="btn btn-p" onclick="formClient()"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Nouveau client</button></div></div>
   <div class="kpis">
     <div class="kpi"><label>Clients / prospects</label><div class="v">${S.clients.length}</div></div>
     <div class="kpi"><label>Avec dossier en cours</label><div class="v orange">${S.clients.filter(c=>statsClient(c).enc>0).length}</div></div>
@@ -2161,7 +2161,7 @@ function vClients(){
       <div class="prod">${esc(c.email||'—')}<small>${esc(c.tel||'')}</small></div>
       <div class="prod">${s.nb} devis<small>${s.enc} en cours · ${s.sig} signé(s)${s.mrr?` · ${eur(s.mrr)}/mois`:''}</small></div>
       <div class="rowbtns" onclick="event.stopPropagation()">
-        <button class="btn btn-o" style="padding:7px 12px" title="Créer un devis" onclick="devisPourClient(${c.id})">＋ Devis</button>
+        <button class="btn btn-o" style="padding:7px 12px" title="Créer un devis" onclick="devisPourClient(${c.id})"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Devis</button>
         <button class="btn btn-p" style="padding:7px 12px" onclick="ficheClient(${c.id})">Ouvrir ›</button>
       </div>
       ${c.notes?`<div class="alerte" style="color:var(--gris)">📝 ${esc(c.notes)}</div>`:''}

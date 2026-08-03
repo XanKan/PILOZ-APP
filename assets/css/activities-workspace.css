@@ -1,8 +1,8 @@
 .aw-shell {
   --aw-ink: var(--text-primary, #102a43);
   --aw-muted: var(--text-secondary, #6b7f93);
-  --aw-line: var(--border, #dce7ea);
-  --aw-soft: var(--surface-secondary, #f4f9f9);
+  --aw-line: var(--border, #dcdeea);
+  --aw-soft: var(--surface-secondary, #f4f6f9);
   --aw-teal: var(--primary, #0a6bcb);
   --aw-teal-dark: var(--primary-hover, #084f99);
   --aw-navy: var(--text-primary, #0b2742);
@@ -12,10 +12,10 @@
   background:
     radial-gradient(
       circle at 90% 0,
-      rgba(23, 190, 173, 0.09),
+      rgba(23,101,190, 0.09),
       transparent 24rem
     ),
-    linear-gradient(180deg, #f8fbfc, #f2f7f8);
+    linear-gradient(180deg, #f8f8fc, #f2f3f8);
 }
 
 .aw-page-head,
@@ -68,16 +68,16 @@
   height: 26px;
   padding: 0 8px;
   border-radius: 999px;
-  background: #e6f6f4;
+  background: #e6eef6;
   color: var(--aw-teal-dark);
   font-size: 12px;
   font-weight: 850;
 }
 .aw-connected {
   padding: 9px 12px;
-  border: 1px solid #bce9e4;
+  border: 1px solid #bcd1e9;
   border-radius: 999px;
-  background: #ecfbf8;
+  background: #ecf4fb;
   color: #084f99;
   font-size: 12px;
   font-weight: 700;
@@ -90,7 +90,7 @@
 .aw-calendar-modes button,
 .aw-pagination button {
   min-height: 40px;
-  border: 1px solid #d5e1e5;
+  border: 1px solid #d5d7e5;
   border-radius: 12px;
   background: #fff;
   color: var(--aw-navy);
@@ -111,15 +111,15 @@
 .aw-calendar-toolbar button:hover,
 .aw-pagination button:hover:not(:disabled) {
   transform: translateY(-1px);
-  border-color: #9ed8d2;
-  box-shadow: 0 8px 20px rgba(15, 63, 78, 0.09);
+  border-color: #9eb9d8;
+  box-shadow: 0 8px 20px rgba(15,23,78, 0.09);
 }
 .aw-button.primary,
 .aw-button.success {
   border-color: transparent;
-  background: linear-gradient(135deg, #12b7a5, #0a8d82);
+  background: linear-gradient(135deg, #1260b7, #0a458d);
   color: #fff;
-  box-shadow: 0 10px 22px rgba(15, 159, 145, 0.22);
+  box-shadow: 0 10px 22px rgba(15,82,159, 0.22);
 }
 .aw-button.danger {
   color: #a52b2b;
@@ -152,7 +152,7 @@
   min-height: 62px;
   padding: 11px 14px;
   text-align: left;
-  border: 1px solid rgba(210, 225, 229, 0.9);
+  border: 1px solid rgba(210,213,229, 0.9);
   border-radius: 15px;
   background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 12px 26px rgba(15, 54, 74, 0.06);
@@ -160,8 +160,8 @@
   cursor: pointer;
 }
 .aw-metric.active {
-  border-color: #77d8ce;
-  box-shadow: 0 14px 30px rgba(15, 159, 145, 0.13);
+  border-color: #77a5d8;
+  box-shadow: 0 14px 30px rgba(15,82,159, 0.13);
 }
 .aw-metric span {
   display: block;
@@ -213,7 +213,7 @@
   gap: 4px;
   padding: 4px;
   border-radius: 13px;
-  background: #edf4f5;
+  background: #edeff5;
 }
 .aw-view-tabs button,
 .aw-quick button {
@@ -260,7 +260,7 @@
   width: 100%;
   min-height: 44px;
   box-sizing: border-box;
-  border: 1px solid #cfdee3;
+  border: 1px solid #cfd1e3;
   border-radius: 12px;
   background: #fff;
   color: var(--aw-ink);
@@ -277,8 +277,8 @@
 .aw-form input:focus,
 .aw-form select:focus,
 .aw-form textarea:focus {
-  border-color: #29b7aa;
-  box-shadow: 0 0 0 3px rgba(19, 187, 169, 0.12);
+  border-color: #296ab7;
+  box-shadow: 0 0 0 3px rgba(19,99,187, 0.12);
 }
 .aw-shell button:focus-visible,
 .aw-shell input:focus-visible,
@@ -288,7 +288,7 @@
 .aw-modal input:focus-visible,
 .aw-modal select:focus-visible,
 .aw-modal textarea:focus-visible {
-  outline: 3px solid rgba(20, 184, 166, 0.34);
+  outline: 3px solid rgba(20,98,184, 0.34);
   outline-offset: 2px;
 }
 .aw-bulk {
@@ -297,7 +297,7 @@
   flex: 1 0 100%;
   gap: 8px;
   padding: 8px 4px 0;
-  border-top: 1px solid #e4ecef;
+  border-top: 1px solid #e4e5ef;
 }
 .aw-bulk b {
   margin-right: auto;
@@ -317,8 +317,8 @@
 }
 .aw-quick button.active {
   color: var(--aw-teal-dark);
-  border-color: #aee4df;
-  background: #e9faf7;
+  border-color: #aec7e4;
+  background: #e9f2fa;
 }
 .aw-quick button span {
   display: inline-grid;
@@ -328,12 +328,12 @@
   margin-left: 6px;
   padding: 0 5px;
   border-radius: 999px;
-  background: #e8eef1;
+  background: #e8e8f1;
   color: #52687a;
   font-size: 10px;
 }
 .aw-quick button.active span {
-  background: #ccefea;
+  background: #ccdeef;
   color: #084f99;
 }
 
@@ -356,7 +356,7 @@
   z-index: 1;
   padding: 14px 12px;
   text-align: left;
-  background: #f1f6f7;
+  background: #f1f2f7;
   color: #6d8195;
   font-size: 11px;
   letter-spacing: 0.06em;
@@ -364,14 +364,14 @@
 }
 .aw-table td {
   padding: 13px 12px;
-  border-top: 1px solid #e8eff1;
+  border-top: 1px solid #e8e9f1;
   vertical-align: middle;
 }
 .aw-table tbody tr {
   transition: background 0.14s ease;
 }
 .aw-table tbody tr:hover {
-  background: #f5fbfa;
+  background: #f5f8fb;
 }
 .aw-table tbody tr.is-overdue {
   box-shadow: inset 3px 0 #e66a6a;
@@ -421,13 +421,13 @@
 }
 .aw-table th.aw-actions-column {
   z-index: 3;
-  background: #f1f6f7;
+  background: #f1f2f7;
 }
 .aw-table tbody tr td.aw-actions-column {
   background: #fff;
 }
 .aw-table tbody tr:hover td.aw-actions-column {
-  background: #f5fbfa;
+  background: #f5f8fb;
 }
 .aw-sort {
   display: inline-flex;
@@ -553,7 +553,7 @@
 }
 .aw-page-size select {
   min-height: 34px;
-  border: 1px solid #d5e1e5;
+  border: 1px solid #d5d7e5;
   border-radius: 9px;
   background: #fff;
   color: var(--aw-ink);
@@ -567,7 +567,7 @@
   place-items: center;
   min-height: 320px;
   text-align: center;
-  border: 1px dashed #cbdcdf;
+  border: 1px dashed #cbcfdf;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.7);
 }
@@ -577,8 +577,8 @@
   width: 62px;
   height: 62px;
   border-radius: 20px;
-  color: #0a8d82;
-  background: #dff8f4;
+  color: #0a458d;
+  background: #dfecf8;
   font-size: 28px;
   font-style: normal;
 }
@@ -599,7 +599,7 @@
 .aw-loading i {
   width: 22px;
   height: 22px;
-  border: 3px solid #ccece8;
+  border: 3px solid #ccdcec;
   border-top-color: var(--aw-teal);
   border-radius: 50%;
   animation: aw-spin 0.8s linear infinite;
@@ -629,7 +629,7 @@
 .aw-calendar-modes {
   padding: 3px;
   border-radius: 11px;
-  background: #edf4f5;
+  background: #edeff5;
 }
 .aw-calendar-modes button {
   border: 0;
@@ -678,7 +678,7 @@
   width: 30px;
   height: 30px;
   border-radius: 10px;
-  background: #edf7f6;
+  background: #edf2f7;
   color: var(--aw-teal-dark);
 }
 .aw-calendar-event {
@@ -705,10 +705,10 @@
   bottom: 10px;
   width: 30px;
   height: 30px;
-  border: 1px solid #b9ddd9;
+  border: 1px solid #b9cadd;
   border-radius: 10px;
   color: var(--aw-teal-dark);
-  background: #edfbf8;
+  background: #edf5fb;
   cursor: pointer;
 }
 
@@ -727,7 +727,7 @@
   top: 40px;
   bottom: 0;
   width: 1px;
-  background: #cfe0e4;
+  background: #cfd3e4;
 }
 .aw-timeline-group > h2 {
   margin: 25px 0 14px;
@@ -838,7 +838,7 @@ body.aw-modal-open {
   flex-wrap: wrap;
   padding: 15px 24px;
   border-top: 1px solid var(--aw-line);
-  background: #fbfdfd;
+  background: #fbfcfd;
 }
 
 .aw-form-grid {
@@ -882,7 +882,7 @@ body.aw-modal-open {
   padding: 16px;
   border: 1px solid var(--aw-line);
   border-radius: 14px;
-  background: #fbfdfd;
+  background: #fbfcfd;
 }
 .aw-form-section > h3 {
   margin: 0 0 14px;
@@ -891,7 +891,7 @@ body.aw-modal-open {
 .aw-input-suffix {
   display: flex;
   align-items: center;
-  border: 1px solid #cfdee3;
+  border: 1px solid #cfd1e3;
   border-radius: 12px;
   background: #fff;
   overflow: hidden;
@@ -938,7 +938,7 @@ body.aw-modal-open {
   max-height: 270px;
   overflow: auto;
   padding: 5px;
-  border: 1px solid #cfe0e4;
+  border: 1px solid #cfd3e4;
   border-radius: 13px;
   background: #fff;
   box-shadow: 0 18px 42px rgba(5, 35, 53, 0.18);
@@ -952,16 +952,16 @@ body.aw-modal-open {
   gap: 7px;
   margin: -5px -5px 5px;
   padding: 8px;
-  border-bottom: 1px solid #dbe8eb;
-  background: #f8fcfc;
+  border-bottom: 1px solid #dbdeeb;
+  background: #f8f9fc;
 }
 .aw-relation-create-actions button {
   min-height: 36px;
   padding: 8px 10px;
-  border: 1px solid #b8deda;
+  border: 1px solid #b8cade;
   border-radius: 10px;
   background: #fff;
-  color: #087e73;
+  color: #083e7e;
   font: inherit;
   font-size: 12px;
   font-weight: 800;
@@ -969,8 +969,8 @@ body.aw-modal-open {
 }
 .aw-relation-create-actions button:hover,
 .aw-relation-create-actions button:focus {
-  border-color: #19a99a;
-  background: #e9faf7;
+  border-color: #195da9;
+  background: #e9f2fa;
 }
 .aw-relation-results > .aw-relation-result {
   display: grid;
@@ -988,7 +988,7 @@ body.aw-modal-open {
 }
 .aw-relation-results > .aw-relation-result:hover,
 .aw-relation-results > .aw-relation-result:focus {
-  background: #edf9f7;
+  background: #edf3f9;
 }
 .aw-relation-result > span {
   display: grid;
@@ -1003,8 +1003,8 @@ body.aw-modal-open {
 .aw-relation-result em {
   padding: 4px 7px;
   border-radius: 999px;
-  background: #e8f7f4;
-  color: #087e73;
+  background: #e8f0f7;
+  color: #083e7e;
   font-size: 11px;
   font-style: normal;
   font-weight: 800;
@@ -1017,13 +1017,13 @@ body.aw-modal-open {
   gap: 5px;
   margin: -5px -5px 4px;
   padding: 8px;
-  border-bottom: 1px solid #dbe8eb;
+  border-bottom: 1px solid #dbdeeb;
   background: #fff;
 }
 .aw-relation-filters button {
   min-height: 30px;
   padding: 5px 10px;
-  border: 1px solid #d3e2e6;
+  border: 1px solid #d3d6e6;
   border-radius: 999px;
   background: #fff;
   color: #405d72;
@@ -1034,9 +1034,9 @@ body.aw-modal-open {
 }
 .aw-relation-filters button:hover,
 .aw-relation-filters button.active {
-  border-color: #19a99a;
-  background: #e9faf7;
-  color: #087e73;
+  border-color: #195da9;
+  background: #e9f2fa;
+  color: #083e7e;
 }
 .aw-relation-results small {
   margin-top: 3px;
@@ -1076,7 +1076,7 @@ body.aw-modal-open {
   padding: 11px;
   border: 1px solid var(--aw-line);
   border-radius: 11px;
-  background: #fbfdfd;
+  background: #fbfcfd;
 }
 .aw-setting-check input {
   width: 18px;
@@ -1157,8 +1157,8 @@ body.aw-modal-open {
 .aw-chips span {
   padding: 6px 9px;
   border-radius: 999px;
-  background: #edf7f6;
-  color: #27635e;
+  background: #edf2f7;
+  color: #274263;
   font-size: 11px;
   font-weight: 750;
 }
@@ -1169,7 +1169,7 @@ body.aw-modal-open {
 }
 .aw-checklist li {
   padding: 7px 0;
-  border-bottom: 1px solid #edf2f3;
+  border-bottom: 1px solid #edeef3;
 }
 .aw-checklist li.done {
   color: #648072;
@@ -1186,7 +1186,7 @@ body.aw-modal-open {
   padding: 10px 12px;
   border: 1px solid var(--aw-line);
   border-radius: 10px;
-  background: #f8fbfb;
+  background: #f8f9fb;
   color: var(--aw-ink);
   cursor: pointer;
 }
@@ -1214,7 +1214,7 @@ body.aw-modal-open {
   top: 8px;
   bottom: 8px;
   width: 1px;
-  background: #cbdde1;
+  background: #cbcfe1;
 }
 .aw-events li {
   position: relative;
@@ -1231,7 +1231,7 @@ body.aw-modal-open {
   border: 2px solid #fff;
   border-radius: 50%;
   background: var(--aw-teal);
-  box-shadow: 0 0 0 1px #9fd8d2;
+  box-shadow: 0 0 0 1px #9fbad8;
 }
 .aw-events li div {
   display: grid;
@@ -1258,7 +1258,7 @@ body.aw-modal-open {
 }
 .aw-type-manager article.inactive {
   opacity: 0.62;
-  background: #f5f8f9;
+  background: #f5f5f9;
 }
 .aw-type-manager article > i {
   display: grid;
@@ -1282,9 +1282,9 @@ body.aw-modal-open {
   grid-column: 1 / -1;
   margin-top: 10px;
   padding: 16px;
-  border: 1px dashed #b9d4d8;
+  border: 1px dashed #b9c0d8;
   border-radius: 14px;
-  background: #f7fbfb;
+  background: #f7f8fb;
 }
 
 @media (max-width: 1280px) {
@@ -1411,13 +1411,13 @@ body.aw-modal-open {
 
 /* Centre d'activités — interface opérationnelle grand volume */
 .aw-shell {
-  --aw-canvas: #f3f7f8;
+  --aw-canvas: #f3f4f8;
   --aw-surface: rgba(255, 255, 255, 0.94);
   --aw-shadow: 0 18px 46px rgba(10, 42, 63, 0.07);
   padding: 24px clamp(18px, 2.25vw, 36px) 38px;
   background:
-    radial-gradient(circle at 96% -10%, rgba(25, 199, 181, 0.12), transparent 30rem),
-    linear-gradient(145deg, #f8fbfc 0%, var(--aw-canvas) 56%, #edf5f5 100%);
+    radial-gradient(circle at 96% -10%, rgba(25,107,199, 0.12), transparent 30rem),
+    linear-gradient(145deg, #f8f8fc 0%, var(--aw-canvas) 56%, #edf0f5 100%);
 }
 
 .aw-page-head {
@@ -1446,7 +1446,7 @@ body.aw-modal-open {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  border-color: #d7e6e7;
+  border-color: #d7dce7;
   background: rgba(255, 255, 255, 0.82);
   color: #486779;
 }
@@ -1473,7 +1473,7 @@ body.aw-modal-open {
   min-height: 100px;
   padding: 17px 18px;
   overflow: hidden;
-  border: 1px solid rgba(211, 225, 229, 0.9);
+  border: 1px solid rgba(211,214,229, 0.9);
   border-radius: 20px;
   background: var(--aw-surface);
   box-shadow: var(--aw-shadow);
@@ -1486,7 +1486,7 @@ body.aw-modal-open {
   width: 125px;
   height: 125px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(20, 184, 166, 0.09), transparent 68%);
+  background: radial-gradient(circle, rgba(20,98,184, 0.09), transparent 68%);
   pointer-events: none;
 }
 .aw-metric > span {
@@ -1528,8 +1528,8 @@ body.aw-modal-open {
   width: 27px;
   height: 27px;
   border-radius: 9px;
-  background: #dff8f4;
-  color: #07877c;
+  background: #dfecf8;
+  color: #074187;
   font-style: normal;
   font-size: 14px;
 }
@@ -1537,8 +1537,8 @@ body.aw-modal-open {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #20ad9f;
-  box-shadow: 0 0 0 4px rgba(32, 173, 159, 0.1);
+  background: #2062ad;
+  box-shadow: 0 0 0 4px rgba(32,98,173, 0.1);
 }
 .aw-metric.danger .aw-metric-dot {
   background: #db5d64;
@@ -1552,8 +1552,8 @@ body.aw-modal-open {
   background: #1d9a66;
 }
 .aw-metric.active {
-  border-color: rgba(15, 159, 145, 0.7);
-  box-shadow: 0 18px 42px rgba(15, 159, 145, 0.13);
+  border-color: rgba(15,82,159, 0.7);
+  box-shadow: 0 18px 42px rgba(15,82,159, 0.13);
 }
 .aw-progress {
   position: absolute;
@@ -1563,13 +1563,13 @@ body.aw-modal-open {
   height: 3px;
   overflow: hidden;
   border-radius: 99px;
-  background: #e8efef;
+  background: #e8ebef;
 }
 .aw-progress i {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #11a98f, #27c7b6);
+  background: linear-gradient(90deg, #1163a9, #2773c7);
 }
 
 .aw-cockpit {
@@ -1606,10 +1606,10 @@ body.aw-modal-open {
   width: 27px;
   height: 27px;
   padding: 0;
-  border: 1px solid #d9e6e8;
+  border: 1px solid #d9dce8;
   border-radius: 9px;
   background: #fff;
-  color: #0a7d73;
+  color: #0a3e7d;
   font: inherit;
   font-size: 17px;
   cursor: pointer;
@@ -1642,14 +1642,14 @@ body.aw-modal-open {
 }
 .aw-quick button:hover,
 .aw-saved-views button:hover {
-  background: #f0f6f6;
+  background: #f0f2f6;
 }
 .aw-quick button.active,
 .aw-saved-views button.active {
   border: 0;
-  background: linear-gradient(135deg, #e3f8f5, #eefaf9);
+  background: linear-gradient(135deg, #e3eef8, #eef3fa);
   color: #084f99;
-  box-shadow: inset 0 0 0 1px #b9e8e3;
+  box-shadow: inset 0 0 0 1px #b9cfe8;
 }
 .aw-quick button > span,
 .aw-saved-views button > span {
@@ -1661,13 +1661,13 @@ body.aw-modal-open {
   min-width: 24px;
   padding: 3px 6px;
   border-radius: 99px;
-  background: #e9eff1;
+  background: #e9eaf1;
   color: #607587;
   text-align: center;
   font-size: 10px;
 }
 .aw-quick button.active > b {
-  background: #cceee9;
+  background: #ccddee;
   color: #084f99;
 }
 .aw-queue-icon {
@@ -1682,7 +1682,7 @@ body.aw-modal-open {
 }
 .aw-queue-icon.today,
 .aw-queue-icon.week {
-  border-color: #16a99a;
+  border-color: #165ba9;
 }
 .aw-queue-icon.completed {
   border-color: #21976a;
@@ -1693,7 +1693,7 @@ body.aw-modal-open {
   gap: 3px;
   margin-top: 5px;
   padding-top: 13px;
-  border-top: 1px solid #e4edee;
+  border-top: 1px solid #e4e7ee;
 }
 .aw-saved-views > span {
   padding: 0 7px 5px;
@@ -1713,7 +1713,7 @@ body.aw-modal-open {
   margin-top: 7px;
   padding: 12px;
   border-radius: 13px;
-  background: linear-gradient(145deg, #102f48, #0c4050);
+  background: linear-gradient(145deg, #102f48, #0c1550);
   color: #fff;
 }
 .aw-rail-help b {
@@ -1738,7 +1738,7 @@ body.aw-modal-open {
   gap: 11px;
   padding: 14px 15px;
   border: 0;
-  border-bottom: 1px solid #e2ecee;
+  border-bottom: 1px solid #e2e4ee;
   border-radius: 0;
   background: rgba(255, 255, 255, 0.9);
   box-shadow: none;
@@ -1752,8 +1752,8 @@ body.aw-modal-open {
 }
 .aw-view-tabs {
   padding: 3px;
-  border: 1px solid #e1eaec;
-  background: #f4f7f8;
+  border: 1px solid #e1e3ec;
+  background: #f4f4f8;
 }
 .aw-view-tabs button {
   min-height: 34px;
@@ -1761,7 +1761,7 @@ body.aw-modal-open {
   font-size: 12px;
 }
 .aw-view-tabs button.active {
-  color: #087b72;
+  color: #083b7b;
   box-shadow: 0 3px 12px rgba(10, 48, 70, 0.08);
 }
 .aw-toolbar-tools {
@@ -1790,10 +1790,10 @@ body.aw-modal-open {
   top: 10px;
   right: 10px;
   padding: 3px 6px;
-  border: 1px solid #d8e4e6;
+  border: 1px solid #d8dbe6;
   border-bottom-width: 2px;
   border-radius: 6px;
-  background: #f8fafb;
+  background: #f8f8fb;
   color: #8796a2;
   font: inherit;
   font-size: 9px;
@@ -1801,7 +1801,7 @@ body.aw-modal-open {
 .aw-filters input,
 .aw-filters select {
   min-height: 42px;
-  border-color: #d7e3e5;
+  border-color: #d7dae5;
   border-radius: 11px;
   box-shadow: 0 1px 2px rgba(20, 49, 66, 0.02);
   font-size: 12px;
@@ -1826,7 +1826,7 @@ body.aw-modal-open {
 }
 .aw-table th {
   padding: 12px 11px;
-  background: #f3f7f8;
+  background: #f3f4f8;
   color: #738797;
   font-size: 9px;
   letter-spacing: 0.085em;
@@ -1837,11 +1837,11 @@ body.aw-modal-open {
   font-size: 12px;
 }
 .aw-table tbody tr:nth-child(even) {
-  background: rgba(247, 250, 250, 0.72);
+  background: rgba(247,248,250, 0.72);
 }
 .aw-table tbody tr.is-selected,
 .aw-table tbody tr.is-selected td.aw-actions-column {
-  background: #eaf9f7;
+  background: #eaf2f9;
 }
 .aw-table tbody tr.is-completed {
   opacity: 0.72;
@@ -1886,8 +1886,8 @@ body.aw-modal-open {
   width: 25px;
   height: 25px;
   border-radius: 8px;
-  background: #e5f5f3;
-  color: #0a7e74;
+  background: #e5edf5;
+  color: #0a3f7e;
   font-style: normal;
   font-size: 10px;
   font-weight: 900;
@@ -1922,9 +1922,9 @@ body.aw-modal-open {
   font-size: 12px;
 }
 .aw-row-actions .aw-complete-action {
-  border-color: #bce4da;
-  background: #edfaf6;
-  color: #0d8a69;
+  border-color: #bcd5e4;
+  background: #edf6fa;
+  color: #0d5c8a;
 }
 .aw-pagination {
   padding: 10px 12px;
@@ -1937,9 +1937,9 @@ body.aw-modal-open {
 }
 .aw-bulk {
   padding: 10px;
-  border: 1px solid #b9e5df;
+  border: 1px solid #b9cfe5;
   border-radius: 12px;
-  background: #ecfaf8;
+  background: #ecf3fa;
 }
 .aw-bulk .aw-button {
   min-height: 34px;
