@@ -416,8 +416,10 @@ async function previewDocument(autoPrint=false){
    let blob;
    if(lines.length>400){const id=await saveDocument(true);if(!id)throw new Error('Le brouillon volumineux doit être enregistré avant son aperçu.');blob=await api().invokeBlob('generate-document-pdf',{draftDocumentId:id});}
    else blob=await api().invokeBlob('generate-document-pdf',{preview:{companyId:state.companyId,clientId:d.client_id||null,templateId:d.template_id||null,contactId:d.contact_id||null,billingAddressId:d.billing_address_id||null,deliveryAddressId:d.delivery_address_id||null,document:{...documentPayload,contact_id:d.contact_id||null,billing_address_id:d.billing_address_id||null,delivery_address_id:d.delivery_address_id||null},lines}});
-   const url=URL.createObjectURL(blob);win.location.replace(`${url}#zoom=95&toolbar=1`);setTimeout(()=>URL.revokeObjectURL(url),300000);
-   if(autoPrint){const tryPrint=()=>{try{win.focus();win.print();}catch{}};win.addEventListener?.('load',tryPrint,{once:true});setTimeout(tryPrint,1200);}
+   const url=URL.createObjectURL(blob);
+   if(autoPrint){const tryPrint=()=>{try{win.focus();win.print();}catch{}};win.addEventListener?.('load',tryPrint,{once:true});win.location.replace(`${url}#zoom=95&toolbar=1`);setTimeout(tryPrint,800);}
+   else win.location.replace(`${url}#zoom=95&toolbar=1`);
+   setTimeout(()=>URL.revokeObjectURL(url),300000);
   }catch(error){console.error('[PILOZ Documents] Échec de l’aperçu PDF',{code:error?.code||'',status:error?.status||0,message:error?.message||String(error)});win.document.open();win.document.write(`<p style="font:16px Arial;padding:30px;color:#b42318">L’aperçu PDF n’a pas pu être généré.<br><small>${e(error.message||'Réessayez dans quelques instants.')}</small></p>`);win.document.close();}
  }
 
