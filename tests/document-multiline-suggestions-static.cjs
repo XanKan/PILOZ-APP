@@ -65,6 +65,6 @@ assert(source.includes("removeTransientNodes('.document-v2-client-results')"), '
 
 assert(source.includes('function looksLikeRegistrationOnly'), 'Le nom client ne doit pas retomber sur un SIRET seul.');
 assert(source.includes('Client sans nom'), 'Le libellé client de secours doit être explicite.');
-assert(index.includes('erp-document-editor-v2.js?v=20260804.datemin-fix1'), 'Le cache navigateur doit être invalidé après correction des documents et de la TVA.');
+assert(index.includes('erp-document-editor-v2.js?v=20260804.delete-print1'), 'Le cache navigateur doit être invalidé après correction des documents et de la TVA.');
 
 console.log(JSON.stringify({ ok: true, assertions: 25 }));
