@@ -86,9 +86,8 @@ for (const [name, source] of [['erp-app', app], ['éditeur', editor], ['catalogu
   }
 }
 
-assert(index.includes('erp-app.js?v=20260804.deposit-fix1'), 'Le cache de erp-app.js doit être invalidé.');
-for (const file of ['erp-document-editor-v2.js', 'erp-catalog-v2.js']) {
-  assert(index.includes(`${file}?v=20260803.document-vat-save1`), `Le cache de ${file} doit être invalidé.`);
-}
+assert(index.includes('erp-app.js?v=20260804.perf-refresh1'), 'Le cache de erp-app.js doit être invalidé.');
+assert(index.includes('erp-document-editor-v2.js?v=20260804.perf-refresh1'), 'Le cache de erp-document-editor-v2.js doit être invalidé.');
+assert(index.includes('erp-catalog-v2.js?v=20260803.document-vat-save1'), 'Le cache de erp-catalog-v2.js doit être invalidé.');
 
 console.log(JSON.stringify({ ok: true, assertions: 18 }));
