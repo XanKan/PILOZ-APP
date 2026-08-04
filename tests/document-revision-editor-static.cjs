@@ -66,7 +66,7 @@ assert(editor.includes('class="document-v2-handle" type="button" title="Déplace
 assert(editor.includes('class="document-v2-handle" type="button" aria-label="Déplacer" draggable="${!quoteLocked(d)}"'), 'La poignée structurelle doit rester draggable.');
 
 assert(indexHtml.includes('erp-app.js?v=20260804.delete-print1'), 'Le cache erp-app doit être invalidé.');
-assert(indexHtml.includes('erp-document-editor-v2.js?v=20260804.delete-print1'), 'Le cache de l’éditeur V2 doit être invalidé.');
+assert(indexHtml.includes('erp-document-editor-v2.js?v=20260804.delete-print2'), 'Le cache de l’éditeur V2 doit être invalidé.');
 assert(indexHtml.includes('erp-document-viewer-v2.js?v=20260803.revision-editor-v4'), 'Le cache de la consultation doit être invalidé.');
 
 console.log(JSON.stringify({ ok: true, assertions: 23 }));
