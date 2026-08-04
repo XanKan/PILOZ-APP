@@ -472,6 +472,21 @@ Deno.serve(async req=>{
   if(action==="support.end"){
    requirePermission("support.session");const {data,error}=await client.rpc("platform_admin_end_support_session",{target_session_id:uuid(payload.sessionId)});if(error)throw error;return response(req,{session:data});
   }
+  if(action==="companies.impersonate"){
+   requirePermission("support.impersonate");const companyId=uuid(payload.companyId),reason=text(payload.reason,500);
+   if(!reason)throw Object.assign(new Error("Le motif est obligatoire"),{status:400});
+   const service=privileged();
+   const {data:owner,error:ownerError}=await service.from("company_members").select("user_id").eq("company_id",companyId).eq("role","owner").limit(1).maybeSingle();
+   if(ownerError)throw ownerError;if(!owner)throw Object.assign(new Error("Aucun propriétaire trouvé pour cette entreprise."),{status:404});
+   const {data:targetUser,error:targetUserError}=await service.auth.admin.getUserById(owner.user_id);
+   if(targetUserError||!targetUser?.user?.email)throw Object.assign(new Error("Le compte du propriétaire est introuvable."),{status:404});
+   const {data:session,error:sessionError}=await client.rpc("platform_admin_start_support_session",{target_company_id:companyId,target_reason:reason,target_mode:"impersonate"});
+   if(sessionError)throw sessionError;
+   const {data:link,error:linkError}=await service.auth.admin.generateLink({type:"magiclink",email:targetUser.user.email,options:{redirectTo:"https://app.piloz.fr/"}});
+   if(linkError||!link?.properties?.action_link)throw Object.assign(new Error("Le lien de connexion n’a pas pu être généré."),{status:502});
+   await audit("company.impersonate","user",owner.user_id,companyId,null,{session_id:session.id,target_email:targetUser.user.email},reason);
+   return response(req,{link:link.properties.action_link,session,targetEmail:targetUser.user.email});
+  }
   return response(req,{error:"Action inconnue"},404);
  }catch(error){
   const status=Number((error as {status?:number})?.status)||((error as {code?:string})?.code==="42501"?403:400);
