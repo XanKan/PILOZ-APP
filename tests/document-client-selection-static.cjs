@@ -56,27 +56,27 @@ const selectClientEnd = source.indexOf(' function selectTrainingClient', selectC
 const selectClientSource = source.slice(selectClientStart, selectClientEnd);
 
 assert(
-  selectClientSource.includes("setDraft('client_id',id)"),
-  'La sélection client doit rester un simple changement de brouillon.',
+  selectClientSource.includes('d.client_id=id') && selectClientSource.includes('applyPreferences(id)'),
+  'La sélection client doit mettre à jour le brouillon et ses préférences.',
 );
 
 assert(
-  !selectClientSource.includes('requestAnimationFrame') && !selectClientSource.includes('runWhenDocumentIdle'),
-  'La sélection client ne doit pas planifier de manipulation DOM différée.',
+  selectClientSource.includes('scheduleDocumentRender(state)') && !selectClientSource.includes('runWhenDocumentIdle'),
+  'La sélection client doit différer le rendu complet après la fin du clic.',
 );
 
 assert(
-  source.includes('document-v2-client-results" onpointerdown="event.stopPropagation()"') &&
-    !source.includes('document-v2-client-results" onpointerdown="event.stopPropagation()" onmousedown="event.preventDefault();event.stopPropagation()"'),
-  'Les résultats client doivent laisser le clic se terminer puis fermer la liste sans bloquer le focus.',
+  !source.includes('document-v2-client-results" onpointerdown') &&
+    !source.includes('document-v2-client-results" onmousedown'),
+  'Les résultats client doivent laisser le clic se terminer sans mutation pendant pointerdown.',
 );
 
 assert(
   source.includes('function suggestionAction(action)') &&
     source.includes('PilozDocumentEditorV2.selectClient') &&
     source.includes('PilozDocumentEditorV2.selectItem') &&
-    source.includes('onpointerdown="event.preventDefault();event.stopPropagation();${action};"'),
-  'Les choix client/article doivent se valider au pointerdown avant que le blur ne déclenche un rendu.',
+    source.includes('onclick="event.preventDefault();event.stopPropagation();${action};"'),
+  'Les choix client/article doivent se valider au clic avant le rendu différé.',
 );
 
 assert(

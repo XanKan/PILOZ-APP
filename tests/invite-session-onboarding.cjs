@@ -74,7 +74,7 @@ vm.runInContext(apiSource,context,{filename:'erp-api.js'});
   assert(!onboardingSource.includes("input('Taux de TVA par défaut'"),'Le taux de TVA ne doit plus être un champ libre dans l’onboarding.');
   assert(onboardingSource.includes("default_vat_rate:subjectToVat?Number(fiscality.defaultVatRate)||0:0"),'Une entreprise non assujettie doit être enregistrée avec une TVA à 0.');
   assert(index.includes('professional-onboarding.js?v=20260801.1'),'Le cache du module d’onboarding doit être invalidé.');
-  assert(index.includes('phase1-foundation.css?v=20260731.6'),'Le cache des styles de l’onboarding doit être invalidé.');
+  assert(index.includes('phase1-foundation.css?v=20260803.4'),'Le cache des styles de l’onboarding doit être invalidé.');
   assert(onboardingStyles.includes('-webkit-backdrop-filter:blur(10px) saturate(80%)'),'Le fond de l’onboarding doit être flouté sur Safari et iOS.');
   assert(onboardingStyles.includes('backdrop-filter:blur(10px) saturate(80%)'),'Le fond de l’onboarding doit être flouté dans les navigateurs modernes.');
   assert(onboardingSource.includes("logoDropzone('light','Logo clair')")&&onboardingSource.includes("logoDropzone('dark','Logo sombre',true)"),'L’étape 5 doit afficher les zones des deux variantes de logo.');

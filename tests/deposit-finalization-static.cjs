@@ -5,8 +5,8 @@ const editor=fs.readFileSync('assets/js/modules/erp/erp-document-editor-v2.js','
 const viewer=fs.readFileSync('assets/js/modules/erp/erp-document-viewer-v2.js','utf8');
 const chronology=fs.readFileSync('supabase/migrations/202607260066_legal_retention_audit_privacy.sql','utf8');
 const checks=[
-  ['régime non TVA booléen ou texte reconnu',app.includes("String(value).toLowerCase()==='false'")&&editor.includes("String(value).toLowerCase()==='false'")],
-  ['toutes les lignes du brouillon sont remises à zéro',app.includes("(draft.lines||[]).forEach(line=>{line.tax_rate=0;})")&&editor.includes("d.lines.forEach(line=>{line.tax_rate=0;})")],
+  ['régime non TVA booléen ou texte reconnu',app.includes('function normalizeBooleanFlag')&&app.includes("'non assujetti'")&&editor.includes('function parseVatFlag')&&editor.includes("'non assujetti'")],
+  ['toutes les lignes du brouillon sont remises à zéro',app.includes('line.tax_rate=companySubjectToVat()?normalizeDocumentVatRate(line.tax_rate):0')&&editor.includes('line.tax_rate=subjectToVat(s())?normalizeVatRate(s(),line.tax_rate):0')],
   ['options de sauvegarde conservées',app.includes('saveDocument=async function(...args)')&&app.includes('return saveDocumentBase(...args)')],
   ['motif réel propagé pendant la finalisation',editor.includes('finalizeCurrentDocument({throwOnError:true})')],
   ['consultation ouverte directement après finalisation',editor.includes('openFinalizedConsultation(result.id||saved.id)')&&editor.includes("if(invoiceTypes.has(d.document_type)&&locked(d)&&d.id){openFinalizedConsultation(d.id);return;}")],

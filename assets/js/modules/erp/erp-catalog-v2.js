@@ -111,13 +111,111 @@
     "lot",
     "mois",
   ];
+  const invalidUnitPattern = /uniAFAC|AFAC|Ã|Â|\uFFFD/i;
+  function stripDiacritics(value) {
+    return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+  function cleanCatalogUnit(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return null;
+    const folded = stripDiacritics(raw).toLowerCase().replace(/[^a-z0-9²³]/g, "");
+    if (folded.startsWith("uniafac") || folded === "unit" || folded === "unite" || folded.startsWith("unite")) return "unité";
+    if (folded === "heure" || folded === "heures") return "heure";
+    if (folded === "jour" || folded === "jours") return "jour";
+    if (folded === "forfait" || folded === "forfaits") return "forfait";
+    if (folded === "metre" || folded === "metres") return "mètre";
+    if (folded === "m2" || folded === "m²") return "m²";
+    if (folded === "m3" || folded === "m³") return "m³";
+    if (folded === "kilogramme" || folded === "kilogrammes" || folded === "kg") return "kilogramme";
+    if (folded === "litre" || folded === "litres" || folded === "l") return "litre";
+    if (folded === "lot" || folded === "lots") return "lot";
+    if (folded === "mois") return "mois";
+    if (invalidUnitPattern.test(raw)) return null;
+    return raw;
+  }
+  function parseVatFlag(value) {
+    if (value === undefined || value === null || value === "") return null;
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return value !== 0;
+    const normalized = stripDiacritics(value).trim().toLowerCase().replace(/[_-]+/g, " ");
+    if (["false", "no", "non", "0", "n", "off", "non assujetti", "non assujettie", "pas assujetti", "pas assujettie", "not subject", "no vat", "franchise", "franchise en base"].includes(normalized)) return false;
+    if (["true", "yes", "oui", "1", "y", "on", "assujetti", "assujettie", "subject"].includes(normalized)) return true;
+    return null;
+  }
+  function companySubjectToVat() {
+    const data = state().data || {};
+    const settings = data.settings?.[0] || {};
+    const erpSettings = data.erpSettings?.[0] || {};
+    const companySettings = data.companySettings?.[0] || data.companySettings || {};
+    const company = data.companies?.[0] || data.company?.[0] || data.company || {};
+    const sources = [
+      companySettings.fiscal_settings,
+      companySettings.fiscalSettings,
+      company.fiscal_settings,
+      company.fiscalSettings,
+      erpSettings.fiscal_settings,
+      erpSettings.fiscalSettings,
+      settings.fiscal_settings,
+      settings.fiscalSettings,
+      companySettings,
+      company,
+      erpSettings,
+      settings,
+    ].filter(Boolean);
+    for (const source of sources) {
+      for (const key of ["subject_to_vat", "vat_subject", "is_vat_subject", "vat_enabled", "is_subject_to_vat", "company_vat_subject", "taxable_person"]) {
+        const parsed = parseVatFlag(source?.[key]);
+        if (parsed !== null) return parsed;
+      }
+    }
+    return true;
+  }
+  function catalogVatRows() {
+    if (!companySubjectToVat()) return [{ rate: 0, label: "0 %" }];
+    const rows = (state().data.vatRates || [])
+      .filter((row) => row && row.active !== false && row.is_active !== false)
+      .map((row) => ({ ...row, rate: Number(row.rate) }))
+      .filter((row) => Number.isFinite(row.rate) && row.rate >= 0);
+    const byRate = new Map();
+    rows.forEach((row) => {
+      const key = Number(row.rate).toFixed(4);
+      if (!byRate.has(key)) byRate.set(key, row);
+    });
+    if (!byRate.size) {
+      const configured = Number(state().data.settings?.[0]?.default_vat_rate);
+      const rate = Number.isFinite(configured) && configured >= 0 ? configured : 20;
+      byRate.set(rate.toFixed(4), { rate, label: "Taux par défaut" });
+    }
+    return [...byRate.values()].sort((a, b) => b.rate - a.rate);
+  }
+  function normalizeCatalogTaxRate(value) {
+    const numeric = Number(String(value ?? 0).replace(",", "."));
+    const rows = catalogVatRows();
+    if (!companySubjectToVat()) return 0;
+    if (!Number.isFinite(numeric)) return rows[0]?.rate ?? 0;
+    const match = rows.find((row) => Math.abs(Number(row.rate) - numeric) < 0.0001);
+    return match ? Number(match.rate) : rows[0]?.rate ?? 0;
+  }
+  function catalogVatLabel(rate) {
+    return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(Number(rate) || 0)} %`;
+  }
+  function catalogVatOptions(selectedValue) {
+    const selected = normalizeCatalogTaxRate(selectedValue);
+    return catalogVatRows()
+      .map((row) => {
+        const rate = Number(row.rate) || 0;
+        return `<option value="${rate}" ${Math.abs(rate - selected) < 0.0001 ? "selected" : ""}>${esc(catalogVatLabel(rate))}</option>`;
+      })
+      .join("");
+  }
   function catalogUnits() {
     const configured = state().data.catalogSettings?.[0]?.units,
-      values = Array.isArray(configured) && configured.length ? configured : defaultUnits;
-    return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
+      values = Array.isArray(configured) && configured.length ? configured : defaultUnits,
+      cleaned = values.map(cleanCatalogUnit).filter(Boolean);
+    return [...new Set([...cleaned, ...defaultUnits.map(cleanCatalogUnit)])];
   }
   function unitField(label, name, value = "unité") {
-    const selected = String(value || "unité").trim(),
+    const selected = cleanCatalogUnit(value),
       units = catalogUnits();
     if (selected && !units.includes(selected)) units.unshift(selected);
     return `<label class="modern-field"><span>${esc(label)}</span><select name="${name}">${units.map((unit) => `<option value="${esc(unit)}" ${unit === selected ? "selected" : ""}>${esc(unit)}</option>`).join("")}</select><small>Unités définies dans les paramètres du catalogue.</small></label>`;
@@ -400,7 +498,7 @@
     const counts = quickCounts(),
       categories = state().data.categories || [],
       suppliers = state().data.suppliers || [],
-      rates = state().data.vatRates || [];
+      rates = catalogVatRows();
     return `<section class="catalog-controls"><div class="catalog-quick-tabs">${[
       ["all", "Tous"],
       ["products", "Articles"],
@@ -432,7 +530,7 @@
       )
       .join(
         "",
-      )}</select></label><label>Catégorie<select onchange="PilozCatalog.setFilter('category',this.value)"><option value="">Toutes</option>${categories.map((x) => `<option value="${x.id}" ${ui.filters.category === x.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></label><label>Fournisseur<select onchange="PilozCatalog.setFilter('supplier',this.value)"><option value="">Tous</option>${suppliers.map((x) => `<option value="${x.id}" ${ui.filters.supplier === x.id ? "selected" : ""}>${esc(x.legal_name)}</option>`).join("")}</select></label><label>TVA<select onchange="PilozCatalog.setFilter('vat',this.value)"><option value="">Toutes</option>${rates.map((x) => `<option value="${Number(x.rate)}" ${Number(ui.filters.vat) === Number(x.rate) ? "selected" : ""}>${esc(x.label)}</option>`).join("")}</select></label><label>Unité<select onchange="PilozCatalog.setFilter('unit',this.value)"><option value="">Toutes</option>${filterOptions(catalog(), "unit", "Unité")}</select></label><label>Marque<select onchange="PilozCatalog.setFilter('brand',this.value)"><option value="">Toutes</option>${filterOptions(catalog(), "brand", "Marque")}</select></label><label>Complétude<select onchange="PilozCatalog.setFilter('price',this.value)"><option value="">Toutes</option><option value="no-purchase">Sans prix d’achat</option><option value="no-sale">Sans prix de vente</option><option value="no-supplier">Sans fournisseur</option><option value="no-category">Sans catégorie</option></select></label><button class="catalog-clear" onclick="PilozCatalog.clearFilters()">Réinitialiser</button></div></section>`;
+      )}</select></label><label>Catégorie<select onchange="PilozCatalog.setFilter('category',this.value)"><option value="">Toutes</option>${categories.map((x) => `<option value="${x.id}" ${ui.filters.category === x.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></label><label>Fournisseur<select onchange="PilozCatalog.setFilter('supplier',this.value)"><option value="">Tous</option>${suppliers.map((x) => `<option value="${x.id}" ${ui.filters.supplier === x.id ? "selected" : ""}>${esc(x.legal_name)}</option>`).join("")}</select></label><label>TVA<select onchange="PilozCatalog.setFilter('vat',this.value)"><option value="">Toutes</option>${rates.map((x) => `<option value="${Number(x.rate) || 0}" ${Number(ui.filters.vat) === Number(x.rate) ? "selected" : ""}>${esc(catalogVatLabel(x.rate))}</option>`).join("")}</select></label><label>Unité<select onchange="PilozCatalog.setFilter('unit',this.value)"><option value="">Toutes</option>${filterOptions(catalog().map((item) => ({ ...item, unit: cleanCatalogUnit(item.unit) })), "unit", "Unité")}</select></label><label>Marque<select onchange="PilozCatalog.setFilter('brand',this.value)"><option value="">Toutes</option>${filterOptions(catalog(), "brand", "Marque")}</select></label><label>Complétude<select onchange="PilozCatalog.setFilter('price',this.value)"><option value="">Toutes</option><option value="no-purchase">Sans prix d’achat</option><option value="no-sale">Sans prix de vente</option><option value="no-supplier">Sans fournisseur</option><option value="no-category">Sans catégorie</option></select></label><button class="catalog-clear" onclick="PilozCatalog.clearFilters()">Réinitialiser</button></div></section>`;
   }
   function cell(key, item) {
     const cat = category(item),
@@ -669,7 +767,7 @@
       .join("");
   }
   function itemForm(item = {}) {
-    const rates = state().data.vatRates || [],
+    const selectedTaxRate = normalizeCatalogTaxRate(item.tax_rate),
       suppliers = state().data.suppliers || [],
       kind = item.item_type || "product",
       canPurchase = can("view_purchase_prices"),
@@ -709,7 +807,7 @@
       )
       .join(
         "",
-      )}</select></label><label class="modern-field full"><span>Description</span><textarea name="sales_description" rows="4">${esc(item.sales_description || item.short_description || item.detailed_description || "")}</textarea><small>Cette description sera reprise automatiquement dans les devis et les factures.</small></label><label class="modern-field full"><span>Note interne</span><textarea name="internal_notes" rows="3">${esc(item.internal_notes || "")}</textarea></label></div></section><section><h2>Prix et marge</h2><div class="catalog-form-grid">${purchaseFields}${marginFields}${field("Prix de vente HT", "sale_price", item.sale_price || 0, "number", 'min="0" step="0.0001" oninput="PilozCatalog.syncPrices(\'sale\')"')}<label class="modern-field"><span>TVA</span><select name="tax_rate" onchange="PilozCatalog.syncPrices()">${(rates.length ? rates : [{ rate: 20, label: "20 %" }]).map((x) => `<option value="${Number(x.rate)}" ${Number(item.tax_rate ?? 20) === Number(x.rate) ? "selected" : ""}>${esc(x.label)}</option>`).join("")}</select></label>${field("Prix de vente TTC", "sale_price_ttc", (Number(item.sale_price || 0) * (1 + Number(item.tax_rate ?? 20) / 100)).toFixed(2), "number", "readonly")}${marginSummary}</div></section><section><h2>Fournisseur principal</h2><div class="catalog-form-grid"><label class="modern-field"><span>Fournisseur</span><select name="primary_supplier_id"><option value="">Aucun</option>${options(suppliers, item.primary_supplier_id, (x) => x.legal_name)}</select></label>${field("Référence fournisseur", "supplier_reference", item.supplier_reference)}</div></section><footer class="catalog-form-actions"><button type="button" class="btn btn-o" onclick="${item.id ? `PilozApp.go('sales/items/${item.id}')` : `PilozApp.go('sales/catalog')`}">Annuler</button><button type="submit" class="btn btn-p" data-catalog-save>${item.id ? "Enregistrer les modifications" : "Créer l’élément"}</button></footer></form>`;
+      )}</select></label><label class="modern-field full"><span>Description</span><textarea name="sales_description" rows="4">${esc(item.sales_description || item.short_description || item.detailed_description || "")}</textarea><small>Cette description sera reprise automatiquement dans les devis et les factures.</small></label><label class="modern-field full"><span>Note interne</span><textarea name="internal_notes" rows="3">${esc(item.internal_notes || "")}</textarea></label></div></section><section><h2>Prix et marge</h2><div class="catalog-form-grid">${purchaseFields}${marginFields}${field("Prix de vente HT", "sale_price", item.sale_price || 0, "number", 'min="0" step="0.0001" oninput="PilozCatalog.syncPrices(\'sale\')"')}<label class="modern-field"><span>TVA</span><select name="tax_rate" onchange="PilozCatalog.syncPrices()">${catalogVatOptions(selectedTaxRate)}</select></label>${field("Prix de vente TTC", "sale_price_ttc", (Number(item.sale_price || 0) * (1 + selectedTaxRate / 100)).toFixed(2), "number", "readonly")}${marginSummary}</div></section><section><h2>Fournisseur principal</h2><div class="catalog-form-grid"><label class="modern-field"><span>Fournisseur</span><select name="primary_supplier_id"><option value="">Aucun</option>${options(suppliers, item.primary_supplier_id, (x) => x.legal_name)}</select></label>${field("Référence fournisseur", "supplier_reference", item.supplier_reference)}</div></section><footer class="catalog-form-actions"><button type="button" class="btn btn-o" onclick="${item.id ? `PilozApp.go('sales/items/${item.id}')` : `PilozApp.go('sales/catalog')`}">Annuler</button><button type="submit" class="btn btn-p" data-catalog-save>${item.id ? "Enregistrer les modifications" : "Créer l’élément"}</button></footer></form>`;
   }
   function renderCreate() {
     document.getElementById("main").innerHTML =
@@ -766,9 +864,12 @@
         (row) => row.id === categoryId,
       );
     if (!form || !category) return;
-    if (category.default_unit) form.elements.unit.value = category.default_unit;
+    if (category.default_unit)
+      form.elements.unit.value = cleanCatalogUnit(category.default_unit);
     if (category.default_tax_rate != null)
-      form.elements.tax_rate.value = Number(category.default_tax_rate);
+      form.elements.tax_rate.value = normalizeCatalogTaxRate(
+        category.default_tax_rate,
+      );
     if (category.default_supplier_id)
       form.elements.primary_supplier_id.value = category.default_supplier_id;
     if (category.default_margin_rate != null)
@@ -792,7 +893,8 @@
       form.elements.margin_rate.value = costValue
         ? (((sale - costValue) / costValue) * 100).toFixed(2)
         : "0.00";
-    const tax = Number(form.elements.tax_rate.value) || 0;
+    const tax = normalizeCatalogTaxRate(form.elements.tax_rate.value);
+    form.elements.tax_rate.value = tax;
     form.elements.sale_price_ttc.value = (sale * (1 + tax / 100)).toFixed(2);
     const m = sale - costValue;
     document.getElementById("catalog-margin-value").textContent = money(m);
@@ -812,6 +914,8 @@
     numeric.forEach(
       (key) => (raw[key] = raw[key] === "" ? null : Number(raw[key])),
     );
+    raw.unit = cleanCatalogUnit(raw.unit || "unité");
+    raw.tax_rate = normalizeCatalogTaxRate(raw.tax_rate);
     raw.short_description = raw.sales_description || null;
     for (const removedField of [
       "barcode",
@@ -1652,7 +1756,7 @@
         purchase_price: Number(raw.purchase_price) || 0,
         cost_price: Number(raw.cost_price) || 0,
         sale_price: Number(raw.sale_price) || 0,
-        tax_rate: Number(raw.tax_rate) || 0,
+        tax_rate: normalizeCatalogTaxRate(raw.tax_rate),
         is_active: true,
         status: "active",
       });
@@ -1713,7 +1817,7 @@
           purchase_price: Number(raw.purchase_price) || 0,
           cost_price: Number(raw.cost_price) || 0,
           sale_price: Number(raw.sale_price) || 0,
-          tax_rate: Number(raw.tax_rate) || 0,
+          tax_rate: normalizeCatalogTaxRate(raw.tax_rate),
         };
       });
     ui.busy = true;
@@ -1869,7 +1973,7 @@
         Object.assign(s.purchaseDraft.lines[0], {
           item_id: itemId,
           unit_price: Number(item.purchase_price) || 0,
-          tax_rate: Number(item.tax_rate) || 0,
+          tax_rate: normalizeCatalogTaxRate(item.tax_rate),
         });
         app().setPurchaseLine?.(0, "item_id", itemId);
       }
@@ -1907,11 +2011,11 @@
             item.name,
             item.sales_description,
             category(item)?.name,
-            item.unit,
+            cleanCatalogUnit(item.unit),
             item.purchase_price,
             cost(item),
             item.sale_price,
-            item.tax_rate,
+            normalizeCatalogTaxRate(item.tax_rate),
             supplier(item)?.legal_name,
             item.barcode,
             statusOf(item),
@@ -2133,12 +2237,14 @@
               name,
               sales_description: row.description || null,
               category_id: categoryId,
-              unit: row.unite || "unité",
+              unit: cleanCatalogUnit(row.unite || "unité"),
               purchase_price: purchase,
               cost_price: purchase,
               sale_price:
                 Number(String(row.prix_vente_ht || 0).replace(",", ".")) || 0,
-              tax_rate: Number(String(row.tva || 20).replace(",", ".")) || 0,
+              tax_rate: normalizeCatalogTaxRate(
+                String(row.tva || 20).replace(",", "."),
+              ),
               barcode:
                 duplicate && ui.importMode === "create"
                   ? null
