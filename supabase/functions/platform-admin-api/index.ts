@@ -482,10 +482,18 @@ Deno.serve(async req=>{
    if(targetUserError||!targetUser?.user?.email)throw Object.assign(new Error("Le compte du propriétaire est introuvable."),{status:404});
    const {data:session,error:sessionError}=await client.rpc("platform_admin_start_support_session",{target_company_id:companyId,target_reason:reason,target_mode:"impersonate"});
    if(sessionError)throw sessionError;
-   const {data:link,error:linkError}=await service.auth.admin.generateLink({type:"magiclink",email:targetUser.user.email,options:{redirectTo:"https://app.piloz.fr/"}});
-   if(linkError||!link?.properties?.action_link)throw Object.assign(new Error("Le lien de connexion n’a pas pu être généré."),{status:502});
+   const {data:link,error:linkError}=await service.auth.admin.generateLink({type:"magiclink",email:targetUser.user.email});
+   if(linkError||!link?.properties?.hashed_token)throw Object.assign(new Error("Le lien de connexion n’a pas pu être généré."),{status:502});
+   // On échange le jeton côté serveur (POST JSON) plutôt que de naviguer le
+   // nouvel onglet vers le lien de vérification hébergé par Supabase : cette
+   // redirection multi-sauts se fait déclencher comme suspecte et fermer par
+   // certains navigateurs/extensions de sécurité. Le nouvel onglet reçoit
+   // directement une session valide, sans aucun saut inter-domaine.
+   const verifyResponse=await fetch(`${url}/auth/v1/verify`,{method:"POST",headers:{apikey:anon,"Content-Type":"application/json"},body:JSON.stringify({type:"magiclink",token_hash:link.properties.hashed_token})});
+   const verifyBody=await verifyResponse.json().catch(()=>({}));
+   if(!verifyResponse.ok||!verifyBody?.access_token||!verifyBody?.refresh_token)throw Object.assign(new Error("La session de connexion n’a pas pu être établie."),{status:502});
    await audit("company.impersonate","user",owner.user_id,companyId,null,{session_id:session.id,target_email:targetUser.user.email},reason);
-   return response(req,{link:link.properties.action_link,session,targetEmail:targetUser.user.email});
+   return response(req,{accessToken:verifyBody.access_token,refreshToken:verifyBody.refresh_token,userId:verifyBody.user?.id||owner.user_id,targetEmail:targetUser.user.email,session});
   }
   return response(req,{error:"Action inconnue"},404);
  }catch(error){
