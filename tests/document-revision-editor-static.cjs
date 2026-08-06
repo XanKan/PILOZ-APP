@@ -65,7 +65,7 @@ assert(!editor.includes('class="document-v2-structural ${line.line_type}" dragga
 assert(editor.includes('class="document-v2-handle" type="button" title="Déplacer" draggable="${!quoteLocked(d)}"'), 'La poignée article doit rester draggable.');
 assert(editor.includes('class="document-v2-handle" type="button" aria-label="Déplacer" draggable="${!quoteLocked(d)}"'), 'La poignée structurelle doit rester draggable.');
 
-assert(indexHtml.includes('erp-app.js?v=20260806.load-race-fix1'), 'Le cache erp-app doit être invalidé.');
+assert(indexHtml.includes('erp-app.js?v=20260806.no-stock1'), 'Le cache erp-app doit être invalidé.');
 assert(indexHtml.includes('erp-document-editor-v2.js?v=20260804.delete-print2'), 'Le cache de l’éditeur V2 doit être invalidé.');
 assert(indexHtml.includes('erp-document-viewer-v2.js?v=20260804.print-fix-collision1'), 'Le cache de la consultation doit être invalidé.');
 

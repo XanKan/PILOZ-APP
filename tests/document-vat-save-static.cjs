@@ -86,7 +86,7 @@ for (const [name, source] of [['erp-app', app], ['éditeur', editor], ['catalogu
   }
 }
 
-assert(index.includes('erp-app.js?v=20260806.load-race-fix1'), 'Le cache de erp-app.js doit être invalidé.');
+assert(index.includes('erp-app.js?v=20260806.no-stock1'), 'Le cache de erp-app.js doit être invalidé.');
 assert(index.includes('erp-document-editor-v2.js?v=20260804.delete-print2'), 'Le cache de erp-document-editor-v2.js doit être invalidé.');
 assert(index.includes('erp-catalog-v2.js?v=20260803.document-vat-save1'), 'Le cache de erp-catalog-v2.js doit être invalidé.');
 
